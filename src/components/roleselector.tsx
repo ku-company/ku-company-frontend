@@ -7,6 +7,7 @@ interface RoleSelectModalProps {
   onClose: () => void;
 }
 
+
 const roles = [
   { name: "Student", icon: "/icons/student.png", href: "/register/student" },
   { name: "Professor", icon: "/icons/professor.png", href: "/register/professor" },
@@ -46,7 +47,7 @@ export default function RoleSelectModal({ isOpen, onClose }: RoleSelectModalProp
               className="flex flex-col items-center bg-gray-100 p-10 rounded-2xl hover:shadow-lg transition transform hover:scale-105"
             >
               <div className="bg-midgreen text-white rounded-full w-32 h-32 flex items-center justify-center">
-                <img src={role.icon} alt={role.name} className="w-16 h-16" />
+                <img src={role.icon} alt={role.name} className="w-16 h-18" />
               </div>
               <span className="mt-6 text-lg text-black font-semibold">{role.name}</span>
             </button>
