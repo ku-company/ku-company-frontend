@@ -20,7 +20,7 @@ function NavItem({ href, label }: { href: string; label: string }) {
 /** Top navigation bar (sticky) */
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur border-b">
       <div className="mx-auto max-w-7xl h-14 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand */}
         <Link href="/" className="font-semibold tracking-widest">
