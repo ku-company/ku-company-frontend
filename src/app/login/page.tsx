@@ -1,10 +1,45 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import RoleSelectModal from "@/components/roleselector";
+import { loginUser } from "@/api/login";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({ user_name: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await loginUser(form);
+
+      // Save tokens to localStorage
+      localStorage.setItem("access_token", res.data.access_token);
+      localStorage.setItem("refresh_token", res.data.refresh_token);
+      localStorage.setItem("user_name", res.data.user_name);
+      localStorage.setItem("role", res.data.roles);
+      localStorage.setItem("email", res.data.email);
+
+      // Redirect after login
+      router.push("/homepage");
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <>
@@ -21,29 +56,36 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/*login form */}
+          {/* Login form */}
           <div className="w-full md:w-1/2 max-w-md">
             <div className="flex items-center justify-center flex-col mb-5">
               <h2 className="text-4xl font-poppings text-midgreen">WELCOME BACK TO</h2>
               <h1 className="text-4xl font-poppings text-black">KU-COMPANY</h1>
             </div>
 
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <input
                 type="text"
+                name="user_name"
+                value={form.user_name}
+                onChange={handleChange}
                 placeholder="Username"
                 className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
               />
               <input
                 type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
                 placeholder="Password"
                 className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
               />
               <button
-                type="button"
-                className="w-full rounded-full bg-midgreen py-2 text-white font-semibold hover:bg-green-800 transition"
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-midgreen py-2 text-white font-semibold hover:bg-green-800 transition disabled:opacity-50"
               >
-                Log in
+                {loading ? "Logging in..." : "Log in"}
               </button>
               <button
                 type="button"
@@ -53,6 +95,8 @@ export default function LoginPage() {
                 <span>Log in with Google</span>
               </button>
             </form>
+
+            {error && <p className="mt-3 text-red-500 text-center">{error}</p>}
 
             <div className="mt-4 flex justify-between text-sm">
               <a href="#" className="text-gray-500 hover:underline">
