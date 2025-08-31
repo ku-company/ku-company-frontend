@@ -26,7 +26,7 @@ export default function LoginPage() {
 
     try {
       const res = await loginUser(form);
-      // 🚀 Update global auth state + localStorage in one go
+      // Update global auth state and LocalStorage
       login(res.data);
       router.push("/");
     } catch (err: any) {

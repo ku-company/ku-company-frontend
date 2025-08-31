@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import RoleSelector from "@/components/roleselector";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // click outside to close
@@ -41,80 +43,95 @@ export default function Navbar() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur border-b">
-      <div className="mx-auto max-w-7xl h-14 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Brand */}
-        <Link href="/" className="font-semibold tracking-widest">
-          KU-COMPANY
-        </Link>
+    <>
+      {/* Navbar */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur border-b">
+        <div className="mx-auto max-w-7xl h-14 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          {/* Brand */}
+          <Link href="/" className="font-semibold tracking-widest">
+            KU-COMPANY
+          </Link>
 
-        {/* Search */}
-        <div className="hidden md:block">
-          <input
-            placeholder="SEARCH"
-            className="h-9 w-64 rounded-full border px-4 text-sm focus:outline-none focus:ring"
-          />
-        </div>
+          {/* Search */}
+          <div className="hidden md:block">
+            <input
+              placeholder="SEARCH"
+              className="h-9 w-64 rounded-full border px-4 text-sm focus:outline-none focus:ring"
+            />
+          </div>
 
-        {/* Main links */}
-        <nav className="hidden md:flex items-center gap-2">
-          <NavItem href="/" label="HOME" />
-          <NavItem href="/find-job" label="FIND JOB" />
-          <NavItem href="/announcement" label="ANNOUNCEMENT" />
-        </nav>
+          {/* Main links */}
+          <nav className="hidden md:flex items-center gap-2">
+            <NavItem href="/" label="HOME" />
+            <NavItem href="/find-job" label="FIND JOB" />
+            <NavItem href="/announcement" label="ANNOUNCEMENT" />
+          </nav>
 
-        {/* Auth/Profile */}
-        <div className="relative flex items-center gap-2" ref={menuRef}>
-          {user ? (
-            <>
-              <button
-                className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
-                onClick={() => setDropdownOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={dropdownOpen}
-              >
-                <img
-                  src="/icons/default-profile.png"
-                  alt={`${user.user_name} avatar`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-
-              {dropdownOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-12 w-44 bg-white border rounded-lg shadow-lg py-2"
+          {/* Auth/Profile */}
+          <div className="relative flex items-center gap-2" ref={menuRef}>
+            {user ? (
+              <>
+                <button
+                  className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
+                  onClick={() => setDropdownOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={dropdownOpen ? "true" : "false"}
                 >
-                  <Link
-                    href="/profile"
-                    onClick={() => setDropdownOpen(false)}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                  <img
+                    src="/icons/default-profile.png"
+                    alt={`${user.user_name} avatar`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+
+                {dropdownOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-12 w-44 bg-white border rounded-lg shadow-lg py-2"
                   >
-                    Profile
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                    role="menuitem"
-                  >
-                    Logout
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="text-xs px-3 py-1 rounded border">
-                LOGIN
-              </Link>
-              <Link href="/register" className="text-xs px-3 py-1 rounded border">
-                SIGNUP
-              </Link>
-            </>
-          )}
+                    <Link
+                      href="/profile"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      Profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-xs px-3 py-1 rounded border">
+                  LOGIN
+                </Link>
+                <button
+                  onClick={() => setShowRoleSelector(true)}
+                  className="text-xs px-3 py-1 rounded border"
+                >
+                  SIGNUP
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+
+      {showRoleSelector && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
+            <RoleSelector isOpen={showRoleSelector} onClose={() => setShowRoleSelector(false)} />
+          </div>
+        </div>
+      )}
+    </>
   );
 }
