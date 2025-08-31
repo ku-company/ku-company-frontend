@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import RoleSelectModal from "@/components/roleselector";
 import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ user_name: "", password: "" });
@@ -24,16 +26,9 @@ export default function LoginPage() {
 
     try {
       const res = await loginUser(form);
-
-      // Save tokens to localStorage
-      localStorage.setItem("access_token", res.data.access_token);
-      localStorage.setItem("refresh_token", res.data.refresh_token);
-      localStorage.setItem("user_name", res.data.user_name);
-      localStorage.setItem("role", res.data.roles);
-      localStorage.setItem("email", res.data.email);
-
-      // Redirect after login
-      router.push("/homepage");
+      // 🚀 Update global auth state + localStorage in one go
+      login(res.data);
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {
@@ -71,6 +66,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 placeholder="Username"
                 className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                autoComplete="username"
               />
               <input
                 type="password"
@@ -79,6 +75,7 @@ export default function LoginPage() {
                 onChange={handleChange}
                 placeholder="Password"
                 className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                autoComplete="current-password"
               />
               <button
                 type="submit"

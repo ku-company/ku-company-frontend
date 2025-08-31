@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
-/** Small helper that highlights the current page */
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
   const active = pathname === href;
@@ -18,29 +18,24 @@ function NavItem({ href, label }: { href: string; label: string }) {
   );
 }
 
-/** Top navigation bar (sticky) */
 export default function Navbar() {
   const router = useRouter();
-  const [user, setUser] = useState<string | null>(null);
+  const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  // click outside to close
   useEffect(() => {
-    // check if user is logged in by looking for token
-    const token = localStorage.getItem("access_token");
-    const username = localStorage.getItem("user_name");
-    if (token && username) {
-      setUser(username);
+    function onDocClick(e: MouseEvent) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target as Node)) setDropdownOpen(false);
     }
-  }, []);
+    if (dropdownOpen) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [dropdownOpen]);
 
   function handleLogout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_name");
-    localStorage.removeItem("role");
-    localStorage.removeItem("email");
-
-    setUser(null);
+    logout();
     setDropdownOpen(false);
     router.push("/login");
   }
@@ -53,7 +48,7 @@ export default function Navbar() {
           KU-COMPANY
         </Link>
 
-        {/* Search (optional) */}
+        {/* Search */}
         <div className="hidden md:block">
           <input
             placeholder="SEARCH"
@@ -69,33 +64,39 @@ export default function Navbar() {
         </nav>
 
         {/* Auth/Profile */}
-        <div className="relative flex items-center gap-2">
+        <div className="relative flex items-center gap-2" ref={menuRef}>
           {user ? (
             <>
-              <div
-                className="w-9 h-9 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden cursor-pointer"
-                onClick={() => setDropdownOpen((prev) => !prev)}
+              <button
+                className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
+                onClick={() => setDropdownOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={dropdownOpen}
               >
                 <img
-                  src="/icons/default-profile.png" // 👈 replace with your avatar later
-                  alt="Profile"
+                  src="/icons/default-profile.png"
+                  alt={`${user.user_name} avatar`}
                   className="w-full h-full object-cover"
                 />
-              </div>
+              </button>
 
-              {/* Dropdown */}
               {dropdownOpen && (
-                <div className="absolute right-0 top-12 w-40 bg-white border rounded-lg shadow-lg py-2">
+                <div
+                  role="menu"
+                  className="absolute right-0 top-12 w-44 bg-white border rounded-lg shadow-lg py-2"
+                >
                   <Link
                     href="/profile"
                     onClick={() => setDropdownOpen(false)}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
                   >
                     Profile
                   </Link>
                   <button
                     onClick={handleLogout}
                     className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    role="menuitem"
                   >
                     Logout
                   </button>
