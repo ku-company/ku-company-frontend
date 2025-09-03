@@ -160,21 +160,28 @@ export default function ProfilePage() {
       </div>
 
       {/* BOTTOM: Four cards */}
+        
       <div className="mt-6 grid md:grid-cols-2 gap-6">
         {/* Education */}
-        <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+        <div
+          className="relative rounded-2xl border bg-white p-6 shadow-sm"
+          style={{ borderColor: GREEN }}
+        >
+          <CornerIcon title="Edit education" />
           <PillHeading>Education</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
-            <li>
-              Kasetsart University — Bachelor of Engineering in Software and Knowledge Engineering
-            </li>
+            <li>Kasetsart University — Bachelor of Engineering in Software and Knowledge Engineering</li>
             <li>Expected Graduation: 2025</li>
             <li>Relevant Courses: Data Mining, Machine Learning, Web Programming, Database Systems</li>
           </ul>
         </div>
 
         {/* Skills */}
-        <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+        <div
+          className="relative rounded-2xl border bg-white p-6 shadow-sm"
+          style={{ borderColor: GREEN }}
+        >
+          <CornerIcon title="Edit skills" />
           <PillHeading>Skills</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>Technical: Python, SQL, HTML, CSS, JavaScript, Flask, Pandas, NumPy, Scikit-learn</li>
@@ -184,7 +191,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Licenses */}
-        <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+        <div
+          className="relative rounded-2xl border bg-white p-6 shadow-sm"
+          style={{ borderColor: GREEN }}
+        >
+          <CornerIcon title="Edit licenses" />
           <PillHeading>Licenses or Certifications</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>Google Data Analytics Professional Certificate — Coursera (2024)</li>
@@ -193,7 +204,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Languages */}
-        <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+        <div
+          className="relative rounded-2xl border bg-white p-6 shadow-sm"
+          style={{ borderColor: GREEN }}
+        >
+          <CornerIcon title="Edit languages" />
           <PillHeading>Languages</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
             <li>Thai — Native</li>
@@ -201,6 +216,7 @@ export default function ProfilePage() {
           </ul>
         </div>
       </div>
+
     </main>
   );
 }
