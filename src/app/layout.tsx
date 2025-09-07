@@ -1,9 +1,9 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar"; // <- keep relative path (src/components/Navbar)
+import { AuthProvider } from "@/context/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +22,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "KU‑COMPANY",
+  title: "KU-COMPANY",
   description: "Job portal for CPE & SKE students",
 };
 
@@ -38,13 +38,16 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gray-50 text-gray-900`}
       >
-        {/* Global top navigation */}
-        <Navbar />
+        {/* Wrap everything with AuthProvider */}
+        <AuthProvider>
+          {/* Global top navigation */}
+          <Navbar />
 
-        {/* Page content */}
-        <main className="min-h-screen">{children}</main>
+          {/* Page content */}
+          <main className="min-h-screen">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );
