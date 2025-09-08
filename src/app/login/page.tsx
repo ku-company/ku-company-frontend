@@ -11,6 +11,7 @@ export default function LoginPage() {
   const { login } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"register" | "oauth">("register");
   const [form, setForm] = useState({ user_name: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +27,7 @@ export default function LoginPage() {
 
     try {
       const res = await loginUser(form);
-      // Update global auth state and LocalStorage
-      login(res.data);
+      login(res.data); // save user & token in context
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
@@ -86,6 +86,10 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  setModalMode("oauth");
+                  setIsModalOpen(true);
+                }}
                 className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-2 text-white font-semibold hover:bg-gray-800 transition"
               >
                 <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
@@ -100,7 +104,10 @@ export default function LoginPage() {
                 Forgot Password?
               </a>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setModalMode("register");
+                  setIsModalOpen(true);
+                }}
                 className="text-midgreen font-medium hover:underline"
               >
                 Sign Up
@@ -110,8 +117,12 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Modal */}
-      <RoleSelectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {/* Role modal - used for both register and oauth */}
+      <RoleSelectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        mode={modalMode}
+      />
     </>
   );
 }

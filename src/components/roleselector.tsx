@@ -1,25 +1,33 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { getGoogleOAuthUrl } from "@/api/oauth";
 
 interface RoleSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: "register" | "oauth"; // 👈 new
 }
 
-
 const roles = [
-  { name: "Student", icon: "/icons/student.png", href: "/register/student" },
-  { name: "Professor", icon: "/icons/professor.png", href: "/register/professor" },
-  { name: "Company", icon: "/icons/company.png", href: "/register/company" },
+  { name: "Student", icon: "/icons/student.png" },
+  { name: "Professor", icon: "/icons/professor.png" },
+  { name: "Company", icon: "/icons/company.png" },
 ];
 
-export default function RoleSelectModal({ isOpen, onClose }: RoleSelectModalProps) {
+export default function RoleSelectModal({ isOpen, onClose, mode = "register" }: RoleSelectModalProps) {
   const router = useRouter();
+
   function handleSelect(role: string) {
     onClose();
-    router.push(`/register/${role}`);
+    const upperRole = role.charAt(0).toUpperCase() + role.slice(1); // Student, Professor, Company
+    if (mode === "register") {
+      router.push(`/register/${role.toLowerCase()}`);
+    } else if (mode === "oauth") {
+      window.location.href = getGoogleOAuthUrl(upperRole);
+    }
   }
+
 
   if (!isOpen) return null;
 
