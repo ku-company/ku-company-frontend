@@ -10,28 +10,42 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (data: any) => voi
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!position || !title || !details || !positionsAvailable) return;
+
     onSubmit({
       position,
       title,
       details,
       positionsAvailable,
     });
+
     // Reset form
+    setPosition("");
     setTitle("");
     setDetails("");
     setPositionsAvailable("");
   }
+
+  const isFormValid = position && title && details && positionsAvailable;
 
   return (
     <form
       onSubmit={handleSubmit}
       className="border border-midgreen rounded-md p-4 space-y-4 bg-white"
     >
-      {/* Position selector */}
+      {/* Position selector + Title */}
       <div className="flex items-center border rounded-md overflow-hidden">
         <select
           value={position}
-          onChange={(e) => setPosition(e.target.value)}
+          onChange={(e) => {
+            const selected = e.target.value;
+            setPosition(selected);
+            // Auto-fill the title when choosing a position
+            if (selected) {
+              setTitle(selected);
+            }
+          }}
           className="px-3 py-2 border-r focus:outline-none"
         >
           <option value="">Choose Position</option>
@@ -41,27 +55,12 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (data: any) => voi
         </select>
         <input
           type="text"
-          placeholder="Machine Learning Engineer:"
+          placeholder="Enter job title"
           className="flex-1 px-3 py-2 focus:outline-none"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <button
-          type="button"
-          className="px-3 py-2 text-gray-500 hover:text-gray-700"
-        >
-          📎
-        </button>
       </div>
-
-      {/* Main info */}
-      <input
-        type="text"
-        placeholder="Add main information"
-        className="w-full rounded-md border px-3 py-2 focus:outline-none"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
 
       {/* Details */}
       <textarea
@@ -88,7 +87,12 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (data: any) => voi
           />
           <button
             type="submit"
-            className="bg-midgreen text-white px-4 py-2 rounded-md font-semibold hover:bg-green-700 transition"
+            disabled={!isFormValid}
+            className={`px-4 py-2 rounded-md font-semibold transition ${
+              isFormValid
+                ? "bg-midgreen text-white hover:bg-green-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
             Post
           </button>
