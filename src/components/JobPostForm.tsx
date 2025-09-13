@@ -32,7 +32,7 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (data: any) => voi
   return (
     <form
       onSubmit={handleSubmit}
-      className="border border-midgreen rounded-md p-4 space-y-4 bg-white"
+      className="border border-midgreen-500 rounded-md p-4 space-y-4 bg-white"
     >
       {/* Position selector + Title */}
       <div className="flex items-center border rounded-md overflow-hidden">

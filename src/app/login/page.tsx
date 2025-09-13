@@ -54,7 +54,7 @@ export default function LoginPage() {
           {/* Login form */}
           <div className="w-full md:w-1/2 max-w-md">
             <div className="flex items-center justify-center flex-col mb-5">
-              <h2 className="text-4xl font-poppings text-midgreen">WELCOME BACK TO</h2>
+              <h2 className="text-4xl font-poppings text-midgreen-500">WELCOME BACK TO</h2>
               <h1 className="text-4xl font-poppings text-black">KU-COMPANY</h1>
             </div>
 
@@ -65,7 +65,7 @@ export default function LoginPage() {
                 value={form.user_name}
                 onChange={handleChange}
                 placeholder="Username"
-                className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
                 autoComplete="username"
               />
               <input
@@ -74,13 +74,13 @@ export default function LoginPage() {
                 value={form.password}
                 onChange={handleChange}
                 placeholder="Password"
-                className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
                 autoComplete="current-password"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-full bg-midgreen py-2 text-white font-semibold hover:bg-green-800 transition disabled:opacity-50"
+                className="w-full rounded-full bg-midgreen-500 py-2 text-white font-semibold hover:bg-green-800 transition disabled:opacity-50"
               >
                 {loading ? "Logging in..." : "Log in"}
               </button>
@@ -101,7 +101,7 @@ export default function LoginPage() {
               </a>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="text-midgreen font-medium hover:underline"
+                className="text-midgreen-500 font-medium hover:underline"
               >
                 Sign Up
               </button>
