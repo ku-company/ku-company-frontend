@@ -86,9 +86,9 @@ export default function CompanyDashboardPage() {
         </div>
       </div>
 
-      {/* CONTENT GRID ---------------------------------------------------- */}
+      {/* CONTENT GRID */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left column: empty-state + mini chart */}
+        {/* empty-state */}
         <div className="rounded-2xl border-2 border-midgreen-300 bg-white p-6 shadow-sm lg:col-span-4">
           <h3 className="text-xl font-semibold">
             No active jobs yet — create your first job to start hiring.
@@ -115,7 +115,7 @@ export default function CompanyDashboardPage() {
           </div>
         </div>
 
-        {/* Right column: metrics + tasks */}
+        {/* metrics + tasks */}
         <div className="lg:col-span-8">
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {metrics.map(({ label, value }) => (
