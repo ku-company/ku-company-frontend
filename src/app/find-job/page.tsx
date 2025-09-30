@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import ApplyModal from "@/components/ApplyModal"; // <-- NEW
 
 // ----- Types -----
 type Job = {
@@ -55,6 +56,12 @@ const JOBS: Job[] = [
   },
 ];
 
+// Mock uploaded resumes (you’ll replace with real data from your API/auth user)
+const UPLOADED_RESUMES = [
+  { id: "r1", name: "Ann-Montakarn-Resume.pdf", updatedAt: "Updated 2 days ago", size: "214 KB" },
+  { id: "r2", name: "Ann-Data-Engineer-CV.pdf", updatedAt: "Updated 2 months ago", size: "198 KB" },
+];
+
 // Brand green
 const GREEN = "#5b8f5b";
 
@@ -81,11 +88,14 @@ export default function FindJobPage() {
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<string>("All");
 
-  // draft inputs (only applied when clicking Search)
+  // draft inputs
   const [draftKeyword, setDraftKeyword] = useState(keyword);
   const [draftCategory, setDraftCategory] = useState(category);
 
   const [selectedId, setSelectedId] = useState<string>(JOBS[0].id);
+
+  // NEW: modal open/close
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return JOBS.filter((j) => {
@@ -106,7 +116,6 @@ export default function FindJobPage() {
   const applySearch = () => {
     setKeyword(draftKeyword);
     setCategory(draftCategory);
-    // keep selection valid after filtering
     if (selected && !filtered.some((j) => j.id === selected.id)) {
       setSelectedId(JOBS[0].id);
     }
@@ -121,6 +130,16 @@ export default function FindJobPage() {
 
   const onInputKeyDown: React.KeyboardEventHandler<HTMLInputElement | HTMLSelectElement> = (e) => {
     if (e.key === "Enter") applySearch();
+  };
+
+  // NEW: submit application handler
+  const handleSubmitApplication = (payload: { mode: "existing" | "upload"; resumeId?: string; file?: File }) => {
+    // TODO: integrate with your backend:
+    // - If payload.mode === "existing": POST { jobId: selected.id, resumeId: payload.resumeId }
+    // - If payload.mode === "upload": upload payload.file then submit application with returned resumeId
+    console.log("Submit application", { jobId: selected?.id, ...payload });
+    setIsApplyOpen(false);
+    alert("Application submitted! (Check console for payload)");
   };
 
   return (
@@ -230,7 +249,11 @@ export default function FindJobPage() {
               </ul>
 
               <div className="mt-6 flex justify-end">
-                <button className="rounded-full px-6 py-2 text-sm font-semibold text-white" style={{ backgroundColor: GREEN }}>
+                <button
+                  className="rounded-full px-6 py-2 text-sm font-semibold text-white"
+                  style={{ backgroundColor: GREEN }}
+                  onClick={() => setIsApplyOpen(true)} // <-- OPEN MODAL
+                >
                   APPLY
                 </button>
               </div>
@@ -238,6 +261,16 @@ export default function FindJobPage() {
           )}
         </section>
       </div>
+
+      {/* Apply Modal */}
+      <ApplyModal
+        isOpen={isApplyOpen}
+        onClose={() => setIsApplyOpen(false)}
+        onSubmit={handleSubmitApplication}
+        resumes={UPLOADED_RESUMES}
+        jobTitle={selected?.title}
+        brandColor={GREEN}
+      />
     </main>
   );
 }
