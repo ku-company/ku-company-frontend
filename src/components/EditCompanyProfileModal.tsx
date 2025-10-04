@@ -14,7 +14,7 @@ type CompanyProfileForm = {
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  initial?: Partial<CompanyProfile> | null; // ✅ may be undefined/null while loading
+  initial?: Partial<CompanyProfile> | null; // may be undefined/null while loading
   onSaved: (updated: CompanyProfile) => void;
   brandColor?: string;
 };
@@ -26,7 +26,7 @@ export default function EditCompanyProfileModal({
   onSaved,
   brandColor = "#5D9252",
 }: Props) {
-  // ✅ always keep a safe form shape
+  // always keep a safe form shape
   const makeDefaults = (src?: Partial<CompanyProfile> | null): CompanyProfileForm => ({
     company_name: src?.company_name ?? "",
     description: src?.description ?? "",
@@ -118,7 +118,9 @@ export default function EditCompanyProfileModal({
           </div>
 
           <div className="grid gap-3">
-            <label className="text-sm font-medium">Description</label>
+            <label className="text-sm font-medium">
+            Description (supports **Markdown**)
+            </label>
             <textarea
               className="h-28 rounded-md border px-3 py-2 text-sm"
               value={form.description}
