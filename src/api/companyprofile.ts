@@ -1,40 +1,48 @@
-export type CompanyProfilePayload = {
+// src/api/companyprofile.ts
+// Handles CRUD for company profile with backend authentication
+
+const API_BASE = "http://localhost:8000"; // change if needed
+
+export interface CompanyProfile {
   company_name: string;
   description: string;
   industry: string;
   tel: string;
   location: string;
-};
-
-export type CompanyProfile = CompanyProfilePayload;
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
-
-function getAuthHeaders() {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    console.log("Using token:", token);
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  // Get token from localStorage
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  // Debug log
+  console.log("[companyProfile] Request", {
+    url: `${API_BASE}${path}`,
+    method: options.method ?? "GET",
+    authorization: headers.get("Authorization"),
+    contentType: headers.get("Content-Type"),
+  });
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...(options.headers || {}),
-    },
+    headers,
   });
-  console.log(`headers:`, res.headers);
 
   const text = await res.text();
   let data: any = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
-    // ignore parse error
+    // ignore
   }
 
   if (!res.ok) {
@@ -42,6 +50,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       data?.message ||
       data?.error ||
       `Request failed: ${res.status} ${res.statusText}`;
+    console.error("[companyProfile] Error:", message);
     const err: any = new Error(message);
     err.status = res.status;
     err.body = data;
@@ -51,29 +60,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-export async function getCompanyProfile(): Promise<CompanyProfile | null> {
-  try {
-    return await request<CompanyProfile>("/api/company/profile", { method: "GET" });
-  } catch (err: any) {
-    if (err.status === 404) return null;
-    throw err;
-  }
+// ---- API methods ----
+
+// GET /api/company/profile
+export async function getCompanyProfile(): Promise<CompanyProfile> {
+  return request<CompanyProfile>("/api/company/profile", { method: "GET" });
 }
 
+// POST /api/company/profile
 export async function createCompanyProfile(
-  payload: CompanyProfilePayload
+  profile: CompanyProfile
 ): Promise<CompanyProfile> {
   return request<CompanyProfile>("/api/company/profile", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(profile),
   });
 }
 
+// PATCH /api/company/profile
 export async function updateCompanyProfile(
-  payload: CompanyProfilePayload
+  profile: Partial<CompanyProfile>
 ): Promise<CompanyProfile> {
   return request<CompanyProfile>("/api/company/profile", {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(profile),
   });
 }

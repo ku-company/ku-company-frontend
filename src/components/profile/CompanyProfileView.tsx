@@ -1,8 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { getCompanyProfile } from "@/api/companyprofile";
-
+import { getCompanyProfile, type CompanyProfile } from "@/api/companyprofile";
+import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -12,16 +12,18 @@ function PillHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CornerIcon({ title }: { title: string }) {
+function CornerIconButton({ title, onClick }: { title: string; onClick: () => void }) {
   return (
-    <span
+    <button
+      type="button"
       title={title}
+      onClick={onClick}
       className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white text-gray-600 hover:bg-gray-50"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80">
         <path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor" />
       </svg>
-    </span>
+    </button>
   );
 }
 
@@ -41,9 +43,11 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 export default function CompanyProfile() {
   const GREEN = "#5D9252";
-  const [company, setCompany] = useState<any | null>(null);
+  const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [openEdit, setOpenEdit] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -63,49 +67,50 @@ export default function CompanyProfile() {
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!company) return <div className="p-8 text-gray-500">No profile found. Please create one.</div>;
 
-
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Company card (mirrors student profile left card) */}
-            <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
-              <CornerIcon title="Edit company profile" />
-              <div className="flex flex-col items-center">
-                <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4`} style={{ boxShadow: `inset 0 0 0 0 rgba(0,0,0,0.04)`, outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}>
-                  <Image
-                    src="/company-logo.png"
-                    alt={`${company.company_name} logo`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-    
-                <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
-                  {company.company_name}
-                </h2>
-                <p className="text-sm text-gray-600">{company.industry}</p>
-              </div>
-    
-              <div className="mt-6 space-y-4">
-                <InfoRow icon={<span className="text-xs">📍</span>} label="Location" value={company.location} />
-                <InfoRow icon={<span className="text-xs">📞</span>} label="Telephone" value={company.tel} />
-              </div>
-            </aside>
-    
-            {/* Description only (like Personal Summary card) */}
-            <section className="md:col-span-2 space-y-6">
-              <div
-                className="relative rounded-2xl border bg-white p-6 shadow-sm"
-                style={{ borderColor: GREEN }}
-              >
-                <CornerIcon title="Edit company description" />
-                <PillHeading>Company's Description</PillHeading>
-                <p className="mt-3 text-sm leading-6 text-gray-700">
-                  {company.description}
-                </p>
-              </div>
-            </section>
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Company card */}
+        <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
+          <CornerIconButton title="Edit company profile" onClick={() => setOpenEdit(true)} />
+          <div className="flex flex-col items-center">
+            <div
+              className="relative h-28 w-28 overflow-hidden rounded-full ring-4"
+              style={{ boxShadow: `inset 0 0 0 0 rgba(0,0,0,0.04)`, outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}
+            >
+              <Image src="/company-logo.png" alt={`${company.company_name} logo`} fill className="object-cover" />
+            </div>
+
+            <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
+              {company.company_name}
+            </h2>
+            <p className="text-sm text-gray-600">{company.industry}</p>
           </div>
-        </main>
-      );
-    }
+
+          <div className="mt-6 space-y-4">
+            <InfoRow icon={<span className="text-xs">📍</span>} label="Location" value={company.location} />
+            <InfoRow icon={<span className="text-xs">📞</span>} label="Telephone" value={company.tel} />
+          </div>
+        </aside>
+
+        {/* Description */}
+        <section className="space-y-6 md:col-span-2">
+          <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+            <CornerIconButton title="Edit company description" onClick={() => setOpenEdit(true)} />
+            <PillHeading>Company&apos;s Description</PillHeading>
+            <p className="mt-3 text-sm leading-6 text-gray-700">{company.description}</p>
+          </div>
+        </section>
+      </div>
+
+      {/* Edit Modal */}
+      <EditCompanyProfileModal
+        isOpen={openEdit}
+        onClose={() => setOpenEdit(false)}
+        initial={company}
+        onSaved={(updated) => setCompany(updated)}
+        brandColor={GREEN}
+      />
+    </main>
+  );
+}

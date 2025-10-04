@@ -38,6 +38,7 @@ export default function RegisterCompanyPage() {
     }
 
     try {
+      // 1️⃣ Register company account
       const payload = {
         company_name: form.company_name,
         email: form.email,
@@ -46,15 +47,52 @@ export default function RegisterCompanyPage() {
         confirm_password: form.confirm_password,
         role: "Company",
       };
-      await registerUser(payload);
 
+      await registerUser(payload);
+      console.log("Company registered successfully");
+
+      // 2️⃣ Immediately log in to get token
       const res = await loginUser({
         user_name: form.user_name,
         password: form.password,
       });
+
       login(res.data);
 
-      router.push("/"); 
+      // Create default company profile
+      try {
+        const token = localStorage.getItem("access_token");
+        if (token) {
+          const profileRes = await fetch("http://localhost:8000/api/company/profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              company_name: form.company_name || form.user_name,
+              description: "To be Added",
+              industry: "To be Added",
+              tel: "To be Added",
+              location: "To be Added",
+            }),
+          });
+
+          if (!profileRes.ok) {
+            const text = await profileRes.text();
+            console.error("Failed to create default profile:", text);
+          } else {
+            console.log("Default company profile created successfully");
+          }
+        } else {
+          console.warn("No token found — skipping company profile creation");
+        }
+      } catch (profileErr) {
+        console.error("Company profile creation error:", profileErr);
+      }
+
+      // 4Redirect home after everything succeeds
+      router.push("/");
     } catch (err: any) {
       console.error("Company registration/login failed:", err);
       setError(err.message || "Something went wrong");
