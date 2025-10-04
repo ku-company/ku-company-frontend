@@ -12,11 +12,6 @@ type Company = {
 export default function CompanyCard({ company }: { company: Company }) {
   return (
     <div className="group relative rounded-2xl border bg-white shadow-sm overflow-hidden">
-      {/* Badge in the top-left corner showing the company number */}
-      <div className="absolute left-3 top-3 z-10 text-xs rounded-full bg-gray-100 px-2 py-0.5">
-        {company.number}
-      </div>
-
       {/* Image container: fixed height, relative for Next.js Image with 'fill' */}
       <div className={`relative h-48 ${company.accent ?? "bg-gray-50"} overflow-hidden`}>
         {/* Next.js Image with 'fill' makes it cover the parent container.
