@@ -53,7 +53,7 @@ export default function RegisterPage() {
         {/* Register Form */}
         <div className="w-full md:w-1/2">
           <div className="text-center">
-            <h1 className="text-3xl font-poppings text-midgreen uppercase tracking-wide">
+            <h1 className="text-3xl font-poppings text-midgreen-500 uppercase tracking-wide">
               Sign up for
             </h1>
             <h1 className="text-4xl font-poppings text-black mb-6">
@@ -70,7 +70,7 @@ export default function RegisterPage() {
                 placeholder="Firstname"
                 value={form.first_name}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
               <input
                 type="text"
@@ -78,7 +78,7 @@ export default function RegisterPage() {
                 placeholder="Lastname"
                 value={form.last_name}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>
 
@@ -89,7 +89,7 @@ export default function RegisterPage() {
               placeholder="Email"
               value={form.email}
               onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
             />
 
             {/* Username */}
@@ -99,7 +99,7 @@ export default function RegisterPage() {
               placeholder="Username"
               value={form.user_name}
               onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
             />
 
             {/* Password */}
@@ -110,7 +110,7 @@ export default function RegisterPage() {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
               <input
                 type="password"
@@ -118,7 +118,7 @@ export default function RegisterPage() {
                 placeholder="Confirm password"
                 value={form.confirm_password}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen"
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>
 
@@ -126,7 +126,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full bg-midgreen py-3 text-white font-semibold hover:bg-midgreen transition disabled:opacity-50"
+              className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold hover:bg-midgreen-500 transition disabled:opacity-50"
             >
               {loading ? "Signing up..." : "Sign up"}
             </button>
@@ -138,7 +138,7 @@ export default function RegisterPage() {
           {/* Login link */}
           <p className="mt-4 text-sm text-gray-600 text-center">
             Already have an account?{" "}
-            <Link href="/login" className="text-midgreen font-medium hover:underline">
+            <Link href="/login" className="text-midgreen-500 font-medium hover:underline">
               Log in here
             </Link>
           </p>

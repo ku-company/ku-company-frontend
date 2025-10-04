@@ -50,7 +50,7 @@ export default function RoleSelectModal({ isOpen, onClose }: RoleSelectModalProp
               onClick={() => handleSelect(role.name.toLowerCase())}
               className="flex flex-col items-center bg-gray-100 p-10 rounded-2xl hover:shadow-lg transition transform hover:scale-105"
             >
-              <div className="bg-midgreen text-white rounded-full w-32 h-32 flex items-center justify-center">
+              <div className="bg-midgreen-500 text-white rounded-full w-32 h-32 flex items-center justify-center">
                 <img src={role.icon} alt={role.name} className="w-16 h-18" />
               </div>
               <span className="mt-6 text-lg text-black font-semibold">{role.name}</span>
