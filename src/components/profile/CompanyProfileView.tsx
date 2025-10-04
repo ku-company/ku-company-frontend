@@ -1,4 +1,8 @@
+"use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { getCompanyProfile } from "@/api/companyprofile";
+
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -35,17 +39,30 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-const MOCK = {
-  company_name: "Agoda Travel Co.",
-  description: "We provide amazing travel experiences around the world.",
-  industry: "Travel & Tourism",
-  tel: "021234567",
-  location: "Bangkok, Thailand",
-};
-
-export default function CompanyProfileView() {
+export default function CompanyProfile() {
   const GREEN = "#5D9252";
-  const company = MOCK; // TODO: replace with API data later
+  const [company, setCompany] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getCompanyProfile();
+        setCompany(data);
+      } catch (err: any) {
+        console.error("Failed to fetch company profile:", err);
+        setError(err.message || "Error loading company profile");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <div className="p-8 text-gray-600">Loading company profile…</div>;
+  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!company) return <div className="p-8 text-gray-500">No profile found. Please create one.</div>;
+
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
