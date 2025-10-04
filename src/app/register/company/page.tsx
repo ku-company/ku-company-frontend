@@ -4,9 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { loginUser } from "@/api/login";          
+import { useAuth } from "@/context/AuthContext";  
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
+  const { login } = useAuth(); 
 
   const [form, setForm] = useState({
     company_name: "",
@@ -28,18 +31,32 @@ export default function RegisterCompanyPage() {
     setLoading(true);
     setError(null);
 
+    if (form.password !== form.confirm_password) {
+      setLoading(false);
+      setError("Passwords do not match");
+      return;
+    }
+
     try {
       const payload = {
-        ...form,                 // { company_name, email, user_name, password, confirm_password }
-        role: "Company",         // <-- important
+        company_name: form.company_name,
+        email: form.email,
+        user_name: form.user_name,
+        password: form.password,
+        confirm_password: form.confirm_password,
+        role: "Company",
       };
-
       await registerUser(payload);
 
-      // go to company login
-      router.push("/login");
+      const res = await loginUser({
+        user_name: form.user_name,
+        password: form.password,
+      });
+      login(res.data);
+
+      router.push("/"); 
     } catch (err: any) {
-      console.error("Registration failed:", err);
+      console.error("Company registration/login failed:", err);
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
@@ -55,7 +72,9 @@ export default function RegisterCompanyPage() {
             <h1 className="text-3xl font-poppings text-midgreen-500 uppercase tracking-wide">
               Sign up for
             </h1>
-            <h1 className="mb-6 text-4xl font-poppings text-black">KU-COMPANY</h1>
+            <h1 className="mb-6 text-4xl font-poppings text-black">
+              KU-COMPANY
+            </h1>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -89,7 +108,7 @@ export default function RegisterCompanyPage() {
               className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
             />
 
-            {/* Password */}
+            {/* Passwords */}
             <div className="flex gap-4">
               <input
                 type="password"
@@ -109,30 +128,26 @@ export default function RegisterCompanyPage() {
               />
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full bg-midgreen-500 py-3 font-semibold text-white transition hover:bg-midgreen-500 disabled:opacity-50"
+              className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold transition hover:bg-midgreen-500 disabled:opacity-50"
             >
               {loading ? "Signing up..." : "Sign up"}
             </button>
           </form>
 
-          {/* Error messages */}
           {error && <p className="mt-3 text-center text-red-500">{error}</p>}
 
-          {/* Company Login link */}
           <p className="mt-4 text-center text-sm text-gray-600">
-            Already have a company account?{" "}
-            <Link href="/login" className="font-medium text-midgreen-500 hover:underline">
+            Already have an account?{" "}
+            <Link href="/login" className="text-midgreen-500 font-medium hover:underline">
               Log in here
             </Link>
           </p>
         </div>
 
-        {/* Logo */}
-        <div className="hidden w-1/2 items-center justify-center md:flex">
+        <div className="hidden md:flex w-1/2 items-center justify-center">
           <img
             src="/logos/ku-company-logo.png"
             alt="KU-Company Logo"
