@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { getCompanyProfile, type CompanyProfile } from "@/api/companyprofile";
 import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
+import ReactMarkdown from "react-markdown";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -98,7 +99,9 @@ export default function CompanyProfile() {
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <CornerIconButton title="Edit company description" onClick={() => setOpenEdit(true)} />
             <PillHeading>Company&apos;s Description</PillHeading>
-            <p className="mt-3 text-sm leading-6 text-gray-700">{company.description}</p>
+            <div className="mt-3 prose prose-sm max-w-none text-gray-700">
+              <ReactMarkdown>{company.description || "_No description yet._"}</ReactMarkdown>
+            </div>
           </div>
         </section>
       </div>
