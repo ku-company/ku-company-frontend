@@ -141,6 +141,13 @@ export default function RegisterCompanyPage() {
             >
               {loading ? "Signing up..." : "Sign up"}
             </button>
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
+            >
+              <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
+              <span>Continue with Google</span>
+            </button>
           </form>
 
           {error && <p className="mt-3 text-center text-red-500">{error}</p>}
