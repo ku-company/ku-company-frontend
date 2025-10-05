@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { logoutServerSession } from "@/api/logout";
 
-
 type AuthUser = { user_name: string; email: string; role: string };
 
 type LoginData = {
@@ -11,13 +10,13 @@ type LoginData = {
   refresh_token: string;
   user_name: string;
   email: string;
-  roles?: string;
-  role?: string;
+  roles?: string; // may come as 'roles'
+  role?: string;  // ...or as 'role'
 };
 
 type AuthContextType = {
   user: AuthUser | null;
-  isReady: boolean;               // 👈 NEW
+  isReady: boolean;               // ✅ tells consumers hydration is done
   login: (data: LoginData) => void;
   logout: () => void;
 };
@@ -26,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function normalizeRole(r?: string | null): string {
   const raw = (r ?? "").trim().toLowerCase();
+  // support comma/space-delimited roles, pick the first
   const first = raw.split(/[,\s]+/).filter(Boolean)[0] ?? "";
   if (first.includes("company")) return "Company";
   if (first.includes("student")) return "Student";
@@ -34,8 +34,15 @@ function normalizeRole(r?: string | null): string {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isReady, setIsReady] = useState(false);  // 👈 NEW
+  const [isReady, setIsReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
+  // Mark mounted ASAP to avoid SSR/CSR mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Rehydrate from localStorage on client
   useEffect(() => {
     try {
       const token = localStorage.getItem("access_token");
@@ -47,7 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({ user_name, email, role });
       }
     } finally {
-      setIsReady(true); // 👈 signal that hydration finished
+      // Signal that initial auth check is completed
+      setIsReady(true);
     }
   }, []);
 
@@ -55,17 +63,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const incomingRole = data.roles ?? data.role ?? "";
     const role = normalizeRole(incomingRole);
 
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("refresh_token", data.refresh_token);
-    localStorage.setItem("user_name", data.user_name);
-    localStorage.setItem("email", data.email);
-    localStorage.setItem("role", role);
+    // Persist
+    localStorage.setItem("access_token", data.access_token ?? "");
+    localStorage.setItem("refresh_token", data.refresh_token ?? "");
+    localStorage.setItem("user_name", data.user_name ?? "");
+    localStorage.setItem("email", data.email ?? "");
+    localStorage.setItem("role", role ?? "");
 
-    setUser({ user_name: data.user_name, email: data.email, role });
+    // Update state
+    setUser({ user_name: data.user_name ?? "", email: data.email ?? "", role: role ?? "" });
   }
 
   function logout() {
-    logoutServerSession(); // clear server session (cookie)
+    // Clear server session cookie
+    logoutServerSession();
+
+    // Clear local state/storage
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_name");
@@ -73,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("role");
     setUser(null);
   }
+
+  // Avoid rendering children on the server (prevents hydration mismatch)
+  if (!mounted) return null;
 
   return (
     <AuthContext.Provider value={{ user, isReady, login, logout }}>
