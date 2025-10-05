@@ -4,6 +4,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar"; // <- keep relative path (src/components/Navbar)
 import { AuthProvider } from "@/context/AuthContext";
+import OAuthAutoLogin from "@/components/auth/OAuthAutoLogin";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,6 +43,7 @@ export default function RootLayout({
       >
         {/* Wrap everything with AuthProvider */}
         <AuthProvider>
+          <OAuthAutoLogin />
           {/* Global top navigation */}
           <Navbar />
 

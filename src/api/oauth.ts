@@ -6,7 +6,7 @@ const API_BASE =
 export function buildGoogleSignupUrl(role: "Student" | "Company" = "Student") {
   // Backend endpoint you gave:
   // http://localhost:8000/google/sign-up?role=Student
-  const url = new URL(`${API_BASE}/google/sign-up`);
+  const url = new URL(`${API_BASE}/api/auth/google?role=Student`);
   url.searchParams.set("role", role);
   return url.toString();
 }
