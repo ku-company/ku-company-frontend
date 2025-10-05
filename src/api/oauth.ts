@@ -3,7 +3,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
 
-export function buildGoogleSignupUrl(role: "Student" | "Company" = "Student") {
+export function buildGoogleSignupUrl(role: "Student" | "Company" | "Professor" = "Student") {
   // Backend endpoint you gave:
   // http://localhost:8000/google/sign-up?role=Student
   const url = new URL(`${API_BASE}/api/auth/google?role=Student`);

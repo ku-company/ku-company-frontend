@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { logoutServerSession } from "@/api/logout";
+
 
 type AuthUser = { user_name: string; email: string; role: string };
 
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
+    logoutServerSession(); // clear server session (cookie)
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_name");

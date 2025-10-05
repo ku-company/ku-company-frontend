@@ -4,15 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
-import { loginUser } from "@/api/login";          // <-- add
-import { useAuth } from "@/context/AuthContext";  // <-- add
+import { buildGoogleSignupUrl } from "@/api/oauth";
 
-export default function RegisterCompanyPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth(); // <-- get auth login
 
   const [form, setForm] = useState({
-    company_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     user_name: "",
     password: "",
@@ -31,38 +30,18 @@ export default function RegisterCompanyPage() {
     setLoading(true);
     setError(null);
 
-    if (form.password !== form.confirm_password) {
-      setLoading(false);
-      setError("Passwords do not match");
-      return;
-    }
-
     try {
-      // 1) Register as Company (company_name instead of first/last)
       const payload = {
-        company_name: form.company_name,
-        email: form.email,
-        user_name: form.user_name,
-        password: form.password,
-        confirm_password: form.confirm_password,
-        role: "Company",
+        ...form,
+        role: "Professor",
       };
+
       await registerUser(payload);
 
-      // 2) Immediately login (auto-login behavior)
-      const res = await loginUser({
-        user_name: form.user_name,
-        password: form.password,
-      });
-
-      // 3) Persist tokens + user in AuthContext
-      //    login expects: { access_token, refresh_token, user_name, roles, email }
-      login(res.data);
-
-      // 4) Go to the same place as student after auto-login
-      router.push("/"); // or "/company/home" if you prefer
+      // redirect to login after success
+      router.push("/login");
     } catch (err: any) {
-      console.error("Company registration/login failed:", err);
+      console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
@@ -78,21 +57,31 @@ export default function RegisterCompanyPage() {
             <h1 className="text-3xl font-poppings text-midgreen-500 uppercase tracking-wide">
               Sign up for
             </h1>
-            <h1 className="mb-6 text-4xl font-poppings text-black">
+            <h1 className="text-4xl font-poppings text-black mb-6">
               KU-COMPANY
             </h1>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Company Name */}
-            <input
-              type="text"
-              name="company_name"
-              placeholder="Company name"
-              value={form.company_name}
-              onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
-            />
+            {/* First and Lastname */}
+            <div className="flex gap-4">
+              <input
+                type="text"
+                name="first_name"
+                placeholder="Firstname"
+                value={form.first_name}
+                onChange={handleChange}
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              />
+              <input
+                type="text"
+                name="last_name"
+                placeholder="Lastname"
+                value={form.last_name}
+                onChange={handleChange}
+                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              />
+            </div>
 
             {/* Email */}
             <input
@@ -111,10 +100,10 @@ export default function RegisterCompanyPage() {
               placeholder="Username"
               value={form.user_name}
               onChange={handleChange}
-              className="w/full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
             />
 
-            {/* Passwords */}
+            {/* Password */}
             <div className="flex gap-4">
               <input
                 type="password"
@@ -134,15 +123,20 @@ export default function RegisterCompanyPage() {
               />
             </div>
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold transition hover:bg-midgreen-500 disabled:opacity-50"
+              className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold hover:bg-midgreen-500 transition disabled:opacity-50"
             >
               {loading ? "Signing up..." : "Sign up"}
             </button>
             <button
               type="button"
+              onClick={() => {
+                // Kick off Google signup for Professor
+                window.location.href = buildGoogleSignupUrl("Professor");
+              }}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
               <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
@@ -150,9 +144,11 @@ export default function RegisterCompanyPage() {
             </button>
           </form>
 
-          {error && <p className="mt-3 text-center text-red-500">{error}</p>}
+          {/* Error messages */}
+          {error && <p className="mt-3 text-red-500 text-center">{error}</p>}
 
-          <p className="mt-4 text-center text-sm text-gray-600">
+          {/* Login link */}
+          <p className="mt-4 text-sm text-gray-600 text-center">
             Already have an account?{" "}
             <Link href="/login" className="text-midgreen-500 font-medium hover:underline">
               Log in here
@@ -160,6 +156,7 @@ export default function RegisterCompanyPage() {
           </p>
         </div>
 
+        {/* Logo */}
         <div className="hidden md:flex w-1/2 items-center justify-center">
           <img
             src="/logos/ku-company-logo.png"

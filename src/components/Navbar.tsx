@@ -11,8 +11,9 @@ function NavItem({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`px-3 py-1 rounded-full text-sm transition
-        ${active ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
+      className={`px-3 py-1 rounded-full text-sm transition ${
+        active ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"
+      }`}
     >
       {label}
     </Link>
@@ -26,7 +27,7 @@ export default function Navbar() {
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // click outside to close
+  // Close dropdown on outside click
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!menuRef.current) return;
@@ -36,11 +37,23 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
 
+  // Close dropdown on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDropdownOpen(false);
+    }
+    if (dropdownOpen) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [dropdownOpen]);
+
   function handleLogout() {
+    // Calls backend logout via AuthContext, clears local storage/state
     logout();
     setDropdownOpen(false);
     router.push("/login");
   }
+
+  const role = (user?.role ?? "").toLowerCase();
 
   return (
     <>
@@ -63,19 +76,36 @@ export default function Navbar() {
           {/* Main links */}
           <nav className="hidden md:flex items-center gap-2">
             <NavItem href="/homepage" label="HOME" />
-            <NavItem href="/findjob" label="FIND JOB" />
+            {/* Match your file: src/app/find-job.tsx => /find-job */}
+            <NavItem href="/find-job" label="FIND JOB" />
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
+
+            {/* Role-based shortcuts */}
+            {role === "company" && (
+              <>
+                <NavItem href="/company/dashboard" label="DASHBOARD" />
+                <NavItem href="/company/jobpostings" label="POSTINGS" />
+              </>
+            )}
           </nav>
 
           {/* Auth/Profile */}
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
+                {/* Role badge (small) */}
+                {user.role && (
+                  <span className="hidden sm:inline text-[10px] font-semibold rounded-full border px-2 py-0.5 text-emerald-700 border-emerald-200">
+                    {user.role}
+                  </span>
+                )}
+
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
                   onClick={() => setDropdownOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={dropdownOpen ? "true" : "false"}
+                  aria-label="Open profile menu"
                 >
                   <img
                     src="/icons/default-profile.png"
@@ -87,8 +117,14 @@ export default function Navbar() {
                 {dropdownOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 top-12 w-44 bg-white border rounded-lg shadow-lg py-2"
+                    aria-label="Profile menu"
+                    className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2"
                   >
+                    <div className="px-4 py-2">
+                      <div className="text-xs text-gray-500">Signed in as</div>
+                      <div className="text-sm font-medium truncate">{user.user_name}</div>
+                    </div>
+                    <hr className="my-1" />
                     <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
@@ -97,6 +133,29 @@ export default function Navbar() {
                     >
                       Profile
                     </Link>
+
+                    {/* Company quick links inside menu as well */}
+                    {role === "company" && (
+                      <>
+                        <Link
+                          href="/company/dashboard"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          Company Dashboard
+                        </Link>
+                        <Link
+                          href="/company/jobpostings"
+                          onClick={() => setDropdownOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          Job Postings
+                        </Link>
+                      </>
+                    )}
+
                     <button
                       onClick={handleLogout}
                       className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -124,7 +183,7 @@ export default function Navbar() {
         </div>
       </header>
 
-
+      {/* Role selector modal */}
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
