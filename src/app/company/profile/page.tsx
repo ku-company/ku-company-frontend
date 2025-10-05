@@ -1,86 +1,112 @@
-export default function CompanyProfile() {
+import Image from "next/image";
+
+function PillHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col md:flex-row w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-      {/* Left Side - Company Card */}
-      <div className="w-full md:w-1/3 bg-gray-50 flex flex-col items-center justify-center p-6 border-r">
-        <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-          {/* Company Logo Placeholder */}
-          <img
-            src="/company-logo.png"
-            alt="Company Logo"
-            className="w-full h-full object-cover"
-          />
-        </div>
+    <div className="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-semibold shadow-[inset_0_-2px_0_rgba(0,0,0,0.04)]">
+      {children}
+    </div>
+  );
+}
 
-        <h2 className="text-xl font-bold mt-4">Tech Solutions Co.</h2>
-        <p className="text-gray-500 text-sm">Software Development Company</p>
+function CornerIcon({ title }: { title: string }) {
+  return (
+    <span
+      title={title}
+      className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white text-gray-600 hover:bg-gray-50"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80">
+        <path
+          d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
 
-        <div className="mt-6 space-y-3 w-full">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Website:</span>
-            <a
-              href="https://techsolutions.com"
-              className="text-blue-600 hover:underline"
-            >
-              techsolutions.com
-            </a>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Email:</span>
-            <a
-              href="mailto:info@techsolutions.com"
-              className="text-blue-600 hover:underline"
-            >
-              info@techsolutions.com
-            </a>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Founded:</span>
-            <p>2005</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side - Description & History */}
-      <div className="w-full md:w-2/3 p-6">
-        {/* Description */}
-        <div className="mb-6">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-green-700">
-            <span>Description</span>
-          </h3>
-          <p className="text-gray-700 mt-2">
-            Tech Solutions Co. is a leading provider of custom software
-            solutions, specializing in cloud services, AI-powered applications,
-            and enterprise software. We are committed to delivering
-            high-quality, scalable, and cost-effective solutions to clients
-            worldwide.
-          </p>
-        </div>
-
-        {/* History */}
-        <div className="mb-6">
-          <h3 className="text-lg font-bold flex items-center gap-2 text-green-700">
-            <span>History</span>
-          </h3>
-          <p className="text-gray-700 mt-2">
-            Founded in 2005, Tech Solutions Co. started as a small startup with
-            a vision to bring modern technology to traditional businesses. Over
-            the years, the company has expanded globally, working with Fortune
-            500 companies and governments to create impactful solutions.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <a
-            href="#"
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
-            See More...
-          </a>
-        </div>
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full bg-gray-100 text-gray-700">
+        {icon}
+      </span>
+      <div className="text-sm">
+        <div className="text-gray-500">{label}</div>
+        <div className="font-medium text-gray-800">{value}</div>
       </div>
     </div>
+  );
+}
+
+// --- TEMP DATA (replace with API later) ---
+const MOCK = {
+  company_name: "Agoda Travel Co.",
+  description: "We provide amazing travel experiences around the world.",
+  industry: "Travel & Tourism",
+  tel: "021234567",
+  location: "Bangkok, Thailand",
+};
+
+export default function CompanyProfile() {
+  // brand color (midgreen)
+  const GREEN = "#5D9252";
+
+  // TODO: when API is ready, fetch company profile and hydrate UI:
+  // const { data, isLoading } = useQuery(["companyProfile"], fetchCompanyProfile)
+  // const company = data ?? MOCK;
+
+  const company = MOCK;
+
+  return (
+    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Company card (mirrors student profile left card) */}
+        <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
+          <CornerIcon title="Edit company profile" />
+          <div className="flex flex-col items-center">
+            <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4`} style={{ boxShadow: `inset 0 0 0 0 rgba(0,0,0,0.04)`, outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}>
+              <Image
+                src="/company-logo.png"
+                alt={`${company.company_name} logo`}
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
+              {company.company_name}
+            </h2>
+            <p className="text-sm text-gray-600">{company.industry}</p>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <InfoRow icon={<span className="text-xs">📍</span>} label="Location" value={company.location} />
+            <InfoRow icon={<span className="text-xs">📞</span>} label="Telephone" value={company.tel} />
+          </div>
+        </aside>
+
+        {/* Description only (like Personal Summary card) */}
+        <section className="md:col-span-2 space-y-6">
+          <div
+            className="relative rounded-2xl border bg-white p-6 shadow-sm"
+            style={{ borderColor: GREEN }}
+          >
+            <CornerIcon title="Edit company description" />
+            <PillHeading>Company's Description</PillHeading>
+            <p className="mt-3 text-sm leading-6 text-gray-700">
+              {company.description}
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
