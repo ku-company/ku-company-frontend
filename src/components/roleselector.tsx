@@ -21,10 +21,10 @@ export default function RoleSelectModal({ isOpen, onClose, onSelect }: RoleSelec
     onClose();
 
     if (onSelect) {
-      // 🔹 Used for OAuth users who need to pick a role
+      // Used for OAuth users who need to pick a role
       onSelect(role);
     } else {
-      // 🔹 Default behavior for signup flow
+      // Default behavior for signup flow
       router.push(`/register/${role}`);
     }
   }

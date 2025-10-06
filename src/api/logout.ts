@@ -8,7 +8,7 @@ export async function logoutServerSession(): Promise<void> {
   try {
     const res = await fetch(`${API_BASE}/api/user/logout`, {
       method: "GET",
-      credentials: "include", // send cookie so backend can clear it
+      credentials: "include",
     });
     if (!res.ok) {
       console.warn("Logout failed:", await res.text());

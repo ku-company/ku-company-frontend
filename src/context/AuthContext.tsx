@@ -16,8 +16,7 @@ type LoginData = {
 
 type AuthContextType = {
   user: AuthUser | null;
-  isReady: boolean;               // ✅ tells consumers hydration is done
-  login: (data: LoginData) => void;
+  isReady: boolean;               
   logout: () => void;
 };
 
@@ -25,7 +24,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function normalizeRole(r?: string | null): string {
   const raw = (r ?? "").trim().toLowerCase();
-  // support comma/space-delimited roles, pick the first
   const first = raw.split(/[,\s]+/).filter(Boolean)[0] ?? "";
   if (first.includes("company")) return "Company";
   if (first.includes("student")) return "Student";
@@ -37,12 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Mark mounted ASAP to avoid SSR/CSR mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Rehydrate from localStorage on client
   useEffect(() => {
     try {
       const token = localStorage.getItem("access_token");
@@ -54,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({ user_name, email, role });
       }
     } finally {
-      // Signal that initial auth check is completed
       setIsReady(true);
     }
   }, []);
@@ -62,23 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function login(data: LoginData) {
     const incomingRole = data.roles ?? data.role ?? "";
     const role = normalizeRole(incomingRole);
-
-    // Persist
     localStorage.setItem("access_token", data.access_token ?? "");
     localStorage.setItem("refresh_token", data.refresh_token ?? "");
     localStorage.setItem("user_name", data.user_name ?? "");
     localStorage.setItem("email", data.email ?? "");
     localStorage.setItem("role", role ?? "");
 
-    // Update state
     setUser({ user_name: data.user_name ?? "", email: data.email ?? "", role: role ?? "" });
   }
 
   function logout() {
     // Clear server session cookie
     logoutServerSession();
-
-    // Clear local state/storage
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_name");
@@ -86,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("role");
     setUser(null);
   }
-
-  // Avoid rendering children on the server (prevents hydration mismatch)
+  
   if (!mounted) return null;
 
   return (

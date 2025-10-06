@@ -4,8 +4,6 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
 
 export function buildGoogleSignupUrl(role: "Student" | "Company" | "Professor" = "Student") {
-  // Backend endpoint you gave:
-  // http://localhost:8000/google/sign-up?role=Student
   const url = new URL(`${API_BASE}/api/auth/google?role=Student`);
   url.searchParams.set("role", role);
   return url.toString();
@@ -19,7 +17,7 @@ export type OAuthTokens = {
   role?: string;  // normalized single role
 };
 
-// Parse tokens/fields from either ?query or #hash (many IdPs use hash fragments)
+// Parse tokens and user info from URL (search or hash)
 export function parseTokensFromLocation(
   loc: Location = window.location
 ): Partial<OAuthTokens> {
@@ -35,7 +33,6 @@ export function parseTokensFromLocation(
   result.user_name = get("user_name") ?? undefined;
   result.email = get("email") ?? undefined;
 
-  // backend may return "roles" or "role"
   const rawRole = get("roles") ?? get("role") ?? undefined;
   if (rawRole) {
     const r = rawRole.trim().toLowerCase();

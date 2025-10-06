@@ -46,18 +46,16 @@ export default function BootstrapSession() {
     (pathname?.startsWith("/register"));
 
   useEffect(() => {
-    if (isAuthRoute) return;   // skip on auth routes
-    if (user) return;          // already hydrated
+    if (isAuthRoute) return;   
+    if (user) return;         
     if (ranRef.current) return; // prevent double-run on fast refresh/navigation
     ranRef.current = true;
 
     (async () => {
       try {
-        // 1) Hydrate from cookie session (OAuth flow sets httpOnly cookies)
         const me = await fetchAuthMe();
         const role = normalizeRole(me.role ?? me.roles) || "Student";
 
-        // Store local auth state (tokens may be cookie-only in OAuth flow)
         login({
           access_token: localStorage.getItem("access_token") ?? "",
           refresh_token: localStorage.getItem("refresh_token") ?? "",
@@ -66,23 +64,19 @@ export default function BootstrapSession() {
           roles: role,
         });
 
-        // 2) If Company, ensure a profile exists
+        // If Company, ensure a profile exists
         if (role.toLowerCase() === "company") {
           try {
             const existing = await getCompanyProfile(); // returns null on 404 in your helper
             if (!existing) {
               const payload = buildDefaultCompanyProfile(me);
               await createCompanyProfile(payload);
-              // Optional: refetch to warm local UI state
-              // await getCompanyProfile();
             }
           } catch (err) {
-            // If server says it exists or field validation fails, just log and continue
             console.warn("[BootstrapSession] createCompanyProfile skipped:", err);
           }
         }
       } catch (err) {
-        // Not logged in or /auth/me failed — ignore silently
         console.warn("[BootstrapSession] Not logged in or /auth/me failed:", err);
       }
     })();

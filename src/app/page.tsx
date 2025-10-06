@@ -34,7 +34,6 @@ export default function HomePage() {
       try {
         // Bootstrap session (OAuth cookie or existing tokens)
         const me = await getAuthMe();
-        console.log("✅ [Bootstrap] /api/auth/me:", me);
 
         // In case backend returns tokens here too:
         persistTokens({ access_token: me.access_token, refresh_token: me.refresh_token });
@@ -42,7 +41,6 @@ export default function HomePage() {
         const role = normalizeRole(me.role ?? me.roles);
 
         if (!user) {
-          console.log("🌱 [Bootstrap] set AuthContext from /auth/me");
           login({
             access_token: localStorage.getItem("access_token") ?? "",
             refresh_token: localStorage.getItem("refresh_token") ?? "",
@@ -53,7 +51,6 @@ export default function HomePage() {
         }
 
         if (role === "Unknown") {
-          console.log("🟡 Role is Unknown → open modal");
           setShowRoleModal(true);
         }
       } catch (err) {
@@ -86,23 +83,13 @@ export default function HomePage() {
           ? "Professor"
           : "Student";
 
-      console.log("🟢 PATCH role →", payloadRole);
-      // ⬇️ This returns tokens now
       const patchData = await updateUserRole(payloadRole);
-      console.log("✅ PATCH data:", patchData);
-
-      // Save NEW tokens from PATCH
       persistTokens({ access_token: patchData.access_token, refresh_token: patchData.refresh_token });
-
-      // Optional but recommended: confirm new session with new token
       const newToken = patchData.access_token || localStorage.getItem("access_token") || "";
-      console.log("📡 GET /api/auth/me using new token…");
       const me2 = await getAuthMe(newToken);
-      console.log("✅ /api/auth/me with new token:", me2);
 
       // Final role
       const finalRole = normalizeRole(me2.role ?? me2.roles ?? patchData.role);
-      console.log("🎯 Final role:", finalRole);
 
       // Update AuthContext (this updates Navbar too)
       login({
@@ -114,11 +101,10 @@ export default function HomePage() {
       });
 
       if (finalRole !== "Unknown") {
-        console.log("🎉 Role updated → close modal");
         setShowRoleModal(false);
       }
     } catch (err) {
-      console.error("❌ Failed to update role:", err);
+      console.error("Failed to update role:", err);
       // keep modal open for retry
     } finally {
       setPatchingRole(false);
