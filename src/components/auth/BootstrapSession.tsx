@@ -1,6 +1,8 @@
+// src/components/auth/BootstrapSession.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fetchAuthMe, normalizeRole } from "@/api/session";
 import {
@@ -25,28 +27,40 @@ function buildDefaultCompanyProfile(me: any): CompanyProfile {
   return {
     company_name: deriveCompanyName(me),
     description: "To be Added",
-    industry: "To be Added",     // non-empty
-    tel: "0000000000",            // numeric placeholder
-    location: "To be Added",      // non-empty
+    industry: "To be Added", // non-empty
+    tel: "0000000000",        // numeric placeholder
+    location: "To be Added",  // non-empty
   };
 }
 
 export default function BootstrapSession() {
   const { user, login } = useAuth();
+  const pathname = usePathname();
+  const ranRef = useRef(false);
+
+  // Do not bootstrap session on auth pages to avoid hijacking the login flow
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/logout" ||
+    pathname === "/oauth/callback" ||
+    (pathname?.startsWith("/register"));
 
   useEffect(() => {
-    if (user) return; // already hydrated
+    if (isAuthRoute) return;   // skip on auth routes
+    if (user) return;          // already hydrated
+    if (ranRef.current) return; // prevent double-run on fast refresh/navigation
+    ranRef.current = true;
 
     (async () => {
       try {
-        // 1) Hydrate from cookie session
+        // 1) Hydrate from cookie session (OAuth flow sets httpOnly cookies)
         const me = await fetchAuthMe();
         const role = normalizeRole(me.role ?? me.roles) || "Student";
 
-        // Store local auth state
+        // Store local auth state (tokens may be cookie-only in OAuth flow)
         login({
-          access_token: "",
-          refresh_token: "",
+          access_token: localStorage.getItem("access_token") ?? "",
+          refresh_token: localStorage.getItem("refresh_token") ?? "",
           user_name: me.user_name ?? "",
           email: me.email ?? "",
           roles: role,
@@ -59,11 +73,11 @@ export default function BootstrapSession() {
             if (!existing) {
               const payload = buildDefaultCompanyProfile(me);
               await createCompanyProfile(payload);
-              // Optionally refetch to warm local state/UI:
-              // const fresh = await getCompanyProfile();
+              // Optional: refetch to warm local UI state
+              // await getCompanyProfile();
             }
           } catch (err) {
-            // If server says it exists or field validation fails, log and continue
+            // If server says it exists or field validation fails, just log and continue
             console.warn("[BootstrapSession] createCompanyProfile skipped:", err);
           }
         }
@@ -72,7 +86,7 @@ export default function BootstrapSession() {
         console.warn("[BootstrapSession] Not logged in or /auth/me failed:", err);
       }
     })();
-  }, [user, login]);
+  }, [isAuthRoute, user, login, pathname]);
 
   return null;
 }
