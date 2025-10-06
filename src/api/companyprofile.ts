@@ -9,8 +9,6 @@ export type CompanyProfile = {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
 
-// If a token exists, we’ll send it; otherwise we rely on the cookie session.
-// Always send credentials: "include" so the cookie is attached.
 function buildInit(init: RequestInit = {}): RequestInit {
   const token = (typeof window !== "undefined")
     ? localStorage.getItem("access_token")
