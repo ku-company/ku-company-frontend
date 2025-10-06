@@ -1,4 +1,3 @@
-// src/components/auth/BootstrapSession.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
