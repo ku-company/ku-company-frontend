@@ -5,16 +5,11 @@ import JobCard from "@/components/jobcard";
 import { Job } from "@/types/job";
 import RoleSelectModal from "@/components/roleselector";
 import { useAuth } from "@/context/AuthContext";
-
-// If you placed these in "@/api/user", keep this import:
-import { getAuthMe, updateUserRole } from "@/api/user";
-// If getAuthMe actually lives in "@/api/session", swap the import to:
-// import { fetchAuthMe as getAuthMe } from "@/api/session";
+import { getAuthMe, updateUserRole, type AuthMe } from "@/api/user";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
-  if (!raw) return "Unknown";
-  if (raw.includes("unknown") || raw.includes("unset")) return "Unknown";
+  if (!raw || raw.includes("unknown") || raw.includes("unset")) return "Unknown";
   if (raw.includes("company")) return "Company";
   if (raw.includes("student")) return "Student";
   if (raw.includes("professor")) return "Professor";
@@ -23,24 +18,31 @@ function normalizeRole(r?: string | null) {
 
 export default function HomePage() {
   const { user, login } = useAuth();
-
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Use existing RoleSelectModal
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
+
+  function persistTokens(tokenPair: { access_token?: string; refresh_token?: string }) {
+    if (tokenPair?.access_token) localStorage.setItem("access_token", tokenPair.access_token);
+    if (tokenPair?.refresh_token) localStorage.setItem("refresh_token", tokenPair.refresh_token);
+  }
 
   useEffect(() => {
     (async () => {
       try {
-        // 1) Bootstrap session from cookie (OAuth) or keep existing
+        // Bootstrap session (OAuth cookie or existing tokens)
         const me = await getAuthMe();
-        console.log("✅ /api/auth/me:", me);
+        console.log("✅ [Bootstrap] /api/auth/me:", me);
+
+        // In case backend returns tokens here too:
+        persistTokens({ access_token: me.access_token, refresh_token: me.refresh_token });
 
         const role = normalizeRole(me.role ?? me.roles);
-        // hydrate AuthContext if not already
+
         if (!user) {
+          console.log("🌱 [Bootstrap] set AuthContext from /auth/me");
           login({
             access_token: localStorage.getItem("access_token") ?? "",
             refresh_token: localStorage.getItem("refresh_token") ?? "",
@@ -51,32 +53,30 @@ export default function HomePage() {
         }
 
         if (role === "Unknown") {
+          console.log("🟡 Role is Unknown → open modal");
           setShowRoleModal(true);
         }
       } catch (err) {
         console.warn("⚠️ Not logged in (no cookie / auth):", err);
       }
 
-      // 2) Load jobs
       try {
         const res = await fetch("http://localhost:8000/api/mock/findjob", { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch jobs");
         const data = await res.json();
         setJobs(data);
       } catch (e) {
-        console.error("Failed to load jobs:", e);
+        console.error("❌ Failed to load jobs:", e);
       } finally {
         setLoading(false);
       }
     })();
   }, [login, user]);
 
-  // Called when user selects a role from RoleSelectModal
   async function handleRoleSelect(selected: string) {
     try {
       setPatchingRole(true);
 
-      // RoleSelectModal passes lowercase (e.g., "student"), map to capitalized for backend
       const payloadRole =
         selected.toLowerCase() === "student"
           ? "Student"
@@ -86,35 +86,46 @@ export default function HomePage() {
           ? "Professor"
           : "Student";
 
-      await updateUserRole(payloadRole); // PATCH /api/user/role { role }
+      console.log("🟢 PATCH role →", payloadRole);
+      // ⬇️ This returns tokens now
+      const patchData = await updateUserRole(payloadRole);
+      console.log("✅ PATCH data:", patchData);
 
-      setShowRoleModal(false);
+      // Save NEW tokens from PATCH
+      persistTokens({ access_token: patchData.access_token, refresh_token: patchData.refresh_token });
 
-      // Refresh local auth state from /auth/me after update
-      try {
-        const me = await getAuthMe();
-        const role = normalizeRole(me.role ?? me.roles);
-        login({
-          access_token: localStorage.getItem("access_token") ?? "",
-          refresh_token: localStorage.getItem("refresh_token") ?? "",
-          user_name: me.user_name ?? "",
-          email: me.email ?? "",
-          roles: role,
-        });
-      } catch (e) {
-        console.warn("Role patched but failed to refresh /auth/me:", e);
+      // Optional but recommended: confirm new session with new token
+      const newToken = patchData.access_token || localStorage.getItem("access_token") || "";
+      console.log("📡 GET /api/auth/me using new token…");
+      const me2 = await getAuthMe(newToken);
+      console.log("✅ /api/auth/me with new token:", me2);
+
+      // Final role
+      const finalRole = normalizeRole(me2.role ?? me2.roles ?? patchData.role);
+      console.log("🎯 Final role:", finalRole);
+
+      // Update AuthContext (this updates Navbar too)
+      login({
+        access_token: localStorage.getItem("access_token") ?? "",
+        refresh_token: localStorage.getItem("refresh_token") ?? "",
+        user_name: me2.user_name ?? patchData.user_name ?? "",
+        email: me2.email ?? patchData.email ?? "",
+        roles: finalRole,
+      });
+
+      if (finalRole !== "Unknown") {
+        console.log("🎉 Role updated → close modal");
+        setShowRoleModal(false);
       }
     } catch (err) {
-      console.error("Failed to update role:", err);
-      // If you want, you can keep the modal open and show a toast/UI error here
+      console.error("❌ Failed to update role:", err);
+      // keep modal open for retry
     } finally {
       setPatchingRole(false);
     }
   }
 
-  if (loading) {
-    return <div className="p-4 text-gray-500">Loading jobs and session…</div>;
-  }
+  if (loading) return <div className="p-4 text-gray-500">Loading jobs and session…</div>;
 
   return (
     <main className="p-4 space-y-4">
@@ -122,7 +133,6 @@ export default function HomePage() {
         <JobCard key={job.id} job={job} />
       ))}
 
-      {/* Use your existing RoleSelectModal */}
       <RoleSelectModal
         isOpen={showRoleModal}
         onClose={() => !patchingRole && setShowRoleModal(false)}

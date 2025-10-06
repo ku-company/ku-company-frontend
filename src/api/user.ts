@@ -1,94 +1,86 @@
 // src/api/user.ts
-import { API_BASE, buildInit, unwrap } from "@/api/base";
+import { API_BASE } from "./base";
 
-// Shape of /api/auth/me
 export type AuthMe = {
+  id?: number;
   user_name?: string;
   email?: string;
   role?: string;
   roles?: string;
+  verify?: boolean;
+  access_token?: string;
+  refresh_token?: string;
   company_name?: string;
 };
 
-/**
- * GET /api/auth/me
- * - Uses cookie session (OAuth) via credentials: "include"
- */
-export async function getAuthMe(token?: string): Promise<AuthMe> {
-  console.log("📡 [getAuthMe] Fetching user info...");
-  const init = buildInit({
-    method: "GET",
-  });
+function maskToken(t?: string) {
+  if (!t) return "(none)";
+  if (t.length <= 8) return t;
+  return `${t.slice(0, 4)}...${t.slice(-4)}`;
+}
 
-  const headers: HeadersInit = {
-    ...(init.headers || {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+// NOTE: this version returns the raw `data` object from backend (already unwrapped)
+export async function getAuthMe(token?: string): Promise<AuthMe> {
+  const headers: HeadersInit = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  console.log(
+    "📡 [getAuthMe] GET /api/auth/me using",
+    token ? `Authorization: Bearer ${maskToken(token)}` : "cookie (no header)"
+  );
 
   const res = await fetch(`${API_BASE}/api/auth/me`, {
-    ...init,
+    method: "GET",
     headers,
     credentials: "include",
   });
 
-  console.log("✅ [getAuthMe] Response status:", res.status);
+  const raw = await res.text();
+  console.log("🧾 [getAuthMe] RAW:", raw);
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("❌ [getAuthMe] Failed:", text);
-    throw new Error(text || `Failed to fetch /api/auth/me: ${res.status} ${res.statusText}`);
+    throw new Error(raw || `Failed /api/auth/me: ${res.status} ${res.statusText}`);
   }
 
-  const json = await res.json().catch(() => ({}));
-  console.log("🧩 [getAuthMe] Response JSON:", json);
-  return unwrap<AuthMe>(json);
+  let json: any = {};
+  try { json = JSON.parse(raw); } catch {}
+  return json?.data || json;
 }
 
 /**
  * PATCH /api/user/role
- * payload: { role: string }
+ * Backend requires Authorization header (express-jwt). We attach it from localStorage
+ * unless you pass an explicit token override.
  */
-export async function patchUserRole(payload: { role: string }) {
-  console.log("📡 [patchUserRole] Sending PATCH request to update role:", payload);
+export async function updateUserRole(role: string, tokenOverride?: string) {
+  const token = tokenOverride || localStorage.getItem("access_token") || "";
 
-  const init = buildInit({
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // Ensure credentials/cookies are sent
+  console.log("📡 [updateUserRole] PATCH /api/user/role payload:", { role });
+  console.log("🔑 [updateUserRole] Using Authorization:", token ? `Bearer ${maskToken(token)}` : "(missing)");
+
   const res = await fetch(`${API_BASE}/api/user/role`, {
-    ...init,
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ role }),
     credentials: "include",
   });
 
-  console.log("✅ [patchUserRole] Response status:", res.status);
-
-  const text = await res.text().catch(() => "");
-  console.log("🧾 [patchUserRole] Raw response:", text);
+  const raw = await res.text();
+  console.log("🧾 [updateUserRole] RAW:", raw);
 
   if (!res.ok) {
-    console.error("❌ [patchUserRole] Error updating role:", text);
-    throw new Error(text || `Failed to update role: ${res.status} ${res.statusText}`);
+    // Most likely cause: missing/invalid Authorization header
+    throw new Error(raw || `Failed to update role: ${res.status} ${res.statusText}`);
   }
 
   let json: any = {};
-  try {
-    json = JSON.parse(text);
-  } catch {
-    console.warn("⚠️ [patchUserRole] Could not parse JSON; using raw text.");
-  }
-
-  console.log("🧩 [patchUserRole] Parsed response JSON:", json);
-  return unwrap(json);
-}
-
-/**
- * Convenience alias used by your page code.
- */
-export async function updateUserRole(role: string) {
-  console.log("🚀 [updateUserRole] Called with role:", role);
-  const result = await patchUserRole({ role });
-  console.log("🎯 [updateUserRole] Completed:", result);
-  return result;
+  try { json = JSON.parse(raw); } catch {}
+  const data = json?.data || json;
+  console.log("✅ [updateUserRole] data:", data);
+  return data as AuthMe; // contains access_token, refresh_token, role, etc.
 }
