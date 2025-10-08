@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 interface RoleSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSelect?: (role: string) => void;
 }
-
 
 const roles = [
   { name: "Student", icon: "/icons/student.png", href: "/register/student" },
@@ -14,11 +14,19 @@ const roles = [
   { name: "Company", icon: "/icons/company.png", href: "/register/company" },
 ];
 
-export default function RoleSelectModal({ isOpen, onClose }: RoleSelectModalProps) {
+export default function RoleSelectModal({ isOpen, onClose, onSelect }: RoleSelectModalProps) {
   const router = useRouter();
+
   function handleSelect(role: string) {
     onClose();
-    router.push(`/register/${role}`);
+
+    if (onSelect) {
+      // Used for OAuth users who need to pick a role
+      onSelect(role);
+    } else {
+      // Default behavior for signup flow
+      router.push(`/register/${role}`);
+    }
   }
 
   if (!isOpen) return null;
@@ -41,7 +49,9 @@ export default function RoleSelectModal({ isOpen, onClose }: RoleSelectModalProp
           ✕
         </button>
 
-        <h2 className="text-4xl font-bold text-black text-center mb-10">Choose Your Role</h2>
+        <h2 className="text-4xl font-bold text-black text-center mb-10">
+          Choose Your Role
+        </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
           {roles.map((role) => (

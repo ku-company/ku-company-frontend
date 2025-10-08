@@ -1,6 +1,3 @@
-// src/api/companydashboard.ts
-// Placeholder API until backend is ready
-
 export type Job = {
   id: number;
   title: string;

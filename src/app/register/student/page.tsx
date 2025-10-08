@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { buildGoogleSignupUrl } from "@/api/oauth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -129,6 +130,17 @@ export default function RegisterPage() {
               className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold hover:bg-midgreen-500 transition disabled:opacity-50"
             >
               {loading ? "Signing up..." : "Sign up"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Kick off Google signup for Student
+                window.location.href = buildGoogleSignupUrl("Student");
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
+            >
+              <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
+              <span>Continue with Google</span>
             </button>
           </form>
 

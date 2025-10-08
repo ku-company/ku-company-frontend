@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
 import { loginUser } from "@/api/login";          
 import { useAuth } from "@/context/AuthContext";  
+import { buildGoogleSignupUrl } from "@/api/oauth";
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function RegisterCompanyPage() {
     }
 
     try {
-      // 1️⃣ Register company account
+      // Register company account
       const payload = {
         company_name: form.company_name,
         email: form.email,
@@ -51,7 +52,7 @@ export default function RegisterCompanyPage() {
       await registerUser(payload);
       console.log("Company registered successfully");
 
-      // 2️⃣ Immediately log in to get token
+      // Immediately log in to get token
       const res = await loginUser({
         user_name: form.user_name,
         password: form.password,
@@ -91,7 +92,7 @@ export default function RegisterCompanyPage() {
         console.error("Company profile creation error:", profileErr);
       }
 
-      // 4Redirect home after everything succeeds
+      // Redirect home after everything succeeds
       router.push("/");
     } catch (err: any) {
       console.error("Company registration/login failed:", err);
@@ -172,6 +173,17 @@ export default function RegisterCompanyPage() {
               className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold transition hover:bg-midgreen-500 disabled:opacity-50"
             >
               {loading ? "Signing up..." : "Sign up"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                // Kick off Google signup for Company
+                window.location.href = buildGoogleSignupUrl("Company");
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
+            >
+              <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
+              <span>Continue with Google</span>
             </button>
           </form>
 

@@ -26,14 +26,18 @@ export default function LoginPage() {
 
     try {
       const res = await loginUser(form);
-      // Update global auth state and LocalStorage
       login(res.data);
-      router.push("/");
+      router.push("/"); // main page will now bootstrap the session
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleGoogle() {
+    // Normal OAuth redirect (no query string)
+    window.location.href = "http://localhost:8000/api/auth/google?role=";
   }
 
   return (
@@ -54,7 +58,9 @@ export default function LoginPage() {
           {/* Login form */}
           <div className="w-full md:w-1/2 max-w-md">
             <div className="flex items-center justify-center flex-col mb-5">
-              <h2 className="text-4xl font-poppings text-midgreen-500">WELCOME BACK TO</h2>
+              <h2 className="text-4xl font-poppings text-midgreen-500">
+                WELCOME BACK TO
+              </h2>
               <h1 className="text-4xl font-poppings text-black">KU-COMPANY</h1>
             </div>
 
@@ -84,12 +90,14 @@ export default function LoginPage() {
               >
                 {loading ? "Logging in..." : "Log in"}
               </button>
+
               <button
                 type="button"
+                onClick={handleGoogle}
                 className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-2 text-white font-semibold hover:bg-gray-800 transition"
               >
                 <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
-                <span>Log in with Google</span>
+                <span>Continue with Google</span>
               </button>
             </form>
 
@@ -110,7 +118,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Modal */}
       <RoleSelectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );

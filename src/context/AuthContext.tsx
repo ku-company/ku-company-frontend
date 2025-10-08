@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { logoutServerSession } from "@/api/logout";
 
 type AuthUser = { user_name: string; email: string; role: string };
 
@@ -9,14 +10,13 @@ type LoginData = {
   refresh_token: string;
   user_name: string;
   email: string;
-  roles?: string;
-  role?: string;
+  roles?: string; // may come as 'roles'
+  role?: string;  // ...or as 'role'
 };
 
 type AuthContextType = {
   user: AuthUser | null;
-  isReady: boolean;               // 👈 NEW
-  login: (data: LoginData) => void;
+  isReady: boolean;               
   logout: () => void;
 };
 
@@ -32,7 +32,12 @@ function normalizeRole(r?: string | null): string {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isReady, setIsReady] = useState(false);  // 👈 NEW
+  const [isReady, setIsReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -45,24 +50,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({ user_name, email, role });
       }
     } finally {
-      setIsReady(true); // 👈 signal that hydration finished
+      setIsReady(true);
     }
   }, []);
 
   function login(data: LoginData) {
     const incomingRole = data.roles ?? data.role ?? "";
     const role = normalizeRole(incomingRole);
+    localStorage.setItem("access_token", data.access_token ?? "");
+    localStorage.setItem("refresh_token", data.refresh_token ?? "");
+    localStorage.setItem("user_name", data.user_name ?? "");
+    localStorage.setItem("email", data.email ?? "");
+    localStorage.setItem("role", role ?? "");
 
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("refresh_token", data.refresh_token);
-    localStorage.setItem("user_name", data.user_name);
-    localStorage.setItem("email", data.email);
-    localStorage.setItem("role", role);
-
-    setUser({ user_name: data.user_name, email: data.email, role });
+    setUser({ user_name: data.user_name ?? "", email: data.email ?? "", role: role ?? "" });
   }
 
   function logout() {
+    // Clear server session cookie
+    logoutServerSession();
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_name");
@@ -70,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("role");
     setUser(null);
   }
+  
+  if (!mounted) return null;
 
   return (
     <AuthContext.Provider value={{ user, isReady, login, logout }}>
