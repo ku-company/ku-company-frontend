@@ -34,7 +34,7 @@ export default function NotificationsBell({
   const [items, setItems] = useState<NotificationItem[]>(initial);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // demo seed if none provided
+  // mock initial data if none provided
   useEffect(() => {
     if (initial.length === 0) {
       setItems([
