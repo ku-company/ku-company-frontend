@@ -1,103 +1,129 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import JobCard from "@/components/jobcard";
+import { Job } from "@/types/job";
+import RoleSelectModal from "@/components/roleselector";
+import { useAuth } from "@/context/AuthContext";
+import { getAuthMe, updateUserRole, type AuthMe } from "@/api/user";
+
+function normalizeRole(r?: string | null) {
+  const raw = (r ?? "").trim().toLowerCase();
+  if (!raw || raw.includes("unknown") || raw.includes("unset")) return "Unknown";
+  if (raw.includes("company")) return "Company";
+  if (raw.includes("student")) return "Student";
+  if (raw.includes("professor")) return "Professor";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+export default function HomePage() {
+  const { user, login } = useAuth();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [patchingRole, setPatchingRole] = useState(false);
+
+  function persistTokens(tokenPair: { access_token?: string; refresh_token?: string }) {
+    if (tokenPair?.access_token) localStorage.setItem("access_token", tokenPair.access_token);
+    if (tokenPair?.refresh_token) localStorage.setItem("refresh_token", tokenPair.refresh_token);
+  }
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Bootstrap session (OAuth cookie or existing tokens)
+        const me = await getAuthMe();
+
+        // In case backend returns tokens here too:
+        persistTokens({ access_token: me.access_token, refresh_token: me.refresh_token });
+
+        const role = normalizeRole(me.role ?? me.roles);
+
+        if (!user) {
+          login({
+            access_token: localStorage.getItem("access_token") ?? "",
+            refresh_token: localStorage.getItem("refresh_token") ?? "",
+            user_name: me.user_name ?? "",
+            email: me.email ?? "",
+            roles: role,
+          });
+        }
+
+        if (role === "Unknown") {
+          setShowRoleModal(true);
+        }
+      } catch (err) {
+        console.warn("⚠️ Not logged in (no cookie / auth):", err);
+      }
+
+      try {
+        const res = await fetch("http://localhost:8000/api/mock/findjob", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to fetch jobs");
+        const data = await res.json();
+        setJobs(data);
+      } catch (e) {
+        console.error("❌ Failed to load jobs:", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [login, user]);
+
+  async function handleRoleSelect(selected: string) {
+    try {
+      setPatchingRole(true);
+
+      const payloadRole =
+        selected.toLowerCase() === "student"
+          ? "Student"
+          : selected.toLowerCase() === "company"
+          ? "Company"
+          : selected.toLowerCase() === "professor"
+          ? "Professor"
+          : "Student";
+
+      const patchData = await updateUserRole(payloadRole);
+      persistTokens({ access_token: patchData.access_token, refresh_token: patchData.refresh_token });
+      const newToken = patchData.access_token || localStorage.getItem("access_token") || "";
+      const me2 = await getAuthMe(newToken);
+
+      // Final role
+      const finalRole = normalizeRole(me2.role ?? me2.roles ?? patchData.role);
+
+      // Update AuthContext (this updates Navbar too)
+      login({
+        access_token: localStorage.getItem("access_token") ?? "",
+        refresh_token: localStorage.getItem("refresh_token") ?? "",
+        user_name: me2.user_name ?? patchData.user_name ?? "",
+        email: me2.email ?? patchData.email ?? "",
+        roles: finalRole,
+      });
+
+      if (finalRole !== "Unknown") {
+        setShowRoleModal(false);
+      }
+    } catch (err) {
+      console.error("Failed to update role:", err);
+      // keep modal open for retry
+    } finally {
+      setPatchingRole(false);
+    }
+  }
+
+  if (loading) return <div className="p-4 text-gray-500">Loading jobs and session…</div>;
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="p-4 space-y-4">
+      {jobs.map((job) => (
+        <JobCard key={job.id} job={job} />
+      ))}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      <RoleSelectModal
+        isOpen={showRoleModal}
+        onClose={() => !patchingRole && setShowRoleModal(false)}
+        onSelect={handleRoleSelect}
+      />
+    </main>
   );
 }
