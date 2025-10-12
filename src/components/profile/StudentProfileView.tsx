@@ -65,7 +65,13 @@ export default function StudentProfileView() {
     (async () => {
       try {
         const data = await getMyStudentProfile();
+        // 🧪 Log the verification state right when profile loads
         console.log("✅ [StudentProfileView] my-profile data:", data);
+        console.log("🔎 [StudentProfileView] verified flags →", {
+          verified: data?.verified,
+          verify_raw: (data as any)?.verify,
+          verified_status_raw: (data as any)?.verified_status,
+        });
         setProfile(data);
       } catch (e: any) {
         console.error("❌ Failed to load student profile:", e);
@@ -80,7 +86,11 @@ export default function StudentProfileView() {
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
-  const canEdit = !!profile.verified;
+  // `getMyStudentProfile` already normalizes to a real boolean
+  const canEdit = profile.verified === true;
+  console.log("profile.verified:", profile.verified);
+  console.log("🟢 [StudentProfileView] computed canEdit:", canEdit);
+
   const fullName =
     profile.full_name ||
     [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() ||
@@ -120,7 +130,6 @@ export default function StudentProfileView() {
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
               {fullName}
             </h2>
-            {/* Example subtitle – adapt if backend provides major/year */}
             <p className="text-sm text-gray-600">Student</p>
           </div>
 
