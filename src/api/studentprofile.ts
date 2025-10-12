@@ -6,8 +6,6 @@ export type StudentProfile = {
   user_name?: string;
   email?: string;
   verified?: boolean;
-
-  // Optional fields depending on backend
   first_name?: string;
   last_name?: string;
   full_name?: string;
@@ -16,8 +14,6 @@ export type StudentProfile = {
   birthday?: string;
   phone?: string;
   location?: string;
-
-  // Optional structured fields
   education?: string[];
   skills?: string[];
   licenses?: string[];
@@ -31,39 +27,88 @@ function mask(t?: string) {
 
 /**
  * GET /api/employee/my-profile
- * Auth: Bearer access_token
- * Returns { message, data: StudentProfile }
+ * Auth: via cookie or Bearer header
  */
-export async function getMyStudentProfile(tokenOverride?: string): Promise<StudentProfile> {
-  const token = tokenOverride || localStorage.getItem("access_token") || "";
+export async function getMyStudentProfile(): Promise<StudentProfile> {
+  const token = localStorage.getItem("access_token") || "";
   const baseInit = buildInit({ method: "GET" });
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     ...(baseInit.headers || {}),
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  // Optional debugging (safe to keep while integrating)
-  console.log("📡 [studentprofile] GET /api/employee/my-profile with",
-    token ? `Bearer ${mask(token)}` : "(missing token)"
-  );
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}/api/employee/my-profile`, {
-    ...baseInit,
+  console.log("📡 [studentprofile] GET /api/employee/my-profile");
+  console.log("🔑 Token header present?", !!token);
+  console.log("🔧 Fetch options:", {
+    method: "GET",
     headers,
     credentials: "include",
   });
 
+  const res = await fetch(`${API_BASE}/api/employee/my-profile`, {
+    ...baseInit,
+    headers,
+    credentials: "include", // ✅ backend cookie token support
+  });
+
   const raw = await res.text();
-  // Peek at raw backend response during integration
-  console.log("🧾 [studentprofile] RAW /my-profile:", raw);
+  console.log("🧾 [studentprofile] RAW response text:", raw);
+  console.log("📦 Response status:", res.status, res.statusText);
 
   if (!res.ok) {
+    console.error("❌ Backend returned error:", raw);
     throw new Error(raw || `Failed to fetch student profile: ${res.status} ${res.statusText}`);
   }
 
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
+  console.log("✅ Parsed JSON:", json);
+  return (json?.data ?? json) as StudentProfile;
+}
+
+/**
+ * PATCH /api/employee/my-profile
+ */
+export async function updateMyStudentProfile(
+  updates: Partial<StudentProfile>
+): Promise<StudentProfile> {
+  const token = localStorage.getItem("access_token") || "";
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  console.log("📡 [studentprofile] PATCH /api/employee/my-profile");
+  console.log("📝 Updates body:", updates);
+  console.log("🔧 Fetch options:", {
+    method: "PATCH",
+    headers,
+    credentials: "include",
+  });
+
+  const res = await fetch(`${API_BASE}/api/employee/my-profile`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(updates),
+    credentials: "include", // ✅ ensures backend receives cookies
+  });
+
+  const raw = await res.text();
+  console.log("🧾 [studentprofile] PATCH response raw:", raw);
+  console.log("📦 Response status:", res.status, res.statusText);
+
+  if (!res.ok) {
+    console.error("❌ Backend returned error:", raw);
+    throw new Error(raw || `Failed to update profile: ${res.statusText}`);
+  }
+
+  let json: any = {};
+  try { json = JSON.parse(raw); } catch {}
+  console.log("✅ Parsed JSON after PATCH:", json);
   return (json?.data ?? json) as StudentProfile;
 }

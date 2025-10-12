@@ -1,43 +1,66 @@
-// src/app/profile/page.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import StudentProfileView from "@/components/profile/StudentProfileView";
 import CompanyProfileView from "@/components/profile/CompanyProfileView";
+import { fetchAuthMe, normalizeRole } from "@/api/session";
 
 export default function ProfilePage() {
-  const { user, isReady } = useAuth();
   const router = useRouter();
-
+  const { user, isReady, login } = useAuth();
+  const [checking, setChecking] = useState(true); // guard against early redirect
 
   useEffect(() => {
-    if (isReady && !user) {
-      console.log("No user after hydration, redirecting to /login");
-      router.replace("/login");
+    let alive = true;
+
+    async function ensureSession() {
+      // 1) If we already have a user (localStorage path), we're done
+      if (user) {
+        if (alive) setChecking(false);
+        return;
+      }
+
+      // 2) Wait for AuthContext hydration
+      if (!isReady) return;
+
+      // 3) Probe the server cookie/session once
+      try {
+        console.log("[Profile] user is null after hydration; probing /api/auth/me…");
+        const me = await fetchAuthMe(); // uses credentials: 'include' inside your helper
+        console.log("[Profile] /api/auth/me raw:", me);
+
+        const role = normalizeRole(me.role ?? me.roles) || "Student";
+        // Populate client auth state so the rest of the app works
+        login({
+          access_token: localStorage.getItem("access_token") ?? "",
+          refresh_token: localStorage.getItem("refresh_token") ?? "",
+          user_name: me.user_name ?? "",
+          email: me.email ?? "",
+          roles: role,
+        });
+
+        if (alive) setChecking(false);
+      } catch (err) {
+        console.warn("[Profile] Not authenticated; redirecting to /login. Error:", err);
+        // 4) Truly unauthenticated → send to login
+        router.replace("/login");
+      }
     }
-  }, [isReady, user, router]);
 
-  if (!isReady) {
-    return (
-      <div className="flex h-screen items-center justify-center text-gray-500">
-        Loading profile…
-      </div>
-    );
-  }
+    ensureSession();
+    return () => {
+      alive = false;
+    };
+  }, [user, isReady, login, router]);
 
+  // While we’re checking cookie/session, show a tiny skeleton
+  if (checking) return <div className="p-8 text-gray-600">Loading session…</div>;
+
+  // At this point we must have a user (or we already redirected)
   if (!user) return null;
 
-  console.log("Logged-in user:", user);
-  console.log("Role from AuthContext:", user.role);
-
   const role = (user.role || "").toLowerCase();
-  if (role === "company") {
-    console.log("Detected company role — showing CompanyProfileView");
-    return <CompanyProfileView />;
-  }
-
-  console.log("Detected student role — showing StudentProfileView");
-  return <StudentProfileView />;
+  return role === "company" ? <CompanyProfileView /> : <StudentProfileView />;
 }
