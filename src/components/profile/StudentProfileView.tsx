@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getMyStudentProfile, type StudentProfile } from "@/api/studentprofile";
+import ResumeManagerModal from "@/components/ResumeManagerModal";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -60,6 +61,7 @@ export default function StudentProfileView() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [resumeOpen, setResumeOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -100,7 +102,7 @@ export default function StudentProfileView() {
   const email = profile.email || "";
 
   return (
-    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <><main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-4">
         {canEdit ? (
           <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-semibold">
@@ -123,8 +125,7 @@ export default function StudentProfileView() {
                 src={profile.avatar_url || "/profile.png"}
                 alt="Profile"
                 fill
-                className="object-cover"
-              />
+                className="object-cover" />
             </div>
 
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
@@ -139,8 +140,7 @@ export default function StudentProfileView() {
               icon={<span className="text-xs">✉️</span>}
               label="Mail"
               value={email}
-              href={email ? `mailto:${email}` : undefined}
-            />
+              href={email ? `mailto:${email}` : undefined} />
             {/* If backend provides birthday */}
             {/* <InfoRow icon={<span className="text-xs">🎂</span>} label="Birthday" value={profile.birthday} /> */}
           </div>
@@ -180,18 +180,14 @@ export default function StudentProfileView() {
 
                 {/* Upload resume button */}
                 <button
-                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs ${
-                    canEdit ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"
-                  }`}
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs ${canEdit ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
                   title={canEdit ? "Upload Resume" : "Verification required"}
                   style={{ borderColor: GREEN }}
                   disabled={!canEdit}
+                  onClick={() => canEdit && setResumeOpen(true)}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M5 20h14a1 1 0 0 0 1-1v-6h-2v5H6v-5H4v6a1 1 0 0 0 1 1zm7-16 5 5h-3v4h-4v-4H7l5-5z"
-                      fill="currentColor"
-                    />
+                    <path d="M5 20h14a1 1 0 0 0 1-1v-6h-2v5H6v-5H4v6a1 1 0 0 0 1 1zm7-16 5 5h-3v4h-4v-4H7l5-5z" fill="currentColor" />
                   </svg>
                   <span style={{ color: GREEN, opacity: canEdit ? 1 : 0.5 }}>Upload Resume</span>
                 </button>
@@ -240,5 +236,6 @@ export default function StudentProfileView() {
         </div>
       </div>
     </main>
+    <ResumeManagerModal isOpen={resumeOpen} onClose={() => setResumeOpen(false)} brandColor={GREEN} /></>
   );
 }
