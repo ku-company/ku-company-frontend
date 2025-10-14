@@ -88,8 +88,7 @@ export default function FindJobPage() {
           if (Array.isArray(data?.data)) return data.data;
           if (Array.isArray(data?.categories)) return data.categories;
           if (Array.isArray(data?.job_types)) return data.job_types;
-          if (Array.isArray(Object.values(data)[0]))
-            return Object.values(data)[0];
+          if (Array.isArray(Object.values(data)[0])) return Object.values(data)[0];
           return [];
         };
 
@@ -180,11 +179,11 @@ export default function FindJobPage() {
             {categories.map((c, i) => {
               const label =
                 typeof c === "object"
-                  ? c.name || c.title || JSON.stringify(c)
+                  ? c.label || c.name || c.title || c.value || "Unnamed"
                   : String(c);
               const value =
                 typeof c === "object"
-                  ? c.name || c.title || JSON.stringify(c)
+                  ? c.value || c.name || c.title || label
                   : String(c);
               return (
                 <option key={`${i}-${value}`} value={value}>
@@ -203,11 +202,11 @@ export default function FindJobPage() {
             {jobTypes.map((t, i) => {
               const label =
                 typeof t === "object"
-                  ? t.name || t.title || JSON.stringify(t)
+                  ? t.label || t.name || t.title || t.value || "Unnamed"
                   : String(t);
               const value =
                 typeof t === "object"
-                  ? t.name || t.title || JSON.stringify(t)
+                  ? t.value || t.name || t.title || label
                   : String(t);
               return (
                 <option key={`${i}-${value}`} value={value}>
