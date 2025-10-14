@@ -16,6 +16,18 @@ function maskToken(t?: string) {
   if (!t) return "(none)";
   return t.length > 8 ? `${t.slice(0,4)}...${t.slice(-4)}` : t;
 }
+function extractFileName(url: string): string {
+  try {
+    const raw = decodeURIComponent(url.split("/").pop()?.split("?")[0] || "");
+    const dashIndex = raw.indexOf("-");
+    if (raw.startsWith("resume_") && dashIndex > 0) {
+      return raw.substring(dashIndex + 1);
+    }
+    return raw;
+  } catch {
+    return url;
+  }
+}
 
 /** GET list of resumes */
 export async function listResumes(): Promise<ResumeItem[]> {
@@ -39,13 +51,12 @@ export async function listResumes(): Promise<ResumeItem[]> {
     json = JSON.parse(raw);
   } catch {}
 
-  // your API returns { resumes: [...] }
   const list: ResumeItem[] = Array.isArray(json?.resumes) ? json.resumes : [];
   return list.map((r) => ({
     id: r.id,
     employee_id: r.employee_id,
     file_url: r.file_url,
-    name: r.file_url?.split("/").pop()?.split("?")[0],
+    name: extractFileName(r.file_url),
     is_main: !!r.is_main,
   }));
 }
