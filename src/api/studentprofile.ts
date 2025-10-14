@@ -20,11 +20,6 @@ export type StudentProfile = {
   languages?: string[] | null;
 };
 
-function mask(t?: string) {
-  if (!t) return "(none)";
-  return t.length > 8 ? `${t.slice(0, 4)}...${t.slice(-4)}` : t;
-}
-
 function toBool(v: unknown): boolean {
   if (v === true) return true;
   if (v === 1) return true;
@@ -37,19 +32,14 @@ function toBool(v: unknown): boolean {
 
 /** Flattens your backend shape to our StudentProfile model. */
 function flattenBackendProfile(json: any): StudentProfile {
-  // raw backend payloads
   const data = json?.data ?? json ?? {};
   const u = data?.user ?? {};
-
-  // logs to verify what we received
-  console.log("🔍 [studentprofile] backend data.user:", u);
 
   const verified =
     toBool(u?.verified) ||
     toBool(u?.verify) ||
     toBool(u?.verified_status);
 
-  // map common fields
   const first_name = u?.first_name ?? "";
   const last_name = u?.last_name ?? "";
   const full_name =
@@ -57,8 +47,7 @@ function flattenBackendProfile(json: any): StudentProfile {
     u?.user_name ||
     "";
 
-  // optional fields (your backend uses different names)
-  const profile: StudentProfile = {
+  return {
     id: data?.id ?? u?.id,
     user_name: u?.user_name ?? "",
     email: u?.email ?? "",
@@ -69,21 +58,19 @@ function flattenBackendProfile(json: any): StudentProfile {
     full_name,
     avatar_url: u?.profile_image || "",
 
-    // map backend fields if present
     bio: data?.summary ?? null,
     birthday: data?.birthDate ?? null,
-    // place-holder extractions if you later structure contact info:
-    phone: data?.contactInfo?.phone ?? null,
-    location: data?.contactInfo?.location ?? null,
+
+    // If your backend later structures contactInfo, map as needed:
+    // For now we only keep the raw block inside bio/summary section.
+    // phone: data?.contactInfo?.phone ?? null,
+    // location: data?.contactInfo?.location ?? null,
 
     education: data?.education ?? null,
     skills: data?.skills ?? null,
     licenses: data?.licenses ?? null,
     languages: data?.languages ?? null,
   };
-
-  console.log("✅ [studentprofile] flattened/normalized profile:", profile);
-  return profile;
 }
 
 /**
@@ -100,10 +87,6 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  console.log("📡 [studentprofile] GET /api/employee/my-profile");
-  console.log("🔑 Token header present?", !!token);
-  console.log("🔧 Fetch options:", { method: "GET", headers, credentials: "include" });
-
   const res = await fetch(`${API_BASE}/api/employee/my-profile`, {
     ...baseInit,
     headers,
@@ -111,17 +94,50 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [studentprofile] RAW response text:", raw);
-  console.log("📦 Response status:", res.status, res.statusText);
-
-  if (!res.ok) {
-    console.error("❌ Backend returned error:", raw);
-    throw new Error(raw || `Failed to fetch student profile: ${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) throw new Error(raw || `Failed to fetch student profile: ${res.status} ${res.statusText}`);
 
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
+  return flattenBackendProfile(json);
+}
 
-  // 🔁 Normalize from nested shape → flat StudentProfile
+/** ====================== NEW: PATCH (edit) ====================== **/
+
+export type StudentProfileEditPayload = {
+  education?: string;   // comma/newline separated text
+  birthDate?: string;   // YYYY-MM-DD
+  summary?: string;
+  skills?: string;      // comma/newline separated text
+  experience?: string;
+  contactInfo?: string; // free text
+  languages?: string;   // comma/newline separated text
+};
+
+/**
+ * PATCH /api/employee/my-profile/edit
+ * Body: {
+ *  education, birthDate, summary, skills, experience, contactInfo, languages
+ * }
+ */
+export async function patchMyStudentProfile(
+  updates: StudentProfileEditPayload
+): Promise<StudentProfile> {
+  const token = localStorage.getItem("access_token") || "";
+
+  const res = await fetch(`${API_BASE}/api/employee/my-profile/edit`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(updates),
+    credentials: "include",
+  });
+
+  const raw = await res.text();
+  if (!res.ok) throw new Error(raw || `Failed to update profile: ${res.status} ${res.statusText}`);
+
+  let json: any = {};
+  try { json = JSON.parse(raw); } catch {}
   return flattenBackendProfile(json);
 }
