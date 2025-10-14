@@ -1,12 +1,11 @@
-// src/api/resumes.ts
 import { API_BASE, buildInit } from "./base";
 
 export type ResumeItem = {
-  id: string | number;
-  name: string;
-  url?: string;
-  size?: number;       // bytes (optional)
-  updatedAt?: string;  // ISO string (optional)
+  id: number;
+  employee_id?: number;
+  file_url: string;
+  name?: string;
+  is_main?: boolean;
 };
 
 function unwrap<T>(json: any): T {
@@ -21,82 +20,98 @@ function maskToken(t?: string) {
 /** GET list of resumes */
 export async function listResumes(): Promise<ResumeItem[]> {
   const token = localStorage.getItem("access_token") || "";
-  const baseInit = buildInit({ method: "GET" });
 
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
-    ...baseInit,
+    method: "GET",
     headers: {
-      ...(baseInit.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: token ? `Bearer ${token}` : "",
     },
     credentials: "include",
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] GET raw:", raw, "🔑", maskToken(token));
+  console.log("🧾 [resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
 
   if (!res.ok) throw new Error(raw || `Failed to fetch resumes`);
 
   let json: any = {};
-  try { json = JSON.parse(raw); } catch {}
-  const data = unwrap<any>(json);
+  try {
+    json = JSON.parse(raw);
+  } catch {}
 
-  // Normalize to array
-  if (Array.isArray(data)) return data as ResumeItem[];
-  if (!data) return [];
-  // Sometimes backend returns object keyed or single item; coerce
-  if (data.items && Array.isArray(data.items)) return data.items;
-  return [];
+  // your API returns { resumes: [...] }
+  const list: ResumeItem[] = Array.isArray(json?.resumes) ? json.resumes : [];
+  return list.map((r) => ({
+    id: r.id,
+    employee_id: r.employee_id,
+    file_url: r.file_url,
+    name: r.file_url?.split("/").pop()?.split("?")[0],
+    is_main: !!r.is_main,
+  }));
 }
 
 /** POST upload one resume (PDF only, <= 10MB) */
 export async function uploadResume(file: File): Promise<ResumeItem> {
   const token = localStorage.getItem("access_token") || "";
-  if (file.type !== "application/pdf") {
-    throw new Error("Only PDF files are allowed.");
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error("File must be 10MB or smaller.");
-  }
+  if (file.type !== "application/pdf") throw new Error("Only PDF files are allowed.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("File must be ≤ 10MB.");
 
   const form = new FormData();
-  form.append("file", file);
+  form.append("resume", file);
 
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
     method: "POST",
     headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: token ? `Bearer ${token}` : "",
     },
     body: form,
     credentials: "include",
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] POST raw:", raw);
+  console.log("🧾 [resumes] POST raw:", raw.slice(0, 500));
 
   if (!res.ok) throw new Error(raw || `Failed to upload resume`);
 
   let json: any = {};
-  try { json = JSON.parse(raw); } catch {}
+  try {
+    json = JSON.parse(raw);
+  } catch {}
   return unwrap<ResumeItem>(json);
 }
 
 /** DELETE all resumes */
 export async function deleteAllResumes(): Promise<void> {
   const token = localStorage.getItem("access_token") || "";
-  const baseInit = buildInit({ method: "DELETE" });
 
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
-    ...baseInit,
+    method: "DELETE",
     headers: {
-      ...(baseInit.headers || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: token ? `Bearer ${token}` : "",
     },
     credentials: "include",
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] DELETE raw:", raw);
+  console.log("🧾 [resumes] DELETE ALL raw:", raw);
 
   if (!res.ok) throw new Error(raw || `Failed to delete resumes`);
+}
+
+/** DELETE single resume by ID */
+export async function deleteResume(id: number): Promise<void> {
+  const token = localStorage.getItem("access_token") || "";
+
+  const res = await fetch(`${API_BASE}/api/employee/profile/resumes/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    credentials: "include",
+  });
+
+  const raw = await res.text();
+  console.log(`🗑️ [resumes] DELETE ${id} raw:`, raw);
+
+  if (!res.ok) throw new Error(raw || `Failed to delete resume`);
 }
