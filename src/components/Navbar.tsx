@@ -60,6 +60,7 @@ export default function Navbar() {
             <NavItem href="/homepage" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/status" label="STATUS" /> {/* ✅ Added new link */}
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
@@ -84,10 +85,15 @@ export default function Navbar() {
                 </button>
 
                 {dropdownOpen && (
-                  <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2"
+                  >
                     <div className="px-4 pb-2 text-xs text-gray-500">
                       Signed in as <span className="font-medium">{user.user_name}</span>
-                      <div>Role: <span className="font-medium">{user.role || "Unknown"}</span></div>
+                      <div>
+                        Role: <span className="font-medium">{user.role || "Unknown"}</span>
+                      </div>
                     </div>
                     <Link
                       href="/profile"
@@ -112,7 +118,10 @@ export default function Navbar() {
                 <Link href="/login" className="text-xs px-3 py-1 rounded border">
                   LOGIN
                 </Link>
-                <button onClick={() => setShowRoleSelector(true)} className="text-xs px-3 py-1 rounded border">
+                <button
+                  onClick={() => setShowRoleSelector(true)}
+                  className="text-xs px-3 py-1 rounded border"
+                >
                   SIGNUP
                 </button>
               </>
@@ -124,7 +133,10 @@ export default function Navbar() {
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-            <RoleSelector isOpen={showRoleSelector} onClose={() => setShowRoleSelector(false)} />
+            <RoleSelector
+              isOpen={showRoleSelector}
+              onClose={() => setShowRoleSelector(false)}
+            />
           </div>
         </div>
       )}
