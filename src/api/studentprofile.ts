@@ -5,7 +5,7 @@ export type StudentProfile = {
   id?: number;
   user_name?: string;
   email?: string;
-  verified?: boolean;          // <-- canonical boolean
+  verified?: boolean;
   first_name?: string;
   last_name?: string;
   full_name?: string;
@@ -14,10 +14,12 @@ export type StudentProfile = {
   birthday?: string;
   phone?: string;
   location?: string;
-  education?: string[] | null;
-  skills?: string[] | null;
-  licenses?: string[] | null;
-  languages?: string[] | null;
+  education?: string | null;
+  skills?: string | null;
+  licenses?: string | null;
+  languages?: string | null;
+  experience?: string | null;
+  contactInfo?: string | null;
 };
 
 function toBool(v: unknown): boolean {
@@ -47,6 +49,13 @@ function flattenBackendProfile(json: any): StudentProfile {
     u?.user_name ||
     "";
 
+  const toText = (v: unknown): string | null => {
+    if (v == null) return null;
+    if (Array.isArray(v)) return v.filter(Boolean).map(String).join("\n");
+    if (typeof v === "string") return v;
+    try { return String(v); } catch { return null; }
+  };
+
   return {
     id: data?.id ?? u?.id,
     user_name: u?.user_name ?? "",
@@ -58,18 +67,20 @@ function flattenBackendProfile(json: any): StudentProfile {
     full_name,
     avatar_url: u?.profile_image || "",
 
-    bio: data?.summary ?? null,
-    birthday: data?.birthDate ?? null,
+    bio: data?.summary ?? data?.bio ?? null,
+    birthday: data?.birthDate ?? data?.birthday ?? null,
 
     // If your backend later structures contactInfo, map as needed:
     // For now we only keep the raw block inside bio/summary section.
     // phone: data?.contactInfo?.phone ?? null,
     // location: data?.contactInfo?.location ?? null,
 
-    education: data?.education ?? null,
-    skills: data?.skills ?? null,
-    licenses: data?.licenses ?? null,
-    languages: data?.languages ?? null,
+    education: toText(data?.education),
+    skills: toText(data?.skills),
+    licenses: toText(data?.licenses),
+    languages: toText(data?.languages),
+    experience: toText(data?.experience),
+    contactInfo: data?.contactInfo ?? null,
   };
 }
 
@@ -81,12 +92,9 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
   const token = localStorage.getItem("access_token") || "";
   const baseInit = buildInit({ method: "GET" });
 
-  const headers: Record<string, string> = {
-    ...(baseInit.headers || {}),
-    "Content-Type": "application/json",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
+  const headers = new Headers(baseInit.headers as HeadersInit);
+  headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${API_BASE}/api/employee/my-profile`, {
     ...baseInit,
     headers,
@@ -100,8 +108,6 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
   try { json = JSON.parse(raw); } catch {}
   return flattenBackendProfile(json);
 }
-
-/** ====================== NEW: PATCH (edit) ====================== **/
 
 export type StudentProfileEditPayload = {
   education?: string;   // comma/newline separated text
@@ -136,8 +142,18 @@ export async function patchMyStudentProfile(
 
   const raw = await res.text();
   if (!res.ok) throw new Error(raw || `Failed to update profile: ${res.status} ${res.statusText}`);
-
-  let json: any = {};
-  try { json = JSON.parse(raw); } catch {}
-  return flattenBackendProfile(json);
+  // Some endpoints return the updated profile without nested user; ensure we refetch
+  try {
+    // Try to parse in case it's already the full shape; if not, ignore
+    const json = JSON.parse(raw);
+    const flattened = flattenBackendProfile(json);
+    // If critical user fields are missing, fall back to full refetch
+    if (!flattened.user_name && !flattened.full_name) {
+      return await getMyStudentProfile();
+    }
+    return flattened;
+  } catch {
+    // On any parse/shape mismatch, refetch a consistent profile shape
+    return await getMyStudentProfile();
+  }
 }

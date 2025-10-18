@@ -18,7 +18,7 @@ type Props = {
 /** Accepts string | string[] | null | unknown and returns a nice text */
 function toCleanText(v: unknown): string {
   if (v == null) return "";
-  if (Array.isArray(v)) return v.filter(Boolean).map(String).join(", ");
+  if (Array.isArray(v)) return v.filter(Boolean).map(String).join("\n");
   if (typeof v === "string") return v;
   // Fallback: stringify scalars/objects (rare)
   try {
