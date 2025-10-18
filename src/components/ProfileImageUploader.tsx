@@ -57,11 +57,15 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
           ? await patchCompanyProfileImage(file)
           : await uploadCompanyProfileImage(file);
 
-      setUrl(newUrl);
-      onUpdated?.(newUrl);
+      // After upload/patch, refetch current URL to ensure we have a fresh pre-signed link (if used)
+      const refetched = kind === "employee" ? await getEmployeeProfileImage() : await getCompanyProfileImage();
+      const finalUrl = refetched || newUrl;
+
+      setUrl(finalUrl);
+      onUpdated?.(finalUrl);
       // notify navbar and other listeners
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent(PROFILE_IMAGE_UPDATED_EVENT, { detail: { url: newUrl, kind } }));
+        window.dispatchEvent(new CustomEvent(PROFILE_IMAGE_UPDATED_EVENT, { detail: { url: finalUrl, kind } }));
       }
     } catch (e) {
       console.error("Profile image upload failed:", e);

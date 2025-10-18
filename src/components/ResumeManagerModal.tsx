@@ -7,6 +7,8 @@ import {
   deleteResume,
   deleteAllResumes,
   type ResumeItem,
+  setMainResume,
+  MAIN_RESUME_UPDATED_EVENT,
 } from "@/api/resume";
 
 type Props = {
@@ -25,6 +27,10 @@ export default function ResumeManagerModal({
   const [existing, setExisting] = useState<ResumeItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  // Main resume selection state: choose, then Save
+  const [tempMainId, setTempMainId] = useState<number | null>(null);
+  const [hasUnsavedMain, setHasUnsavedMain] = useState(false);
+  const [savingMain, setSavingMain] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([
     { uploading: false },
     { uploading: false },
@@ -40,6 +46,10 @@ export default function ResumeManagerModal({
       const list = await listResumes();
       console.log("📦 [ResumeModal] list:", list);
       setExisting(list);
+      // Initialize temp main from current list
+      const currentMain = list.find((r) => r.is_main);
+      setTempMainId(currentMain ? currentMain.id : null);
+      setHasUnsavedMain(false);
     } catch (e: any) {
       console.error("❌ listResumes failed:", e);
       setLoadErr(e.message || "Failed to load resumes");
@@ -187,6 +197,18 @@ export default function ResumeManagerModal({
                         <div className="truncate text-sm font-medium">
                           {r.name ?? `Resume ${r.id}`}
                         </div>
+                        <label className="mt-0.5 inline-flex items-center gap-2 text-xs text-gray-600">
+                          <input
+                            type="checkbox"
+                            checked={r.id === tempMainId}
+                            onChange={() => {
+                              if (r.id === tempMainId) return; // no-op; cannot unset to none
+                              setTempMainId(r.id);
+                              setHasUnsavedMain(true);
+                            }}
+                          />
+                          <span>{r.id === tempMainId ? (hasUnsavedMain ? "Will be main (unsaved)" : "Main résumé") : "Set as main"}</span>
+                        </label>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -256,6 +278,34 @@ export default function ResumeManagerModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 rounded-b-2xl bg-gray-50 px-5 py-3">
+          {hasUnsavedMain && (
+            <button
+              onClick={async () => {
+                if (tempMainId == null) return;
+                setSavingMain(true);
+                try {
+                  await setMainResume(tempMainId);
+                  // Update list in-place; keep order
+                  setExisting((list) => list.map((it) => ({ ...it, is_main: it.id === tempMainId })));
+                  setHasUnsavedMain(false);
+                  // Emit event for profile to update its link
+                  const chosen = existing.find((x) => x.id === tempMainId);
+                  if (chosen && typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent(MAIN_RESUME_UPDATED_EVENT, { detail: { id: chosen.id, url: chosen.file_url } }));
+                  }
+                } catch (e: any) {
+                  alert(e?.message || "Failed to set main résumé");
+                } finally {
+                  setSavingMain(false);
+                }
+              }}
+              disabled={savingMain}
+              className="rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              style={{ backgroundColor: brandColor }}
+            >
+              {savingMain ? "Saving…" : "Save"}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="rounded-full border px-4 py-2 text-sm hover:bg-gray-100"

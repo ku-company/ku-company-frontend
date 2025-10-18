@@ -13,6 +13,16 @@ async function fetchJSON(url: string, init: RequestInit): Promise<any> {
   return json;
 }
 
+function normalizeImageUrl(u: string | null | undefined): string | null {
+  if (!u) return null;
+  // Already absolute
+  if (/^https?:\/\//i.test(u)) return u;
+  // Ensure single slash join with API_BASE
+  const base = API_BASE.replace(/\/+$/, "");
+  const path = String(u).startsWith("/") ? u : `/${u}`;
+  return `${base}${path}`;
+}
+
 function buildFormData(file: File): FormData {
   const fd = new FormData();
   fd.append("profile_image", file);
@@ -27,7 +37,7 @@ export async function getEmployeeProfileImage(): Promise<string | null> {
       ...getAuthHeaders(),
     },
   });
-  return (json?.profile_image as string) ?? null;
+  return normalizeImageUrl(json?.profile_image as string | null);
 }
 
 export async function uploadEmployeeProfileImage(file: File): Promise<string> {
@@ -40,7 +50,7 @@ export async function uploadEmployeeProfileImage(file: File): Promise<string> {
     },
     body: fd,
   });
-  return (json?.imageUrl as string) ?? "";
+  return normalizeImageUrl(json?.imageUrl as string | null) ?? "";
 }
 
 export async function patchEmployeeProfileImage(file: File): Promise<string> {
@@ -52,7 +62,7 @@ export async function patchEmployeeProfileImage(file: File): Promise<string> {
     },
     body: fd,
   });
-  return (json?.imageUrl as string) ?? "";
+  return normalizeImageUrl(json?.imageUrl as string | null) ?? "";
 }
 
 export async function deleteEmployeeProfileImage(): Promise<void> {
@@ -72,7 +82,7 @@ export async function getCompanyProfileImage(): Promise<string | null> {
       ...getAuthHeaders(),
     },
   });
-  return (json?.profile_image as string) ?? null;
+  return normalizeImageUrl(json?.profile_image as string | null);
 }
 
 export async function uploadCompanyProfileImage(file: File): Promise<string> {
@@ -84,7 +94,7 @@ export async function uploadCompanyProfileImage(file: File): Promise<string> {
     },
     body: fd,
   });
-  return (json?.imageUrl as string) ?? "";
+  return normalizeImageUrl(json?.imageUrl as string | null) ?? "";
 }
 
 export async function patchCompanyProfileImage(file: File): Promise<string> {
@@ -96,7 +106,7 @@ export async function patchCompanyProfileImage(file: File): Promise<string> {
     },
     body: fd,
   });
-  return (json?.imageUrl as string) ?? "";
+  return normalizeImageUrl(json?.imageUrl as string | null) ?? "";
 }
 
 export async function deleteCompanyProfileImage(): Promise<void> {

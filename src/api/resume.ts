@@ -8,6 +8,8 @@ export type ResumeItem = {
   is_main?: boolean;
 };
 
+export const MAIN_RESUME_UPDATED_EVENT = "main-resume-updated";
+
 function unwrap<T>(json: any): T {
   return (json?.data ?? json) as T;
 }
@@ -59,6 +61,52 @@ export async function listResumes(): Promise<ResumeItem[]> {
     name: extractFileName(r.file_url),
     is_main: !!r.is_main,
   }));
+}
+
+/** GET the current main resume */
+export async function getMainResume(): Promise<ResumeItem | null> {
+  const token = localStorage.getItem("access_token") || "";
+
+  const res = await fetch(`${API_BASE}/api/employee/profile/resumes/main`, {
+    method: "GET",
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    credentials: "include",
+  });
+
+  const raw = await res.text();
+  console.log("🧾 [resumes] GET main raw:", raw.slice(0, 400));
+
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(raw || `Failed to fetch main resume`);
+
+  let json: any = {};
+  try { json = JSON.parse(raw); } catch {}
+  const item = unwrap<any>(json);
+  if (!item) return null;
+  return {
+    id: item.id,
+    employee_id: item.employee_id,
+    file_url: item.file_url,
+    name: extractFileName(item.file_url),
+    is_main: true,
+  } as ResumeItem;
+}
+
+/** PATCH set a specific resume as main */
+export async function setMainResume(id: number): Promise<void> {
+  const token = localStorage.getItem("access_token") || "";
+  const res = await fetch(`${API_BASE}/api/employee/profile/resumes/${id}/set-main`, {
+    method: "PATCH",
+    headers: {
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+    credentials: "include",
+  });
+  const raw = await res.text();
+  console.log(`⭐ [resumes] PATCH set-main ${id} raw:`, raw);
+  if (!res.ok) throw new Error(raw || `Failed to set main resume`);
 }
 
 /** POST upload one resume (PDF only, <= 10MB) */

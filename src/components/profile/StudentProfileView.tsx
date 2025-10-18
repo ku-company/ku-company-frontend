@@ -12,6 +12,7 @@ import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { getMainResume, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -93,6 +94,7 @@ export default function StudentProfileView() {
 
   const [resumeOpen, setResumeOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [mainResumeUrl, setMainResumeUrl] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -106,6 +108,31 @@ export default function StudentProfileView() {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // Load main resume on mount and when the modal closes (not while open)
+  useEffect(() => {
+    (async () => {
+      if (resumeOpen) return; // don't refetch while editing
+      try {
+        const r = await getMainResume();
+        setMainResumeUrl((prev) => (r?.file_url ? r.file_url : prev));
+      } catch {
+        // keep previous value on transient errors to avoid flicker to "No main resume"
+      }
+    })();
+  }, [resumeOpen]);
+
+  // Live update of main resume while modal is open
+  useEffect(() => {
+    const onMain = (e: any) => {
+      const url = e?.detail?.url as string | undefined;
+      if (url) setMainResumeUrl(url);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener(MAIN_RESUME_UPDATED_EVENT, onMain as any);
+      return () => window.removeEventListener(MAIN_RESUME_UPDATED_EVENT, onMain as any);
+    }
   }, []);
 
   // No height syncing logic; we'll use a fixed responsive min-height on Work History
@@ -296,7 +323,6 @@ export default function StudentProfileView() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* LEFT: Profile card */}
           <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm" style={asideMinH ? { minHeight: asideMinH } : undefined}>
-            <CornerIcon title="Edit profile" disabled={!canEdit} />
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
@@ -335,7 +361,6 @@ export default function StudentProfileView() {
               className="relative rounded-2xl border bg-white p-6 shadow-sm"
               style={{ borderColor: GREEN }}
             >
-              <CornerIcon title="Edit summary" disabled={!canEdit} />
               <PillHeading>Personal Summary</PillHeading>
               {profile.bio && profile.bio.trim() ? (
                 <div
@@ -367,7 +392,6 @@ export default function StudentProfileView() {
               className="relative rounded-2xl border bg-white p-6 shadow-sm flex flex-col md:min-h-[19.5em]"
               style={{ borderColor: GREEN }}
             >
-              <CornerIcon title="Edit work history" disabled={!canEdit} />
               <PillHeading>Work History</PillHeading>
 
               <div
@@ -414,24 +438,40 @@ export default function StudentProfileView() {
                   </button>
                 ) : <span />}
 
-                {/* Upload resume button */}
-                <button
-                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs ${
-                    canEdit ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"
-                  }`}
-                  title={canEdit ? "Upload Resume" : "Verification required"}
-                  style={{ borderColor: GREEN }}
-                  disabled={!canEdit}
-                  onClick={() => canEdit && setResumeOpen(true)}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M5 20h14a1 1 0 0 0 1-1v-6h-2v5H6v-5H4v6a1 1 0 0 0 1 1zm7-16 5 5h-3v4h-4v-4H7l5-5z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span style={{ color: GREEN, opacity: canEdit ? 1 : 0.5 }}>Upload Resume</span>
-                </button>
+                {/* Upload resume + Main resume link */}
+                <div className="flex items-center gap-3">
+                  <button
+                    className={`inline-flex items-center gap-2 rounded-md border px-3 py-1 text-xs ${
+                      canEdit ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"
+                    }`}
+                    title={canEdit ? "Upload Resume" : "Verification required"}
+                    style={{ borderColor: GREEN }}
+                    disabled={!canEdit}
+                    onClick={() => canEdit && setResumeOpen(true)}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M5 20h14a1 1 0 0 0 1-1v-6h-2v5H6v-5H4v6a1 1 0 0 0 1 1zm7-16 5 5h-3v4h-4v-4H7l5-5z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <span style={{ color: GREEN, opacity: canEdit ? 1 : 0.5 }}>Upload Resume</span>
+                  </button>
+                  {mainResumeUrl ? (
+                    <a
+                      href={mainResumeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs hover:underline"
+                      style={{ color: GREEN }}
+                      title="View main resume"
+                    >
+                      Main Resume
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">No main resume</span>
+                  )}
+                </div>
               </div>
             </div>
           </section>
@@ -440,7 +480,6 @@ export default function StudentProfileView() {
         {/* BOTTOM: Four cards (placeholders) */}
         <div className="mt-6 grid md:grid-cols-2 gap-6">
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
-            <CornerIcon title="Edit education" disabled={!canEdit} />
             <PillHeading>Education</PillHeading>
             {educationListArr.length > 0 ? (
               <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800 space-y-3" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
@@ -481,7 +520,6 @@ export default function StudentProfileView() {
           </div>
 
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
-            <CornerIcon title="Edit skills" disabled={!canEdit} />
             <PillHeading>Skills</PillHeading>
             {skillListArr.length > 0 ? (
               <div ref={el => setSkillsEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
@@ -511,7 +549,6 @@ export default function StudentProfileView() {
           </div>
 
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
-            <CornerIcon title="Edit licenses" disabled={!canEdit} />
             <PillHeading>Licenses or Certifications</PillHeading>
             {licenses && licenses.trim() ? (
               <div ref={el => setLicEl(el)} className="mt-3 text-sm text-gray-800" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
@@ -532,7 +569,6 @@ export default function StudentProfileView() {
           </div>
 
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
-            <CornerIcon title="Edit languages" disabled={!canEdit} />
             <PillHeading>Languages</PillHeading>
             {languageListArr.length > 0 ? (
               <div ref={el => setLangEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
