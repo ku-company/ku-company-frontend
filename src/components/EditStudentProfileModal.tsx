@@ -86,6 +86,13 @@ export default function EditStudentProfileModal({
   const [error, setError] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLTextAreaElement>(null);
+  const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const contactRef = useRef<HTMLTextAreaElement>(null);
+
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [contactExpanded, setContactExpanded] = useState(false);
+  const [summaryOverflow, setSummaryOverflow] = useState(false);
+  const [contactOverflow, setContactOverflow] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -220,8 +227,8 @@ export default function EditStudentProfileModal({
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Personal Summary</label>
                 <textarea
-                  ref={firstFieldRef}
-                  className="h-24 rounded-md border px-3 py-2 text-sm"
+                  ref={(el) => { summaryRef.current = el as HTMLTextAreaElement; firstFieldRef.current = el as HTMLTextAreaElement; }}
+                  className={`${summaryExpanded ? 'h-72' : 'h-40'} rounded-md border px-3 py-2 text-sm overflow-y-auto`}
                   placeholder="Write a short summary about yourself"
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
@@ -232,7 +239,8 @@ export default function EditStudentProfileModal({
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Contact</label>
                 <textarea
-                  className="h-16 rounded-md border px-3 py-2 text-sm"
+                  ref={contactRef}
+                  className={`${contactExpanded ? 'h-56' : 'h-28'} rounded-md border px-3 py-2 text-sm overflow-y-auto`}
                   placeholder="name@example.com | +66 ... | Bangkok, Thailand"
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
@@ -495,27 +503,7 @@ export default function EditStudentProfileModal({
                 </div>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Birth date</label>
-                  <input
-                    type="date"
-                    className="rounded-md border px-3 py-2 text-sm"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Personal Summary</label>
-                <textarea
-                  className="h-24 rounded-md border px-3 py-2 text-sm"
-                  placeholder="Motivated software engineer with 3+ years of experience…"
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                />
-              </div>
+              
 
               {/* Skills editor (structured) */}
               <div className="grid gap-2">
@@ -563,93 +551,9 @@ export default function EditStudentProfileModal({
                 </div>
               </div>
 
-              {/* Work history timeline editor */}
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Work History</label>
-                <div className="space-y-3">
-                  {workItems.map((w, idx) => (
-                    <div key={idx} className="rounded-md border p-3 space-y-2">
-                      <div className="grid sm:grid-cols-2 gap-2">
-                        <input
-                          className="rounded-md border px-3 py-2 text-sm"
-                          placeholder="Company / Organization"
-                          value={w.company}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, company: v } : it));
-                          }}
-                        />
-                        <input
-                          className="rounded-md border px-3 py-2 text-sm"
-                          placeholder="Role / Title"
-                          value={w.role}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, role: v } : it));
-                          }}
-                        />
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-2">
-                        <input
-                          type="month"
-                          className="rounded-md border px-3 py-2 text-sm"
-                          placeholder="Start (YYYY-MM)"
-                          value={w.start}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, start: v } : it));
-                          }}
-                        />
-                        <input
-                          type="month"
-                          className="rounded-md border px-3 py-2 text-sm"
-                          placeholder="End (YYYY-MM) or empty for Present"
-                          value={w.end || ""}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, end: v || undefined } : it));
-                          }}
-                        />
-                      </div>
-                      <textarea
-                        className="h-16 w-full rounded-md border px-3 py-2 text-sm"
-                        placeholder="Short description / achievements"
-                        value={w.description || ""}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, description: v } : it));
-                        }}
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
-                          onClick={() => setWorkItems((items) => items.filter((_, i) => i !== idx))}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
-                    onClick={() => setWorkItems((items) => [...items, { company: "", role: "", start: "", end: undefined, description: "" }])}
-                  >
-                    Add Work Item
-                  </button>
-                  <div>
-                  </div>
-                </div>
-              </div>
+              
 
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Contact Info</label>
-                <textarea
-                  className="h-16 rounded-md border px-3 py-2 text-sm"
-                  placeholder="name@example.com | +66 ... | Bangkok, Thailand"
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                />
-              </div>
+              
 
               {/* Languages editor (structured) */}
               <div className="grid gap-2">

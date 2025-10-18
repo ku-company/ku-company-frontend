@@ -162,9 +162,14 @@ export default function StudentProfileView() {
     return () => mq?.removeEventListener?.('change', update as any);
   }, []);
 
+  // Expand flag for Personal Summary (used by recompute below)
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+
   // Refs for measuring heights
   const [workCardEl, setWorkCardEl] = useState<HTMLDivElement | null>(null);
   const [workContentEl, setWorkContentEl] = useState<HTMLDivElement | null>(null);
+  const [rightColEl, setRightColEl] = useState<HTMLElement | null>(null);
+  const [asideMinH, setAsideMinH] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     function recompute() {
@@ -190,25 +195,34 @@ export default function StudentProfileView() {
         setWorkMaxH(undefined);
         setWorkOverflow(false);
       }
+
+      // When summary is expanded, keep left aside at least as tall as the whole right column
+      if (summaryExpanded) {
+        const colH = rightColEl?.getBoundingClientRect().height || cardH;
+        setAsideMinH(colH);
+      } else {
+        setAsideMinH(undefined);
+      }
     }
 
     recompute();
     window.addEventListener('resize', recompute);
     return () => window.removeEventListener('resize', recompute);
-  }, [workCardEl, workContentEl, experience]);
+  }, [workCardEl, workContentEl, rightColEl, experience, summaryExpanded]);
 
   // Summary clamp + overflow detect
   const [summaryContentEl, setSummaryContentEl] = useState<HTMLDivElement | null>(null);
   const [summaryOverflow, setSummaryOverflow] = useState(false);
   useEffect(() => {
     const el = summaryContentEl;
-    if (!el || !isMd) { setSummaryOverflow(false); return; }
+    if (!el) { setSummaryOverflow(false); return; }
+    if (summaryExpanded) { setSummaryOverflow(false); return; }
     const check = () => setSummaryOverflow(el.scrollHeight > el.clientHeight + 1);
     check();
     const onResize = () => check();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [summaryContentEl, profile?.bio, isMd]);
+  }, [summaryContentEl, profile?.bio, summaryExpanded]);
 
   // Bottom cards overflow detection (Education, Skills, Licenses, Languages)
   const [eduEl, setEduEl] = useState<HTMLDivElement | null>(null);
@@ -280,7 +294,7 @@ export default function StudentProfileView() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* LEFT: Profile card */}
-          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm">
+          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm" style={asideMinH ? { minHeight: asideMinH } : undefined}>
             <CornerIcon title="Edit profile" disabled={!canEdit} />
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
@@ -316,7 +330,7 @@ export default function StudentProfileView() {
           </aside>
 
           {/* RIGHT: Summary + Work history */}
-          <section className="md:col-span-2 space-y-6">
+          <section ref={(el) => setRightColEl(el)} className="md:col-span-2 space-y-6">
             {/* Personal Summary */}
             <div
               className="relative rounded-2xl border bg-white p-6 shadow-sm"
@@ -328,21 +342,21 @@ export default function StudentProfileView() {
                 <div
                   ref={el => setSummaryContentEl(el)}
                   className="mt-3 text-sm leading-6 text-gray-700"
-                  style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}
+                  style={!summaryExpanded ? { maxHeight: '5em', overflow: 'hidden' } : undefined}
                 >
                   <Markdown content={profile.bio} />
                 </div>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-gray-700">No summary yet.</p>
               )}
-              {summaryOverflow && (
+              {(summaryOverflow || summaryExpanded) && (
                 <div className="mt-3">
                   <button
                     className="text-xs hover:underline"
                     style={{ color: GREEN }}
-                    onClick={() => setModal({ title: 'Personal Summary', content: profile.bio || '' })}
+                    onClick={() => setSummaryExpanded(v => !v)}
                   >
-                    See More…
+                    {summaryExpanded ? 'Show less' : 'Load more...'}
                   </button>
                 </div>
               )}
