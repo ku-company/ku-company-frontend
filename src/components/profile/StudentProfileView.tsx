@@ -301,7 +301,6 @@ export default function StudentProfileView() {
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
                   kind="employee"
-                  initialUrl={profile.avatar_url || null}
                   onUpdated={(u) => setProfile({ ...profile, avatar_url: u })}
                 />
               </div>
