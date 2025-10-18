@@ -11,6 +11,7 @@ import ResumeManagerModal from "@/components/ResumeManagerModal";
 import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
+import ProfileImageUploader from "@/components/ProfileImageUploader";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -298,11 +299,10 @@ export default function StudentProfileView() {
             <CornerIcon title="Edit profile" disabled={!canEdit} />
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
-                <Image
-                  src={profile.avatar_url || "/profile.png"}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
+                <ProfileImageUploader
+                  kind="employee"
+                  initialUrl={profile.avatar_url || null}
+                  onUpdated={(u) => setProfile({ ...profile, avatar_url: u })}
                 />
               </div>
 

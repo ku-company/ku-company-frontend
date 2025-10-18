@@ -6,6 +6,7 @@ import { getCompanyProfile, type CompanyProfile } from "@/api/companyprofile";
 import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
+import ProfileImageUploader from "@/components/ProfileImageUploader";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -128,11 +129,10 @@ export default function CompanyProfile() {
                 outlineOffset: 0,
               }}
             >
-              <Image
-                src="/company-logo.png"
-                alt={`${company.company_name} logo`}
-                fill
-                className="object-cover"
+              <ProfileImageUploader
+                kind="company"
+                initialUrl={null}
+                onUpdated={() => { /* no-op: company profile fetch separate; keep current view */ }}
               />
             </div>
 

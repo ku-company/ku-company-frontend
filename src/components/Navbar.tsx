@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_EVENT } from "@/api/profileimage";
 import RoleSelector from "@/components/roleselector";
 
 function NavItem({ href, label }: { href: string; label: string }) {
@@ -25,6 +26,7 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -34,6 +36,33 @@ export default function Navbar() {
     if (dropdownOpen) document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
+
+  // Load profile image for navbar based on role
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!user) { setAvatarUrl(null); return; }
+      try {
+        const role = (user.role || "").toLowerCase();
+        const url = role.includes("company")
+          ? await getCompanyProfileImage()
+          : await getEmployeeProfileImage();
+        if (!cancelled) setAvatarUrl(url || null);
+      } catch {
+        if (!cancelled) setAvatarUrl(null);
+      }
+    }
+    load();
+    const onUpdated = (e: any) => {
+      const u = e?.detail?.url as string | undefined;
+      if (u) setAvatarUrl(u);
+    };
+    window.addEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+    };
+  }, [user]);
 
   function handleLogout() {
     logout();
@@ -77,7 +106,7 @@ export default function Navbar() {
                   aria-expanded={dropdownOpen ? "true" : "false"}
                 >
                   <img
-                    src="/icons/default-profile.png"
+                    src={avatarUrl || "/icons/default-profile.png"}
                     alt={`${user.user_name} avatar`}
                     className="w-full h-full object-cover"
                   />
