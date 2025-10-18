@@ -116,15 +116,15 @@ export default function Markdown({ content, className }: Props) {
   flushCode(); flushList(); flushPara();
 
   return (
-    <div className={className}>
+    <div className={(className ? className + " " : "") + "break-words"}>
       {blocks.map((b, i) => {
         switch (b.type) {
           case "p":
-            return <p key={i} className="whitespace-pre-wrap">{b.text.map((t, j) => <React.Fragment key={j}>{renderInline(t)}{j < b.text.length - 1 ? "\n" : null}</React.Fragment>)}</p>;
+            return <p key={i} className="whitespace-pre-wrap break-words">{b.text.map((t, j) => <React.Fragment key={j}>{renderInline(t)}{j < b.text.length - 1 ? "\n" : null}</React.Fragment>)}</p>;
           case "ul":
             return (
               <ul key={i} className="list-disc pl-5 space-y-1">
-                {b.items.map((it, j) => <li key={j}>{renderInline(it)}</li>)}
+                {b.items.map((it, j) => <li key={j} className="break-words">{renderInline(it)}</li>)}
               </ul>
             );
           case "code":
@@ -140,11 +140,10 @@ export default function Markdown({ content, className }: Props) {
             const L = b.type;
             const Tag = L as any;
             const cls = "text-gray-900 font-semibold" + (L === "h1" ? " text-2xl" : L === "h2" ? " text-xl" : L === "h3" ? " text-lg" : "");
-            return <Tag key={i} className={cls}>{renderInline(b.text)}</Tag>;
+            return <Tag key={i} className={cls + " break-words"}>{renderInline(b.text)}</Tag>;
           }
         }
       })}
     </div>
   );
 }
-

@@ -28,6 +28,39 @@ function toCleanText(v: unknown): string {
   }
 }
 
+// Structured types for richer editing in the modal
+type WorkItem = {
+  company: string;
+  role: string;
+  start: string; // YYYY-MM or YYYY-MM-DD
+  end?: string;  // empty = present
+  description?: string;
+};
+
+type SkillLevel = "Bad" | "Fair" | "Well";
+type LanguageLevel = "Fair" | "Good" | "Fluent" | "Native";
+
+type SkillEntry = { name: string; level: SkillLevel };
+type LanguageEntry = { name: string; level: LanguageLevel };
+type EducationEntry = {
+  school: string;
+  degree?: string;
+  field?: string;
+  start?: string; // YYYY-MM
+  end?: string;   // YYYY-MM
+  description?: string;
+};
+
+function parseJSONSafe<T>(raw: unknown): T | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const v = JSON.parse(raw);
+    return v as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function EditStudentProfileModal({
   isOpen,
   onClose,
@@ -38,10 +71,16 @@ export default function EditStudentProfileModal({
   const [education, setEducation] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [summary, setSummary] = useState("");
-  const [skills, setSkills] = useState("");
-  const [experience, setExperience] = useState("");
+  // Rich editors state
+  const [skills, setSkills] = useState<string>(""); // keeps raw text for fallback display only
+  const [languages, setLanguages] = useState<string>(""); // raw text fallback
+  const [experience, setExperience] = useState<string>(""); // raw text fallback
+
+  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+  const [skillList, setSkillList] = useState<SkillEntry[]>([]);
+  const [languageList, setLanguageList] = useState<LanguageEntry[]>([]);
+  const [educationList, setEducationList] = useState<EducationEntry[]>([]);
   const [contactInfo, setContactInfo] = useState("");
-  const [languages, setLanguages] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,20 +101,55 @@ export default function EditStudentProfileModal({
     setEducation(toCleanText(initial?.education));
     setBirthDate(initial?.birthday ?? "");
     setSummary(initial?.bio ?? "");
-    setSkills(toCleanText(initial?.skills));
-    // These two might not exist in your flattened profile yet; default to empty
-    setExperience(toCleanText((initial as any)?.experience));
+    // Raw strings for backward compatibility / preview
+    const rawSkills = toCleanText(initial?.skills);
+    const rawLanguages = toCleanText(initial?.languages);
+    const rawExperience = toCleanText((initial as any)?.experience);
+
+    setSkills(rawSkills);
+    setLanguages(rawLanguages);
+    setExperience(rawExperience);
     setContactInfo(toCleanText((initial as any)?.contactInfo));
-    setLanguages(toCleanText(initial?.languages));
+
+    // Try to parse JSON for rich editors; if parsing fails, start with empty structures
+    const parsedEdu = parseJSONSafe<EducationEntry[]>(toCleanText(initial?.education)) ?? [];
+    const parsedWork = parseJSONSafe<WorkItem[]>(rawExperience) ?? [];
+    const parsedSkills = parseJSONSafe<SkillEntry[] | Record<string, SkillLevel>>(rawSkills);
+    const parsedLangs = parseJSONSafe<LanguageEntry[] | Record<string, LanguageLevel>>(rawLanguages);
+
+    setEducationList(Array.isArray(parsedEdu) ? parsedEdu : []);
+    setWorkItems(Array.isArray(parsedWork) ? parsedWork : []);
+
+    if (Array.isArray(parsedSkills)) {
+      setSkillList(parsedSkills);
+    } else if (parsedSkills && typeof parsedSkills === "object") {
+      setSkillList(Object.entries(parsedSkills).map(([name, level]) => ({ name, level: (level as SkillLevel) })));
+    } else {
+      setSkillList([]);
+    }
+
+    if (Array.isArray(parsedLangs)) {
+      setLanguageList(parsedLangs);
+    } else if (parsedLangs && typeof parsedLangs === "object") {
+      setLanguageList(Object.entries(parsedLangs).map(([name, level]) => ({ name, level: (level as LanguageLevel) })));
+    } else {
+      setLanguageList([]);
+    }
 
     setTimeout(() => firstFieldRef.current?.focus(), 0);
   }, [isOpen, initial]);
 
   const canSave = useMemo(
     () =>
-      [education, birthDate, summary, skills, experience, contactInfo, languages]
-        .some((v) => (v ?? "").trim().length > 0),
-    [education, birthDate, summary, skills, experience, contactInfo, languages]
+      [
+        summary,
+        contactInfo,
+        JSON.stringify(workItems),
+        JSON.stringify(educationList),
+        JSON.stringify(skillList),
+        JSON.stringify(languageList),
+      ].some((v) => (v ?? "").toString().trim().length > 0),
+    [summary, contactInfo, workItems, educationList, skillList, languageList]
   );
 
   async function handleSave() {
@@ -83,15 +157,22 @@ export default function EditStudentProfileModal({
     setSaving(true);
     setError(null);
 
+    // Backend expects strings. Convert rich data to JSON strings.
+    const skillsString = skillList.length ? JSON.stringify(skillList) : undefined;
+    const languagesString = languageList.length ? JSON.stringify(languageList) : undefined;
+    const experienceString = workItems.length ? JSON.stringify(workItems) : undefined;
+
     // Backend expects strings for these fields
+    const educationString = educationList.length ? JSON.stringify(educationList) : undefined;
+
     const payload: StudentProfileEditPayload = {
-      education: education.trim() || undefined,
+      education: educationString,
       birthDate: birthDate.trim() || undefined,
       summary: summary.trim() || undefined,
-      skills: skills.trim() || undefined,
-      experience: experience.trim() || undefined,
+      skills: skillsString,
+      experience: experienceString,
       contactInfo: contactInfo.trim() || undefined,
-      languages: languages.trim() || undefined,
+      languages: languagesString,
     };
 
     console.log("[EditStudentProfileModal] PATCH payload:", payload);
@@ -135,15 +216,283 @@ export default function EditStudentProfileModal({
 
             {/* Body */}
             <div className="space-y-4 px-5 py-5">
+              {/* Personal Summary */}
               <div className="grid gap-2">
-                <label className="text-sm font-medium">Education</label>
+                <label className="text-sm font-medium">Personal Summary</label>
                 <textarea
                   ref={firstFieldRef}
-                  className="h-20 rounded-md border px-3 py-2 text-sm"
-                  placeholder="Bachelor of Computer Engineering, Kasetsart University"
-                  value={education}
-                  onChange={(e) => setEducation(e.target.value)}
+                  className="h-24 rounded-md border px-3 py-2 text-sm"
+                  placeholder="Write a short summary about yourself"
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
                 />
+              </div>
+
+              {/* Contact */}
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Contact</label>
+                <textarea
+                  className="h-16 rounded-md border px-3 py-2 text-sm"
+                  placeholder="name@example.com | +66 ... | Bangkok, Thailand"
+                  value={contactInfo}
+                  onChange={(e) => setContactInfo(e.target.value)}
+                />
+              </div>
+
+              {/* Work History timeline editor */}
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Work History</label>
+                <div className="space-y-3">
+                  {workItems.map((w, idx) => (
+                    <div key={idx} className="rounded-md border p-3 space-y-2">
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Company / Organization"
+                          value={w.company}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, company: v } : it));
+                          }}
+                        />
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Role / Title"
+                          value={w.role}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, role: v } : it));
+                          }}
+                        />
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          type="month"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Start (YYYY-MM)"
+                          value={w.start}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, start: v } : it));
+                          }}
+                        />
+                        <input
+                          type="month"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="End (YYYY-MM) or empty for Present"
+                          value={w.end || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, end: v || undefined } : it));
+                          }}
+                        />
+                      </div>
+                      <textarea
+                        className="h-16 w-full rounded-md border px-3 py-2 text-sm"
+                        placeholder="Short description / achievements"
+                        value={w.description || ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, description: v } : it));
+                        }}
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
+                          onClick={() => setWorkItems((items) => items.filter((_, i) => i !== idx))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                    onClick={() => setWorkItems((items) => [...items, { company: "", role: "", start: "", end: undefined, description: "" }])}
+                  >
+                    Add Work Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Education editor (structured) */}
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Education</label>
+                <div className="space-y-3">
+                  {educationList.map((ed, idx) => (
+                    <div key={idx} className="rounded-md border p-3 space-y-2">
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="School / University"
+                          value={ed.school}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEducationList((list) => list.map((it, i) => i === idx ? { ...it, school: v } : it));
+                          }}
+                        />
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Degree (e.g., B.Eng.)"
+                          value={ed.degree || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEducationList((list) => list.map((it, i) => i === idx ? { ...it, degree: v } : it));
+                          }}
+                        />
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Field of study (e.g., Computer Engineering)"
+                          value={ed.field || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setEducationList((list) => list.map((it, i) => i === idx ? { ...it, field: v } : it));
+                          }}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="month"
+                            className="rounded-md border px-3 py-2 text-sm"
+                            placeholder="Start"
+                            value={ed.start || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setEducationList((list) => list.map((it, i) => i === idx ? { ...it, start: v } : it));
+                            }}
+                          />
+                          <input
+                            type="month"
+                            className="rounded-md border px-3 py-2 text-sm"
+                            placeholder="End or empty for Present"
+                            value={ed.end || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setEducationList((list) => list.map((it, i) => i === idx ? { ...it, end: v || undefined } : it));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <textarea
+                        className="h-16 w-full rounded-md border px-3 py-2 text-sm"
+                        placeholder="Description / highlights"
+                        value={ed.description || ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setEducationList((list) => list.map((it, i) => i === idx ? { ...it, description: v } : it));
+                        }}
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
+                          onClick={() => setEducationList((list) => list.filter((_, i) => i !== idx))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                    onClick={() => setEducationList((list) => [...list, { school: "", degree: "", field: "", start: "", end: "", description: "" }])}
+                  >
+                    Add Education
+                  </button>
+                </div>
+              </div>
+
+              {/* Skills editor (structured) */}
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Skills</label>
+                <div className="space-y-2">
+                  {skillList.map((s, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 rounded-md border px-3 py-2 text-sm"
+                        placeholder="Skill (e.g., React)"
+                        value={s.name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
+                        }}
+                      />
+                      <select
+                        className="rounded-md border px-2 py-2 text-sm"
+                        value={s.level}
+                        onChange={(e) => {
+                          const v = e.target.value as SkillLevel;
+                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
+                        }}
+                      >
+                        <option>Bad</option>
+                        <option>Fair</option>
+                        <option>Well</option>
+                      </select>
+                      <button
+                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        onClick={() => setSkillList((list) => list.filter((_, i) => i !== idx))}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                      onClick={() => setSkillList((list) => [...list, { name: "", level: "Fair" }])}
+                    >
+                      Add Skill
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Languages editor (structured) */}
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Languages</label>
+                <div className="space-y-2">
+                  {languageList.map((l, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 rounded-md border px-3 py-2 text-sm"
+                        placeholder="Language (e.g., English)"
+                        value={l.name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
+                        }}
+                      />
+                      <select
+                        className="rounded-md border px-2 py-2 text-sm"
+                        value={l.level}
+                        onChange={(e) => {
+                          const v = e.target.value as LanguageLevel;
+                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
+                        }}
+                      >
+                        <option>Fair</option>
+                        <option>Good</option>
+                        <option>Fluent</option>
+                        <option>Native</option>
+                      </select>
+                      <button
+                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        onClick={() => setLanguageList((list) => list.filter((_, i) => i !== idx))}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                      onClick={() => setLanguageList((list) => [...list, { name: "", level: "Fair" }])}
+                    >
+                      Add Language
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
@@ -168,24 +517,128 @@ export default function EditStudentProfileModal({
                 />
               </div>
 
+              {/* Skills editor (structured) */}
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Skills</label>
-                <textarea
-                  className="h-20 rounded-md border px-3 py-2 text-sm"
-                  placeholder="Python, Django, React, TypeScript, PostgreSQL"
-                  value={skills}
-                  onChange={(e) => setSkills(e.target.value)}
-                />
+                <div className="space-y-2">
+                  {skillList.map((s, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 rounded-md border px-3 py-2 text-sm"
+                        placeholder="Skill (e.g., React)"
+                        value={s.name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
+                        }}
+                      />
+                      <select
+                        className="rounded-md border px-2 py-2 text-sm"
+                        value={s.level}
+                        onChange={(e) => {
+                          const v = e.target.value as SkillLevel;
+                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
+                        }}
+                      >
+                        <option>Bad</option>
+                        <option>Fair</option>
+                        <option>Well</option>
+                      </select>
+                      <button
+                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        onClick={() => setSkillList((list) => list.filter((_, i) => i !== idx))}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                      onClick={() => setSkillList((list) => [...list, { name: "", level: "Fair" }])}
+                    >
+                      Add Skill
+                    </button>
+                  </div>
+                </div>
               </div>
 
+              {/* Work history timeline editor */}
               <div className="grid gap-2">
-                <label className="text-sm font-medium">Experience</label>
-                <textarea
-                  className="h-24 rounded-md border px-3 py-2 text-sm"
-                  placeholder="Software Developer at TechSoft Co. (2022–2024)…"
-                  value={experience}
-                  onChange={(e) => setExperience(e.target.value)}
-                />
+                <label className="text-sm font-medium">Work History</label>
+                <div className="space-y-3">
+                  {workItems.map((w, idx) => (
+                    <div key={idx} className="rounded-md border p-3 space-y-2">
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Company / Organization"
+                          value={w.company}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, company: v } : it));
+                          }}
+                        />
+                        <input
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Role / Title"
+                          value={w.role}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, role: v } : it));
+                          }}
+                        />
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        <input
+                          type="month"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="Start (YYYY-MM)"
+                          value={w.start}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, start: v } : it));
+                          }}
+                        />
+                        <input
+                          type="month"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          placeholder="End (YYYY-MM) or empty for Present"
+                          value={w.end || ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, end: v || undefined } : it));
+                          }}
+                        />
+                      </div>
+                      <textarea
+                        className="h-16 w-full rounded-md border px-3 py-2 text-sm"
+                        placeholder="Short description / achievements"
+                        value={w.description || ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setWorkItems((items) => items.map((it, i) => i === idx ? { ...it, description: v } : it));
+                        }}
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
+                          onClick={() => setWorkItems((items) => items.filter((_, i) => i !== idx))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                    onClick={() => setWorkItems((items) => [...items, { company: "", role: "", start: "", end: undefined, description: "" }])}
+                  >
+                    Add Work Item
+                  </button>
+                  <div>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -198,14 +651,52 @@ export default function EditStudentProfileModal({
                 />
               </div>
 
+              {/* Languages editor (structured) */}
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Languages</label>
-                <textarea
-                  className="h-16 rounded-md border px-3 py-2 text-sm"
-                  placeholder="English, Thai"
-                  value={languages}
-                  onChange={(e) => setLanguages(e.target.value)}
-                />
+                <div className="space-y-2">
+                  {languageList.map((l, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 rounded-md border px-3 py-2 text-sm"
+                        placeholder="Language (e.g., English)"
+                        value={l.name}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
+                        }}
+                      />
+                      <select
+                        className="rounded-md border px-2 py-2 text-sm"
+                        value={l.level}
+                        onChange={(e) => {
+                          const v = e.target.value as LanguageLevel;
+                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
+                        }}
+                      >
+                        <option>Fair</option>
+                        <option>Good</option>
+                        <option>Fluent</option>
+                        <option>Native</option>
+                      </select>
+                      <button
+                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        onClick={() => setLanguageList((list) => list.filter((_, i) => i !== idx))}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
+                      onClick={() => setLanguageList((list) => [...list, { name: "", level: "Fair" }])}
+                    >
+                      Add Language
+                    </button>
+                  </div>
+                  
+                </div>
               </div>
 
               {error && (

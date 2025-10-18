@@ -43,6 +43,21 @@ function toCleanText(v: unknown): string {
   try { return String(v); } catch { return ""; }
 }
 
+// Rich content types parsed from backend strings
+type WorkItem = { company: string; role: string; start: string; end?: string; description?: string };
+type SkillEntry = { name: string; level: "Bad" | "Fair" | "Well" };
+type LanguageEntry = { name: string; level: "Fair" | "Good" | "Fluent" | "Native" };
+type EducationEntry = { school: string; degree?: string; field?: string; start?: string; end?: string; description?: string };
+
+function parseJSONSafe<T>(raw: unknown): T | null {
+  if (typeof raw !== 'string') return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 function InfoRow({
   icon, label, value, href,
 }: {
@@ -107,6 +122,30 @@ export default function StudentProfileView() {
   const languages = profile?.languages || "";
   const experience = profile?.experience || "";
   const contactInfo = toCleanText((profile as any)?.contactInfo);
+
+  // Parse JSON-encoded fields back to usable structures
+  const workItems: WorkItem[] = Array.isArray(parseJSONSafe<WorkItem[]>(experience))
+    ? (parseJSONSafe<WorkItem[]>(experience) as WorkItem[])
+    : [];
+  const educationListArr: EducationEntry[] = Array.isArray(parseJSONSafe<EducationEntry[]>(education))
+    ? (parseJSONSafe<EducationEntry[]>(education) as EducationEntry[])
+    : [];
+  const skillListArr: SkillEntry[] = (() => {
+    const parsed = parseJSONSafe<SkillEntry[] | Record<string, SkillEntry['level']>>(skills);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      return Object.entries(parsed).map(([name, level]) => ({ name, level: level as SkillEntry['level'] }));
+    }
+    return [];
+  })();
+  const languageListArr: LanguageEntry[] = (() => {
+    const parsed = parseJSONSafe<LanguageEntry[] | Record<string, LanguageEntry['level']>>(languages);
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') {
+      return Object.entries(parsed).map(([name, level]) => ({ name, level: level as LanguageEntry['level'] }));
+    }
+    return [];
+  })();
 
   // Work History overflow handling + modal
   const [workMaxH, setWorkMaxH] = useState<number | undefined>(undefined);
@@ -309,7 +348,7 @@ export default function StudentProfileView() {
               )}
             </div>
 
-            {/* Work / Projects (placeholder) */}
+            {/* Work History */}
             <div
               ref={(el) => setWorkCardEl(el)}
               className="relative rounded-2xl border bg-white p-6 shadow-sm flex flex-col md:min-h-[19.5em]"
@@ -320,10 +359,31 @@ export default function StudentProfileView() {
 
               <div
                 ref={(el) => setWorkContentEl(el)}
-                className="mt-4 text-sm flex-1"
+                className="mt-4 text-base flex-1"
                 style={workMaxH ? { maxHeight: workMaxH, overflow: 'hidden' } as any : undefined}
               >
-                {experience && experience.trim() ? (
+                {workItems.length > 0 ? (
+                  <ol className="relative border-s ps-4">
+                    {workItems.map((w, idx) => (
+                      <li key={idx} className="mb-6 ms-4">
+                        <div className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border bg-white" style={{ borderColor: GREEN }} />
+                        <div className="flex items-center gap-2 text-gray-900 font-medium">
+                          <span>{w.role || "Role"}</span>
+                          <span className="text-gray-500">@</span>
+                          <span>{w.company || "Company"}</span>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {(w.start || "").toString()} – {(w.end && w.end.trim()) ? w.end : "Present"}
+                        </div>
+                        {w.description && (
+                          <div className="mt-2 text-gray-700">
+                            <Markdown content={w.description} />
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                ) : experience && experience.trim() ? (
                   <Markdown content={experience} className="text-gray-800" />
                 ) : (
                   <p className="text-gray-600">No work history yet.</p>
@@ -369,7 +429,27 @@ export default function StudentProfileView() {
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <CornerIcon title="Edit education" disabled={!canEdit} />
             <PillHeading>Education</PillHeading>
-            {education && education.trim() ? (
+            {educationListArr.length > 0 ? (
+              <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800 space-y-3" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
+                {educationListArr.map((ed, idx) => (
+                  <div key={idx}>
+                    <div className="font-medium text-gray-900">
+                      {(ed.degree ? ed.degree + (ed.field ? `, ${ed.field}` : '') : (ed.field || '')) || 'Education'}
+                      <span className="text-gray-500"> @ </span>
+                      {ed.school || 'School'}
+                    </div>
+                    {(ed.start || ed.end) && (
+                      <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                    )}
+                    {ed.description && (
+                      <div className="mt-1 text-gray-700">
+                        <Markdown content={ed.description} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : education && education.trim() ? (
               <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 <Markdown content={education} />
               </div>
@@ -390,7 +470,16 @@ export default function StudentProfileView() {
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <CornerIcon title="Edit skills" disabled={!canEdit} />
             <PillHeading>Skills</PillHeading>
-            {skills && skills.trim() ? (
+            {skillListArr.length > 0 ? (
+              <div ref={el => setSkillsEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
+                {skillListArr.map((s, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="font-medium">{s.name}</span>
+                    <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{s.level}</span>
+                  </div>
+                ))}
+              </div>
+            ) : skills && skills.trim() ? (
               <div ref={el => setSkillsEl(el)} className="mt-3 text-sm text-gray-800" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 <Markdown content={skills} />
               </div>
@@ -432,7 +521,16 @@ export default function StudentProfileView() {
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <CornerIcon title="Edit languages" disabled={!canEdit} />
             <PillHeading>Languages</PillHeading>
-            {languages && languages.trim() ? (
+            {languageListArr.length > 0 ? (
+              <div ref={el => setLangEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
+                {languageListArr.map((l, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="font-medium">{l.name}</span>
+                    <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{l.level}</span>
+                  </div>
+                ))}
+              </div>
+            ) : languages && languages.trim() ? (
               <div ref={el => setLangEl(el)} className="mt-3 text-sm text-gray-800" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 <Markdown content={languages} />
               </div>
