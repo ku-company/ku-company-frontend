@@ -44,7 +44,7 @@ export async function getAllApplications() {
       day: "numeric",
       year: "numeric",
     }),
-    resumeLink: app.resume_url,
+    resumeLink: app.resume_url ?? "",
     status: app.company_send_status
   }));
 
