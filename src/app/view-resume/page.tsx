@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getAllApplications, updateApplicationStatus } from "@/api/companyapplications";
+
 
 type Application = {
   id: number;
@@ -12,44 +14,13 @@ type Application = {
 };
 
 export default function ResumeInApplicationPage() {
-  const [applications, setApplications] = useState<Application[]>([
-    {
-      id: 1,
-      name: "Smith Samantha",
-      email: "smith.op@ku.th",
-      position: "Machine Learning Engineer",
-      appliedDate: "Oct 1, 2025",
-      resumeLink: "#",
-      status: "Approved",
-    },
-    {
-      id: 2,
-      name: "John Tan",
-      email: "emily.chen@ku.th",
-      position: "Machine Learning Developer",
-      appliedDate: "Sep 27, 2025",
-      resumeLink: "#",
-      status: "Rejected",
-    },
-    {
-      id: 3,
-      name: "John Tan",
-      email: "john.tan@ku.th",
-      position: "Backend Developer",
-      appliedDate: "Sep 20, 2025",
-      resumeLink: "#",
-      status: "Approved",
-    },
-    {
-      id: 4,
-      name: "Michael Wong",
-      email: "michael.wong@ku.th",
-      position: "Data Analyst",
-      appliedDate: "Sep 18, 2025",
-      resumeLink: "#",
-      status: "Pending",
-    },
-  ]);
+  const [applications, setApplications] = useState<Application[]>([]);
+
+  useEffect(() => {
+    getAllApplications()
+      .then((data) => setApplications(data))
+      .catch((err) => console.error("Failed to fetch applications:", err));
+  }, []);
 
   // state for filter
   const [filter, setFilter] = useState<"All Positions" | "Approved" | "Rejected" | "Pending">(
@@ -62,6 +33,18 @@ export default function ResumeInApplicationPage() {
         app.id === id ? { ...app, status: newStatus } : app
       )
     );
+    try {
+      updateApplicationStatus(id, newStatus);
+    } catch (error) {
+      console.error("Failed to update application status:", error);
+
+      // revert UI change on error
+      setApplications((prev) =>
+      prev.map((app) =>
+        app.id === id ? { ...app, status: "Pending" } : app
+      )
+    );
+    }
   };
 
   // filter logic
