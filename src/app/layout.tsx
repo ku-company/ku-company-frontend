@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar"; // <- keep relative path (src/components/Navbar)
-import { AuthProvider } from "@/context/AuthContext";
-import BootstrapSession from "@/components/auth/BootstrapSession";
 
+import { AuthProvider } from "@/context/AuthContext";
+import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
+
+// Font setup
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -22,11 +23,13 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 
+// Metadata
 export const metadata: Metadata = {
   title: "KU-COMPANY",
   description: "Job portal for CPE & SKE students",
 };
 
+// Root layout
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -41,14 +44,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gray-50 text-gray-900`}
       >
-        {/* Wrap everything with AuthProvider */}
+        {/* Provide authentication context to all pages */}
         <AuthProvider>
-          <BootstrapSession />
-          {/* Global top navigation */}
-          <Navbar />
-
-          {/* Page content */}
-          <main className="min-h-screen">{children}</main>
+          {/* Dynamically render layout and navbar based on user role */}
+          <ClientLayout>
+            {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
+            <main className="min-h-screen pt-[70px]">{children}</main>
+          </ClientLayout>
         </AuthProvider>
       </body>
     </html>
