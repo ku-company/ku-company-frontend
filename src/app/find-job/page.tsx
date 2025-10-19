@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
+import { getResumes } from "@/api/resumes"; 
 
 type Job = {
   id: number;
@@ -17,6 +18,13 @@ type Job = {
   };
 };
 
+type Resume = {
+  id: string;
+  name: string;
+  updatedAt?: string;
+  size?: string;
+};
+
 const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -30,7 +38,11 @@ export default function FindJobPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resumes, setResumes] = useState<Resume[]>([]); // ✅ resume state
 
+  // -------------------------------
+  // Utility: fetch with token safely
+  // -------------------------------
   const authFetch = async (url: string) => {
     const token = localStorage.getItem("access_token");
     const res = await fetch(url, {
@@ -58,6 +70,9 @@ export default function FindJobPage() {
     }
   };
 
+  // -------------------------------
+  // Load dropdowns (category + jobType)
+  // -------------------------------
   useEffect(() => {
     async function fetchDropdowns() {
       try {
@@ -87,6 +102,9 @@ export default function FindJobPage() {
     fetchDropdowns();
   }, []);
 
+  // -------------------------------
+  // Fetch job postings
+  // -------------------------------
   const fetchJobs = async () => {
     setLoading(true);
     try {
@@ -124,21 +142,62 @@ export default function FindJobPage() {
     }
   };
 
+  // -------------------------------
+  // Fetch resumes from backend
+  // -------------------------------
+  const fetchResumes = async () => {
+    try {
+      const data = await getResumes();
+      const resumeList = Array.isArray(data)
+        ? data
+        : data.data || data.resumes || [];
+      const mapped = resumeList.map((r: any) => ({
+        id: String(r.id),
+        name: r.file_name || r.name || "Unnamed Resume",
+        updatedAt: r.updated_at
+          ? `Updated ${new Date(r.updated_at).toLocaleDateString()}`
+          : undefined,
+        size: r.size ? `${(r.size / 1024).toFixed(1)} KB` : undefined,
+      }));
+      setResumes(mapped);
+    } catch (err) {
+      console.error("Failed to fetch resumes", err);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
+    fetchResumes();
   }, []);
 
+  // -------------------------------
+  // Selected job
+  // -------------------------------
   const selected = jobs.find((j) => j.id === selectedId) ?? null;
 
-  const handleApply = (payload: { mode: "existing" | "upload"; resumeId?: string; file?: File }) => {
+  // -------------------------------
+  // Apply handler
+  // -------------------------------
+  const handleApply = (payload: {
+    mode: "existing" | "upload";
+    resumeId?: string;
+    file?: File;
+  }) => {
     console.log("Submit application", { jobId: selected?.id, ...payload });
     setIsApplyOpen(false);
     alert("Application submitted! (Check console for payload)");
   };
 
+  // -------------------------------
+  // Render
+  // -------------------------------
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      <section className="rounded-2xl border bg-white p-3 sm:p-4 shadow-sm" style={{ borderColor: GREEN }}>
+      {/* Search Bar */}
+      <section
+        className="rounded-2xl border bg-white p-3 sm:p-4 shadow-sm"
+        style={{ borderColor: GREEN }}
+      >
         <div className="flex flex-wrap items-center gap-3">
           <input
             value={keyword}
@@ -214,6 +273,7 @@ export default function FindJobPage() {
         </div>
       </section>
 
+      {/* Job list + detail panel */}
       <div className="mt-6 grid gap-6 lg:grid-cols-[420px,1fr]">
         <aside className="space-y-3">
           {loading ? (
@@ -255,6 +315,7 @@ export default function FindJobPage() {
           )}
         </aside>
 
+        {/* Right panel */}
         <section
           className="rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
           style={{ borderColor: GREEN }}
@@ -296,24 +357,12 @@ export default function FindJobPage() {
         </section>
       </div>
 
+      {/* Apply Modal */}
       <ApplyModal
         isOpen={isApplyOpen}
         onClose={() => setIsApplyOpen(false)}
         onSubmit={handleApply}
-        resumes={[
-          {
-            id: "r1",
-            name: "Ann-Montakarn-Resume.pdf",
-            updatedAt: "Updated 2 days ago",
-            size: "214 KB",
-          },
-          {
-            id: "r2",
-            name: "Ann-Data-Engineer-CV.pdf",
-            updatedAt: "Updated 2 months ago",
-            size: "198 KB",
-          },
-        ]}
+        resumes={resumes} // ✅ connected to backend
         jobTitle={selected?.position}
         brandColor={GREEN}
       />
