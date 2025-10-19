@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import CompanyNavbar from "@/components/CompanyNavbar"; 
 
 /* -------------------- Brand color -------------------- */
