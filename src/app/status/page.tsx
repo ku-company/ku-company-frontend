@@ -20,13 +20,13 @@ export default function AppliedCompanyStatusPage() {
   useEffect(() => {
     const fetchApplications = async () => {
       if (!user?.access_token) {
-        console.warn("No token found in user context. Please log in first.");
+        console.warn("⚠️ No token found in user context. Please log in first.");
         setLoading(false);
         return;
       }
 
-      console.log("Starting fetchApplications...");
-      console.log("Using token:", user.access_token);
+      console.log("🚀 Starting fetchApplications...");
+      console.log("🔑 Using token:", user.access_token);
 
       try {
         const res = await fetch(`${BASE_URL}/employee/my-applications`, {
@@ -37,33 +37,43 @@ export default function AppliedCompanyStatusPage() {
           },
         });
 
-        console.log("Response received. Status:", res.status);
+        console.log("📨 Response received. Status:", res.status);
 
         if (!res.ok) {
           const text = await res.text();
-          console.error("Request failed:", res.status, text);
+
+          // ✅ Handle case: "No applications found"
+          if (res.status === 400 && text.includes("No applications found")) {
+            console.warn("ℹ️ No applications found for this user.");
+            setApplications([]); // safe fallback
+            setLoading(false);
+            return;
+          }
+
+          console.error("❌ Request failed:", res.status, text);
+          setLoading(false);
           return;
         }
 
         const data = await res.json();
-        console.log("Application data fetched successfully:", data);
+        console.log("✅ Application data fetched successfully:", data);
         setApplications(data);
       } catch (err) {
-        console.error("Error while fetching applications:", err);
+        console.error("🔥 Error while fetching applications:", err);
       } finally {
         setLoading(false);
-        console.log("Fetch complete.");
+        console.log("✅ Fetch complete.");
       }
     };
 
     fetchApplications();
   }, [user]);
 
-  // Handle confirm button click
+  // ──────────────────────── Confirm handler ────────────────────────
   const handleConfirm = async (id: number) => {
     if (!user?.access_token) return;
 
-    console.log("Confirming job application:", id);
+    console.log("🟢 Confirming job application:", id);
     try {
       const res = await fetch(`${BASE_URL}/company/job-applications/${id}/confirm`, {
         method: "POST",
@@ -83,17 +93,17 @@ export default function AppliedCompanyStatusPage() {
       setApplications((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: "Confirmed" } : a))
       );
-      console.log("Confirmed successfully.");
+      console.log("✅ Confirmed successfully.");
     } catch (err) {
       console.error("Confirm error:", err);
     }
   };
 
-  // Handle cancel button click
+  // ──────────────────────── Cancel handler ────────────────────────
   const handleCancel = async (id: number) => {
     if (!user?.access_token) return;
 
-    console.log("Cancelling job application:", id);
+    console.log("🔴 Cancelling job application:", id);
     try {
       const res = await fetch(`${BASE_URL}/employee/cancel-application/${id}`, {
         method: "DELETE",
@@ -113,13 +123,13 @@ export default function AppliedCompanyStatusPage() {
       setApplications((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: "Declined" } : a))
       );
-      console.log("Cancelled successfully.");
+      console.log("✅ Cancelled successfully.");
     } catch (err) {
       console.error("Cancel error:", err);
     }
   };
 
-  // Component for displaying status label
+  // ──────────────────────── Status badge ────────────────────────
   const StatusBadge = ({ status }: { status: Application["status"] }) => {
     const base = "px-3 py-1 rounded-md text-sm font-semibold";
     if (status === "Offered")
@@ -141,7 +151,7 @@ export default function AppliedCompanyStatusPage() {
     );
   };
 
-  // Loading state
+  // ──────────────────────── Loading State ────────────────────────
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
@@ -152,7 +162,7 @@ export default function AppliedCompanyStatusPage() {
       </div>
     );
 
-  // Display if user not logged in
+  // ──────────────────────── Not Logged In ────────────────────────
   if (!user?.access_token)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
@@ -160,7 +170,7 @@ export default function AppliedCompanyStatusPage() {
       </div>
     );
 
-  // Main content
+  // ──────────────────────── Main UI ────────────────────────
   return (
     <main className="min-h-screen bg-gray-50 py-10 font-sans">
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-10 border border-gray-100">
