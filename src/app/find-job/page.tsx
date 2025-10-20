@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
-import { getResumes } from "@/api/resumes"; 
+import { listResumes, uploadResume } from "@/api/resume";
+import { applyToJob } from "@/api/jobs";
 
 type Job = {
   id: number;
@@ -147,17 +148,10 @@ export default function FindJobPage() {
   // -------------------------------
   const fetchResumes = async () => {
     try {
-      const data = await getResumes();
-      const resumeList = Array.isArray(data)
-        ? data
-        : data.data || data.resumes || [];
-      const mapped = resumeList.map((r: any) => ({
+      const resumeList = await listResumes();
+      const mapped = (resumeList || []).map((r: any) => ({
         id: String(r.id),
-        name: r.file_name || r.name || "Unnamed Resume",
-        updatedAt: r.updated_at
-          ? `Updated ${new Date(r.updated_at).toLocaleDateString()}`
-          : undefined,
-        size: r.size ? `${(r.size / 1024).toFixed(1)} KB` : undefined,
+        name: r.name || "Unnamed Resume",
       }));
       setResumes(mapped);
     } catch (err) {
@@ -178,14 +172,46 @@ export default function FindJobPage() {
   // -------------------------------
   // Apply handler
   // -------------------------------
-  const handleApply = (payload: {
+  const handleApply = async (payload: {
     mode: "existing" | "upload";
     resumeId?: string;
     file?: File;
   }) => {
-    console.log("Submit application", { jobId: selected?.id, ...payload });
-    setIsApplyOpen(false);
-    alert("Application submitted! (Check console for payload)");
+    try {
+      if (!selected?.id) {
+        alert("Please select a job first.");
+        return;
+      }
+
+      let resumeIdToUse: number | null = null;
+
+      if (payload.mode === "existing") {
+        if (!payload.resumeId) {
+          alert("Please select a résumé.");
+          return;
+        }
+        resumeIdToUse = parseInt(payload.resumeId, 10);
+      } else if (payload.mode === "upload") {
+        if (!payload.file) {
+          alert("Please choose a file to upload.");
+          return;
+        }
+        const uploaded = await uploadResume(payload.file);
+        resumeIdToUse = (uploaded as any)?.id as number;
+      }
+
+      if (!resumeIdToUse) {
+        alert("Unable to determine résumé to use.");
+        return;
+      }
+
+      await applyToJob(selected.id, resumeIdToUse);
+      setIsApplyOpen(false);
+      alert("Application submitted successfully.");
+    } catch (err: any) {
+      console.error("Apply failed", err);
+      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+    }
   };
 
   // -------------------------------
