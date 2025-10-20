@@ -6,6 +6,7 @@ import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
 import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
+import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
 
 type Job = {
@@ -34,6 +35,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 
 export default function FindJobPage() {
   const { user } = useAuth();
+  const { add, contains } = useApplyCart();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<string>("All");
@@ -371,9 +373,11 @@ export default function FindJobPage() {
               >
                 {selected.position}
               </div>
-              <div className="mt-2 text-sm font-semibold">
-                {selected.company?.company_name}, {selected.company?.location}
-              </div>
+              <div className="mt-2 text-sm font-semibold">{
+                [selected.company?.company_name, selected.company?.location]
+                  .filter(Boolean)
+                  .join(', ')
+              }</div>
               <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
               <p className="mt-2 text-xs text-gray-500">
                 Job Type: {selected.jobType}
@@ -386,15 +390,25 @@ export default function FindJobPage() {
                 <div className="mt-6 flex justify-end">
                   {(() => {
                     const isApplied = !!selected && appliedIds.has(selected.id);
+                    const isInCart = !!selected && contains(selected.id);
                     return (
-                      <button
-                        disabled={isApplied}
-                        className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? "opacity-60 cursor-not-allowed" : ""}`}
-                        style={{ backgroundColor: GREEN }}
-                        onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
-                      >
-                        {isApplied ? "APPLIED" : "APPLY"}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={isApplied}
+                          className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          style={{ backgroundColor: GREEN }}
+                          onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
+                        >
+                          {isApplied ? 'APPLIED' : 'APPLY'}
+                        </button>
+                        <button
+                          disabled={isApplied || isInCart}
+                          className={`rounded-full border px-4 py-2 text-sm ${isApplied || isInCart ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                          onClick={() => selected && add(selected)}
+                        >
+                          {isInCart ? 'ADDED' : 'ADD TO LIST'}
+                        </button>
+                      </div>
                     );
                   })()}
                 </div>

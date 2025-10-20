@@ -7,6 +7,7 @@ import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_
 import { getMyStudentProfile } from "@/api/studentprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import RoleSelector from "@/components/roleselector";
+import { useApplyCart } from "@/context/ApplyCartContext";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -25,6 +26,7 @@ function NavItem({ href, label }: { href: string; label: string }) {
 export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { count } = useApplyCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -130,6 +132,22 @@ export default function Navbar() {
               <>
                 {/* Role badge */}
                 <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
+
+                {/* Apply list icon (students only) */}
+                {user?.role?.toLowerCase().includes("student") && (
+                  <Link
+                    href="/apply-list"
+                    className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
+                    aria-label="Apply list"
+                  >
+                    <span role="img" aria-label="apply-list">📝</span>
+                    {count > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
+                        {count}
+                      </span>
+                    )}
+                  </Link>
+                )}
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
