@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
+import { buildInit } from "@/api/base";
+import { useAuth } from "@/context/AuthContext";
+import { listMyApplications } from "@/api/applications";
 
 type Job = {
   id: number;
@@ -30,6 +33,7 @@ const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function FindJobPage() {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<string>("All");
@@ -40,18 +44,13 @@ export default function FindJobPage() {
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]); // ✅ resume state
+  const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
-  // -------------------------------
+  const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+
   // Utility: fetch with token safely
-  // -------------------------------
   const authFetch = async (url: string) => {
-    const token = localStorage.getItem("access_token");
-    const res = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    const res = await fetch(url, buildInit({ credentials: "include" }));
     return res;
   };
 
@@ -71,9 +70,7 @@ export default function FindJobPage() {
     }
   };
 
-  // -------------------------------
   // Load dropdowns (category + jobType)
-  // -------------------------------
   useEffect(() => {
     async function fetchDropdowns() {
       try {
@@ -114,16 +111,10 @@ export default function FindJobPage() {
       if (category !== "All") params.append("category", category);
       if (jobType !== "All") params.append("jobType", jobType);
 
-      const token = localStorage.getItem("access_token");
       const url = `${BASE_URL}/api/job-postings/?${params.toString()}`;
       console.log("Fetching:", url);
 
-      const res = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+      const res = await fetch(url, buildInit({ credentials: "include" }));
 
       if (!res.ok) {
         const text = await res.text();
@@ -161,8 +152,29 @@ export default function FindJobPage() {
 
   useEffect(() => {
     fetchJobs();
-    fetchResumes();
   }, []);
+
+  useEffect(() => {
+    if (canApply) {
+      fetchResumes();
+      (async () => {
+        try {
+          const apps = await listMyApplications();
+          const ids = new Set<number>();
+          (apps || []).forEach((a: any) => {
+            if (typeof a?.job_id === "number") ids.add(a.job_id);
+            else if (typeof a?.job_post?.id === "number") ids.add(a.job_post.id);
+          });
+          setAppliedIds(ids);
+        } catch {
+          // ignore access issues
+        }
+      })();
+    } else {
+      setResumes([]);
+      setAppliedIds(new Set());
+    }
+  }, [canApply]);
 
   // -------------------------------
   // Selected job
@@ -206,6 +218,7 @@ export default function FindJobPage() {
       }
 
       await applyToJob(selected.id, resumeIdToUse);
+      setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
       setIsApplyOpen(false);
       alert("Application submitted successfully.");
     } catch (err: any) {
@@ -369,29 +382,39 @@ export default function FindJobPage() {
                 Available Positions: {selected.available_position}
               </p>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  className="rounded-full px-6 py-2 text-sm font-semibold text-white"
-                  style={{ backgroundColor: GREEN }}
-                  onClick={() => setIsApplyOpen(true)}
-                >
-                  APPLY
-                </button>
-              </div>
+              {canApply && (
+                <div className="mt-6 flex justify-end">
+                  {(() => {
+                    const isApplied = !!selected && appliedIds.has(selected.id);
+                    return (
+                      <button
+                        disabled={isApplied}
+                        className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? "opacity-60 cursor-not-allowed" : ""}`}
+                        style={{ backgroundColor: GREEN }}
+                        onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
+                      >
+                        {isApplied ? "APPLIED" : "APPLY"}
+                      </button>
+                    );
+                  })()}
+                </div>
+              )}
             </>
           )}
         </section>
       </div>
 
       {/* Apply Modal */}
-      <ApplyModal
-        isOpen={isApplyOpen}
-        onClose={() => setIsApplyOpen(false)}
-        onSubmit={handleApply}
-        resumes={resumes} // ✅ connected to backend
-        jobTitle={selected?.position}
-        brandColor={GREEN}
-      />
+      {canApply && (
+        <ApplyModal
+          isOpen={isApplyOpen}
+          onClose={() => setIsApplyOpen(false)}
+          onSubmit={handleApply}
+          resumes={resumes}
+          jobTitle={selected?.position}
+          brandColor={GREEN}
+        />
+      )}
     </main>
   );
 }

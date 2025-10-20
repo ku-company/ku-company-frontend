@@ -1,102 +1,63 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import JobPostForm from "@/components/JobPostForm";
 import EditJobModal, { EditableJob } from "@/components/EditJobModal";
+import { buildInit } from "@/api/base";
+import { useAuth } from "@/context/AuthContext";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_URL = `${BASE_URL}/api/company/job-postings`;
-const REFRESH_URL = `${BASE_URL}/api/token/refresh/`;
 
-// Helper: fetch with auth + auto token refresh
-async function fetchWithAuth(url: string, options: RequestInit, token: string | null) {
-  const headers = new Headers(options.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  let res = await fetch(url, { ...options, headers });
-
-  // Try refresh on 401
-  if (res.status === 401) {
-    const refresh = localStorage.getItem("refreshToken");
-    if (!refresh) throw new Error("Session expired. Please log in again.");
-
-    const refreshRes = await fetch(REFRESH_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh }),
-    });
-
-    if (!refreshRes.ok) throw new Error("Session expired. Please log in again.");
-
-    const data = await refreshRes.json();
-    const newAccess = data.access;
-    localStorage.setItem("accessToken", newAccess);
-
-    headers.set("Authorization", `Bearer ${newAccess}`);
-    res = await fetch(url, { ...options, headers });
-  }
-
+async function fetchAuthedJson(url: string, init: RequestInit = {}) {
+  const res = await fetch(url, buildInit({ credentials: "include", ...init }));
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status} ${text}`);
   }
-
   return res.json();
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user, isReady } = useAuth();
+  const isCompany = useMemo(() => (user?.role || "").toLowerCase().includes("company"), [user]);
+
   const [showForm, setShowForm] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
-  const token = useMemo(
-    () =>
-      typeof window !== "undefined"
-        ? localStorage.getItem("accessToken") ||
-          localStorage.getItem("access_token") ||
-          localStorage.getItem("token")
-        : null,
-    []
-  );
-
   // ---------------------------
   // GET: load jobs
   // ---------------------------
   useEffect(() => {
-    const loadJobs = async () => {
-      if (!token) return setLoading(false);
+    if (!isReady) return; // wait for auth
+    if (!isCompany) {
+      // Not authorized: route away
+      router.replace("/");
+      return;
+    }
+    const load = async () => {
+      setLoading(true);
       try {
-        const data = await fetchWithAuth(
-          API_URL,
-          { method: "GET", headers: { "Content-Type": "application/json" } },
-          token
-        );
+        const data = await fetchAuthedJson(API_URL, { method: "GET" });
         setJobs(data.data || data || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error("❌ Failed to fetch jobs:", err);
-        if (err.message.includes("Session expired")) {
-          alert(err.message);
-          localStorage.clear();
-          window.location.href = "/login";
-        }
       } finally {
         setLoading(false);
       }
     };
-    loadJobs();
-  }, [token]);
+    load();
+  }, [isReady, isCompany, router]);
 
   // ---------------------------
   // POST: create job
   // ---------------------------
   const handleAddJob = async (job: any) => {
-    if (!token) {
-      alert("⚠️ Token not found. Please log in again.");
-      return;
-    }
     try {
       const body = {
         description: job.details,
@@ -105,15 +66,11 @@ export default function DashboardPage() {
         available_position: job.positionsAvailable,
       };
 
-      const data = await fetchWithAuth(
-        API_URL,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-        token
-      );
+      const data = await fetchAuthedJson(API_URL, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      });
 
       const newJob = data.data || data;
       setJobs((prev) => [newJob, ...prev]);
@@ -128,7 +85,7 @@ export default function DashboardPage() {
   // PATCH: update job
   // ---------------------------
   const handleSaveEdit = async (updated: EditableJob) => {
-    if (editIndex === null || !token) return;
+    if (editIndex === null) return;
     const job = jobs[editIndex];
     try {
       const body = {
@@ -138,15 +95,11 @@ export default function DashboardPage() {
         available_position: updated.positionsAvailable,
       };
 
-      const data = await fetchWithAuth(
-        `${API_URL}/${job.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-        token
-      );
+      const data = await fetchAuthedJson(`${API_URL}/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
       const updatedJob = data.data || data;
       setJobs((prev) => prev.map((j, i) => (i === editIndex ? updatedJob : j)));

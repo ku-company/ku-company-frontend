@@ -46,7 +46,16 @@ export async function listResumes(): Promise<ResumeItem[]> {
   const raw = await res.text();
   console.log("🧾 [resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
 
-  if (!res.ok) throw new Error(raw || `Failed to fetch resumes`);
+  if (!res.ok) {
+    try {
+      const j = JSON.parse(raw);
+      if (j && (j.message === "Access Denied" || j.error === "Access Denied")) {
+        console.warn("[resumes] Access Denied — returning empty list");
+        return [];
+      }
+    } catch {}
+    throw new Error(raw || `Failed to fetch resumes`);
+  }
 
   let json: any = {};
   try {

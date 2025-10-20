@@ -30,6 +30,7 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -118,6 +119,9 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-2">
             <NavItem href="/homepage" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
+            {user?.role?.toLowerCase().includes("company") && (
+              <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+            )}
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
           </nav>
 
@@ -125,7 +129,7 @@ export default function Navbar() {
             {user ? (
               <>
                 {/* Role badge */}
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{user.role || "Unknown"}</span>
+                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
@@ -143,7 +147,7 @@ export default function Navbar() {
                 {dropdownOpen && (
                   <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
                     <div className="px-4 pb-2 text-xs text-gray-500">Signed in as <span className="font-medium">{displayName || user.user_name}</span>
-                      <div>Role: <span className="font-medium">{user.role || "Unknown"}</span></div></div>
+                      <div>Role: <span className="font-medium">{displayRole}</span></div></div>
                     <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
