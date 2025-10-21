@@ -44,7 +44,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
 
-  // Load profile image for navbar based on role
+  // Load profile image and display name
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -54,7 +54,6 @@ export default function Navbar() {
         const url = new URL(u, typeof window !== "undefined" ? window.location.origin : undefined);
         const qp = url.searchParams;
         const isAwsSigned = qp.has("X-Amz-Algorithm") || qp.has("X-Amz-Signature");
-        // Do NOT modify pre-signed S3 URLs. They must match the signature exactly.
         if (isAwsSigned) return url.toString();
         return url.toString();
       } catch {
@@ -72,7 +71,8 @@ export default function Navbar() {
       } catch {
         if (!cancelled) setAvatarUrl(null);
       }
-      // Also fetch a fresher display name from profile
+
+      // Display name
       try {
         const role = (user.role || "").toLowerCase();
         if (role.includes("company")) {
@@ -128,6 +128,7 @@ export default function Navbar() {
               <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
             )}
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/status" label="STATUS" />
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
@@ -192,7 +193,10 @@ export default function Navbar() {
                 <Link href="/login" className="text-xs px-3 py-1 rounded border">
                   LOGIN
                 </Link>
-                <button onClick={() => setShowRoleSelector(true)} className="text-xs px-3 py-1 rounded border">
+                <button
+                  onClick={() => setShowRoleSelector(true)}
+                  className="text-xs px-3 py-1 rounded border"
+                >
                   SIGNUP
                 </button>
               </>
@@ -204,10 +208,14 @@ export default function Navbar() {
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-            <RoleSelector isOpen={showRoleSelector} onClose={() => setShowRoleSelector(false)} />
+            <RoleSelector
+              isOpen={showRoleSelector}
+              onClose={() => setShowRoleSelector(false)}
+            />
           </div>
         </div>
       )}
     </>
   );
 }
+
