@@ -12,7 +12,8 @@ import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
-import { getMainResume, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { getMainResume, listResumes, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { useAuth } from "@/context/AuthContext";
 import { UserIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, DocumentTextIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,7 @@ export default function StudentProfileView() {
   const [editOpen, setEditOpen] = useState(false);
   const [mainResumeUrl, setMainResumeUrl] = useState<string | null>(null);
 
+  const { isReady } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -111,23 +113,26 @@ export default function StudentProfileView() {
     })();
   }, []);
 
-  // Load main resume on mount and when the modal closes (not while open)
+  // Load main resume after auth is ready and when the modal closes
   useEffect(() => {
     (async () => {
-      if (resumeOpen) return; // don't refetch while editing
+      console.log("[Profile] main-resume probe: isReady=", isReady, "resumeOpen=", resumeOpen);
+      if (!isReady || resumeOpen) return;
       try {
         const r = await getMainResume();
-        setMainResumeUrl((prev) => (r?.file_url ? r.file_url : prev));
-      } catch {
-        // keep previous value on transient errors to avoid flicker to "No main resume"
+        console.log("[Profile] getMainResume() returned:", r);
+        if (r?.file_url) { setMainResumeUrl(r.file_url); console.log("[Profile] set mainResumeUrl (direct) ->", r.file_url); return; } const list = await listResumes(); const main = list.find((x) => x.is_main) || null; const url = main?.file_url || null; setMainResumeUrl(url); console.log("[Profile] fallback listResumes() main ->", main);
+      } catch (e) {
+        console.warn("[Profile] getMainResume() failed:", e);
       }
     })();
-  }, [resumeOpen]);
+  }, [isReady, resumeOpen]);
 
   // Live update of main resume while modal is open
   useEffect(() => {
     const onMain = (e: any) => {
       const url = e?.detail?.url as string | undefined;
+      console.log("[Profile] MAIN_RESUME_UPDATED_EVENT url=", url);
       if (url) setMainResumeUrl(url);
     };
     if (typeof window !== 'undefined') {
@@ -225,13 +230,9 @@ export default function StudentProfileView() {
         setWorkOverflow(false);
       }
 
-      // When summary is expanded, keep left aside at least as tall as the whole right column
-      if (summaryExpanded) {
-        const colH = rightColEl?.getBoundingClientRect().height || cardH;
-        setAsideMinH(colH);
-      } else {
-        setAsideMinH(undefined);
-      }
+      // Keep left aside at least as tall as the whole right column
+      const colH = rightColEl?.getBoundingClientRect().height || cardH;
+      setAsideMinH(colH);
     }
 
     recompute();
@@ -414,7 +415,7 @@ export default function StudentProfileView() {
               >
                 {workItems.length > 0 ? (
                   <ol className="relative border-s ps-4">
-                    {(workOverflow && workItems.length > 2 ? workItems.slice(0, 2) : workItems).map((w, idx) => (
+                    {(workItems.length > 3 ? workItems.slice(0, 3) : workItems).map((w, idx) => (
                       <li key={idx} className="mb-6 ms-4">
                         <div className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border bg-white" style={{ borderColor: GREEN }} />
                         <div className="flex items-center gap-2 text-gray-900 font-medium">
@@ -423,7 +424,7 @@ export default function StudentProfileView() {
                           <span>{w.company || "Company"}</span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {(w.start || "").toString()} - {(w.end && w.end.trim()) ? w.end : "Present"}
+                          {(w.start || "").toString()} – {(w.end && w.end.trim()) ? w.end : "Present"}
                         </div>
                         {w.description && (
                           <div className="mt-2 text-gray-700">
@@ -441,7 +442,7 @@ export default function StudentProfileView() {
               </div>
 
               <div className="mt-4 flex items-center justify-between">
-                {workOverflow ? (
+                {workItems.length > 3 ? (
                   <button
                     className="text-xs hover:underline"
                     style={{ color: GREEN }}
@@ -451,7 +452,7 @@ export default function StudentProfileView() {
                           title: 'Work History',
                           children: (
                             <ol className="relative border-s ps-4">
-                              {(workOverflow && workItems.length > 2 ? workItems.slice(0, 2) : workItems).map((w, idx) => (
+                              {workItems.map((w, idx) => (
                                 <li key={idx} className="mb-6 ms-4">
                                   <div className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border bg-white" style={{ borderColor: GREEN }} />
                                   <div className="flex items-center gap-2 text-gray-900 font-medium">
@@ -460,7 +461,7 @@ export default function StudentProfileView() {
                                     <span>{w.company || 'Company'}</span>
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    {(w.start || '').toString()} - {(w.end && w.end.trim()) ? w.end : 'Present'}
+                                    {(w.start || '').toString()} – {(w.end && w.end.trim()) ? w.end : 'Present'}
                                   </div>
                                   {w.description && (
                                     <div className="mt-2 text-gray-700">
@@ -526,7 +527,7 @@ export default function StudentProfileView() {
             <PillHeading>Education</PillHeading>
             {educationListArr.length > 0 ? (
               <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800 space-y-3" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {educationListArr.map((ed, idx) => (
+                {(educationListArr.length > 3 ? educationListArr.slice(0, 3) : educationListArr).map((ed, idx) => (
                   <div key={idx}>
                     <div className="font-medium text-gray-900">
                       {(ed.degree ? ed.degree + (ed.field ? `, ${ed.field}` : '') : (ed.field || '')) || 'Education'}
@@ -534,7 +535,7 @@ export default function StudentProfileView() {
                       {ed.school || 'School'}
                     </div>
                     {(ed.start || ed.end) && (
-                      <div className="text-xs text-gray-500">{(ed.start || '')} - {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                      <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
                     )}
                     {ed.description && (
                       <div className="mt-1 text-gray-700">
@@ -553,7 +554,7 @@ export default function StudentProfileView() {
                 <li>No education data yet.</li>
               </ul>
             )}
-            {eduOverflow && (
+            {(eduOverflow || educationListArr.length > 3) && (
               <div className="mt-3">
                 <button
                   className="text-xs hover:underline"
@@ -572,7 +573,7 @@ export default function StudentProfileView() {
                                   {ed.school || 'School'}
                                 </div>
                                 {(ed.start || ed.end) && (
-                                  <div className="text-xs text-gray-500">{(ed.start || '')} - {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                                  <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
                                 )}
                                 {ed.description && (
                                   <div className="mt-1 text-gray-700">
@@ -589,7 +590,7 @@ export default function StudentProfileView() {
                     }
                   }}
                 >
-                  See Moreโ€ฆ
+                  See More...
                 </button>
               </div>
             )}
@@ -599,7 +600,7 @@ export default function StudentProfileView() {
             <PillHeading>Skills</PillHeading>
             {skillListArr.length > 0 ? (
               <div ref={el => setSkillsEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {skillListArr.map((s, idx) => (
+                {(skillListArr.length > 5 ? skillListArr.slice(0, 5) : skillListArr).map((s, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="font-medium">{s.name}</span>
                     <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{s.level}</span>
@@ -615,7 +616,7 @@ export default function StudentProfileView() {
                 <li>No skills added yet.</li>
               </ul>
             )}
-            {skillsOverflow && (
+            {(skillsOverflow || skillListArr.length > 5) && (
               <div className="mt-3">
                 <button
                   className="text-xs hover:underline"
@@ -640,7 +641,7 @@ export default function StudentProfileView() {
                     }
                   }}
                 >
-                  See Moreโ€ฆ
+                  See More...
                 </button>
               </div>
             )}
@@ -660,7 +661,7 @@ export default function StudentProfileView() {
             {licOverflow && (
               <div className="mt-3">
                 <button className="text-xs hover:underline" style={{ color: GREEN }} onClick={() => setModal({ title: 'Licenses or Certifications', content: licenses })}>
-                  See Moreโ€ฆ
+                  See More...
                 </button>
               </div>
             )}
@@ -670,7 +671,7 @@ export default function StudentProfileView() {
             <PillHeading>Languages</PillHeading>
             {languageListArr.length > 0 ? (
               <div ref={el => setLangEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {languageListArr.map((l, idx) => (
+                {(languageListArr.length > 5 ? languageListArr.slice(0, 5) : languageListArr).map((l, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="font-medium">{l.name}</span>
                     <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{l.level}</span>
@@ -686,7 +687,7 @@ export default function StudentProfileView() {
                 <li>No language data yet.</li>
               </ul>
             )}
-            {langOverflow && (
+            {(langOverflow || languageListArr.length > 5) && (
               <div className="mt-3">
                 <button
                   className="text-xs hover:underline"
@@ -711,7 +712,7 @@ export default function StudentProfileView() {
                     }
                   }}
                 >
-                  See Moreโ€ฆ
+                  See More...
                 </button>
               </div>
             )}
@@ -740,6 +741,18 @@ export default function StudentProfileView() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
