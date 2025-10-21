@@ -322,7 +322,7 @@ export default function StudentProfileView() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* LEFT: Profile card */}
-          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm" style={asideMinH ? { minHeight: asideMinH } : undefined}>
+          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm border-midgreen-500" style={asideMinH ? { minHeight: asideMinH } : undefined}>
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
@@ -396,7 +396,7 @@ export default function StudentProfileView() {
 
               <div
                 ref={(el) => setWorkContentEl(el)}
-                className="mt-4 text-base flex-1"
+                className="mt-4 ml-7 text-base flex-1"
                 style={workMaxH ? { maxHeight: workMaxH, overflow: 'hidden' } as any : undefined}
               >
                 {workItems.length > 0 ? (

@@ -237,11 +237,10 @@ export default function EditStudentProfileModal({
 
               {/* Contact */}
               <div className="grid gap-2">
-                <label className="text-sm font-medium">Contact</label>
-                <textarea
-                  ref={contactRef}
-                  className={`${contactExpanded ? 'h-56' : 'h-28'} rounded-md border px-3 py-2 text-sm overflow-y-auto`}
-                  placeholder="name@example.com | +66 ... | Bangkok, Thailand"
+                <label className="text-sm font-medium">Phone Number</label>
+                <input  
+                  className={`rounded-md border px-3 py-2 text-sm overflow-y-auto`}
+                  placeholder="+66 ..."
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
                 />
@@ -502,113 +501,10 @@ export default function EditStudentProfileModal({
                   </div>
                 </div>
               </div>
-
-              
-
-              {/* Skills editor (structured) */}
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Skills</label>
-                <div className="space-y-2">
-                  {skillList.map((s, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        className="flex-1 rounded-md border px-3 py-2 text-sm"
-                        placeholder="Skill (e.g., React)"
-                        value={s.name}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
-                        }}
-                      />
-                      <select
-                        className="rounded-md border px-2 py-2 text-sm"
-                        value={s.level}
-                        onChange={(e) => {
-                          const v = e.target.value as SkillLevel;
-                          setSkillList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
-                        }}
-                      >
-                        <option>Bad</option>
-                        <option>Fair</option>
-                        <option>Well</option>
-                      </select>
-                      <button
-                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
-                        onClick={() => setSkillList((list) => list.filter((_, i) => i !== idx))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <button
-                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
-                      onClick={() => setSkillList((list) => [...list, { name: "", level: "Fair" }])}
-                    >
-                      Add Skill
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              
-
-              
-
-              {/* Languages editor (structured) */}
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Languages</label>
-                <div className="space-y-2">
-                  {languageList.map((l, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        className="flex-1 rounded-md border px-3 py-2 text-sm"
-                        placeholder="Language (e.g., English)"
-                        value={l.name}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, name: v } : it));
-                        }}
-                      />
-                      <select
-                        className="rounded-md border px-2 py-2 text-sm"
-                        value={l.level}
-                        onChange={(e) => {
-                          const v = e.target.value as LanguageLevel;
-                          setLanguageList((list) => list.map((it, i) => i === idx ? { ...it, level: v } : it));
-                        }}
-                      >
-                        <option>Fair</option>
-                        <option>Good</option>
-                        <option>Fluent</option>
-                        <option>Native</option>
-                      </select>
-                      <button
-                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
-                        onClick={() => setLanguageList((list) => list.filter((_, i) => i !== idx))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <button
-                      className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
-                      onClick={() => setLanguageList((list) => [...list, { name: "", level: "Fair" }])}
-                    >
-                      Add Language
-                    </button>
-                  </div>
-                  
-                </div>
-              </div>
-
-              {error && (
-                <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
-                  {error}
-                </div>
-              )}
             </div>
+              
+
+              
 
             {/* Footer */}
             <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-gray-50 px-5 py-3 border-t">
