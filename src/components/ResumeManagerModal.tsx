@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   listResumes,
   uploadResume,
@@ -31,11 +31,7 @@ export default function ResumeManagerModal({
   const [tempMainId, setTempMainId] = useState<number | null>(null);
   const [hasUnsavedMain, setHasUnsavedMain] = useState(false);
   const [savingMain, setSavingMain] = useState(false);
-  const [slots, setSlots] = useState<Slot[]>([
-    { uploading: false },
-    { uploading: false },
-    { uploading: false },
-  ]);
+  const [slot, setSlot] = useState<Slot>({ uploading: false });
 
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -74,48 +70,29 @@ export default function ResumeManagerModal({
 
   const existingIsEmpty = !existing || existing.length === 0;
 
-  async function handleUpload(idx: number) {
-    const slot = slots[idx];
+  async function handleUpload() {
     if (!slot.file) {
-      setSlots((s) => {
-        const c = [...s];
-        c[idx].error = "Please choose a PDF first.";
-        return c;
-      });
+      setSlot((s) => ({ ...s, error: "Please choose a PDF first." }));
       return;
     }
-    setSlots((s) => {
-      const c = [...s];
-      c[idx].uploading = true;
-      c[idx].error = undefined;
-      return c;
-    });
+    setSlot((s) => ({ ...s, uploading: true, error: undefined }));
 
     try {
       await uploadResume(slot.file);
       await refreshList();
-      setSlots((s) => {
-        const c = [...s];
-        c[idx] = { uploading: false };
-        return c;
-      });
+      setSlot({ uploading: false });
     } catch (e: any) {
-      setSlots((s) => {
-        const c = [...s];
-        c[idx].uploading = false;
-        c[idx].error = e.message || "Upload failed";
-        return c;
-      });
+      setSlot((s) => ({ ...s, uploading: false, error: e.message || "Upload failed" }));
     }
   }
 
   async function handleDeleteSingle(id: number) {
-    if (!confirm("Delete this résumé?")) return;
+    if (!confirm("Delete this resume?")) return;
     try {
       await deleteResume(id);
       await refreshList();
     } catch (e: any) {
-      alert(e.message || "Failed to delete résumé");
+      alert(e.message || "Failed to delete resume");
     }
   }
 
@@ -146,7 +123,7 @@ export default function ResumeManagerModal({
         {/* Header */}
         <div className="flex items-center justify-between rounded-t-2xl px-5 py-4">
           <h2 id="resume-manager-title" className="text-lg font-semibold">
-            Manage Résumés
+            Manage Resumes
           </h2>
           <button
             onClick={onClose}
@@ -162,12 +139,12 @@ export default function ResumeManagerModal({
           {/* Existing list */}
           <section>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">Uploaded résumés</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Uploaded resumes</h3>
               {!existingIsEmpty && (
                 <button
                   onClick={handleDeleteAll}
                   className="text-xs text-red-600 hover:underline"
-                  title="Delete all résumés"
+                  title="Delete all resumes"
                 >
                   Delete all
                 </button>
@@ -180,7 +157,7 @@ export default function ResumeManagerModal({
               <div className="rounded border p-3 text-sm text-red-600">{loadErr}</div>
             ) : existingIsEmpty ? (
               <div className="rounded border border-dashed p-3 text-sm text-gray-600">
-                No résumés yet. Upload below.
+                No resumes yet. Upload below.
               </div>
             ) : (
               <ul className="space-y-2">
@@ -207,7 +184,7 @@ export default function ResumeManagerModal({
                               setHasUnsavedMain(true);
                             }}
                           />
-                          <span>{r.id === tempMainId ? (hasUnsavedMain ? "Will be main (unsaved)" : "Main résumé") : "Set as main"}</span>
+                          <span>{r.id === tempMainId ? (hasUnsavedMain ? "Will be main (unsaved)" : "Main resume") : "Set as main"}</span>
                         </label>
                       </div>
                     </div>
@@ -233,44 +210,36 @@ export default function ResumeManagerModal({
             )}
           </section>
 
-          {/* Upload slots */}
+          {/* Upload slot (single) */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-gray-700">
               Upload (PDF, ≤ 10MB)
             </h3>
-            <div className="space-y-3">
-              {slots.map((slot, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      setSlots((s) => {
-                        const c = [...s];
-                        c[idx].file = f;
-                        c[idx].error = undefined;
-                        return c;
-                      });
-                    }}
-                    className="block w-full cursor-pointer rounded-lg border px-3 py-2 text-sm"
-                  />
-                  <button
-                    onClick={() => handleUpload(idx)}
-                    disabled={slot.uploading || !slot.file}
-                    className="rounded-md px-3 py-2 text-sm text-white disabled:opacity-50"
-                    style={{ backgroundColor: brandColor }}
-                  >
-                    {slot.uploading ? "Uploading…" : "Upload"}
-                  </button>
-                </div>
-              ))}
-              {slots.some((s) => s.error) && (
-                <div className="text-xs text-red-600">
-                  {slots.map((s, i) =>
-                    s.error ? <div key={i}>Slot {i + 1}: {s.error}</div> : null
-                  )}
-                </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    setSlot({ uploading: false, file: f, error: undefined });
+                  }}
+                  className="block w-full cursor-pointer rounded-lg border px-3 py-2 text-sm"
+                />
+                <button
+                  onClick={handleUpload}
+                  disabled={slot.uploading || !slot.file}
+                  className="rounded-md px-3 py-2 text-sm text-white disabled:opacity-50"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  {slot.uploading ? "Uploading…" : "Upload"}
+                </button>
+              </div>
+              {slot.file && (
+                <div className="text-xs text-gray-600">Selected: {slot.file.name}</div>
+              )}
+              {slot.error && (
+                <div className="text-xs text-red-600">{slot.error}</div>
               )}
             </div>
           </section>
@@ -294,7 +263,7 @@ export default function ResumeManagerModal({
                     window.dispatchEvent(new CustomEvent(MAIN_RESUME_UPDATED_EVENT, { detail: { id: chosen.id, url: chosen.file_url } }));
                   }
                 } catch (e: any) {
-                  alert(e?.message || "Failed to set main résumé");
+                  alert(e?.message || "Failed to set main resume");
                 } finally {
                   setSavingMain(false);
                 }

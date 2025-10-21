@@ -1,5 +1,6 @@
 // src/api/studentprofile.ts
 import { API_BASE, buildInit } from "./base";
+import { extractErrorMessage } from "@/utils/httpError";
 
 export type StudentProfile = {
   id?: number;
@@ -102,7 +103,7 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
   });
 
   const raw = await res.text();
-  if (!res.ok) throw new Error(raw || `Failed to fetch student profile: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
 
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
@@ -141,7 +142,7 @@ export async function patchMyStudentProfile(
   });
 
   const raw = await res.text();
-  if (!res.ok) throw new Error(raw || `Failed to update profile: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
   // Some endpoints return the updated profile without nested user; ensure we refetch
   try {
     // Try to parse in case it's already the full shape; if not, ignore

@@ -7,6 +7,7 @@ import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { MapPinIcon, PhoneIcon } from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -60,17 +61,18 @@ export default function CompanyProfile() {
     }
 
     let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       try {
         setLoading(true);
-        const data = await getCompanyProfile(); // uses credentials: 'include' inside helper
+        const data = await getCompanyProfile(controller.signal); // uses credentials: 'include'
         if (!cancelled) {
           setCompany(data);
           setError(null);
         }
       } catch (err: any) {
-        if (!cancelled) {
+        if (!cancelled && err?.name !== "AbortError") {
           console.error("Failed to fetch company profile:", err);
           setError(err.message || "Error loading company profile");
         }
@@ -81,6 +83,7 @@ export default function CompanyProfile() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [isReady, user]);
 
@@ -143,8 +146,8 @@ export default function CompanyProfile() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <InfoRow icon={<span className="text-xs">📍</span>} label="Location" value={company.location} />
-            <InfoRow icon={<span className="text-xs">📞</span>} label="Telephone" value={company.tel} />
+            <InfoRow icon={<MapPinIcon className="h-4 w-4" />} label="Location" value={company.location} />
+            <InfoRow icon={<PhoneIcon className="h-4 w-4" />} label="Telephone" value={company.tel} />
           </div>
         </aside>
 

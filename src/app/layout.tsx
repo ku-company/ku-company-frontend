@@ -4,6 +4,8 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
+import BootstrapSession from "@/components/auth/BootstrapSession";
+import AuthExpiryHandler from "@/components/auth/AuthExpiryHandler";
 import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
 
 // Font setup
@@ -46,10 +48,14 @@ export default function RootLayout({
       >
         {/* Provide authentication context to all pages */}
         <AuthProvider>
+          {/* Restore user from server session (cookies) if available */}
+          <BootstrapSession />
+          {/* Auto-logout when JWT expires */}
+          <AuthExpiryHandler />
           {/* Dynamically render layout and navbar based on user role */}
           <ClientLayout>
             {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
-            <main className="min-h-screen pt-[70px]">{children}</main>
+            <main>{children}</main>
           </ClientLayout>
         </AuthProvider>
       </body>

@@ -1,8 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
-import { getResumes } from "@/api/resumes"; 
+import { listResumes, uploadResume } from "@/api/resume";
+import { applyToJob } from "@/api/jobs";
+import { buildInit } from "@/api/base";
+import { useAuth } from "@/context/AuthContext";
+import { useApplyCart } from "@/context/ApplyCartContext";
+import { listMyApplications } from "@/api/applications";
 
 type Job = {
   id: number;
@@ -29,6 +34,8 @@ const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function FindJobPage() {
+  const { user } = useAuth();
+  const { add, contains } = useApplyCart();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<string>("All");
@@ -38,19 +45,14 @@ export default function FindJobPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]); // ✅ resume state
+  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
+  const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
-  // -------------------------------
+  const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+
   // Utility: fetch with token safely
-  // -------------------------------
   const authFetch = async (url: string) => {
-    const token = localStorage.getItem("access_token");
-    const res = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    const res = await fetch(url, buildInit({ credentials: "include" }));
     return res;
   };
 
@@ -70,22 +72,20 @@ export default function FindJobPage() {
     }
   };
 
-  // -------------------------------
   // Load dropdowns (category + jobType)
-  // -------------------------------
   useEffect(() => {
     async function fetchDropdowns() {
       try {
         const [catData, typeData] = await Promise.all([
-          safeFetchJson(`${BASE_URL}/api/job-postings/category/`),
-          safeFetchJson(`${BASE_URL}/api/job-postings/job-type/`),
+          safeFetchJson(`${BASE_URL}/api/job-postings/category`),
+          safeFetchJson(`${BASE_URL}/api/job-postings/job-type`),
         ]);
 
         const extractArray = (data: any) => {
           if (Array.isArray(data)) return data;
           if (Array.isArray(data?.data)) return data.data;
           if (Array.isArray(data?.categories)) return data.categories;
-          if (Array.isArray(data?.job_types)) return data.job_types;
+          if (Array.isArray(data?.jobTypes)) return data.jobTypes; if (Array.isArray(data?.job_types)) return data.job_types;
           if (Array.isArray(Object.values(data)[0])) return Object.values(data)[0];
           return [];
         };
@@ -113,16 +113,10 @@ export default function FindJobPage() {
       if (category !== "All") params.append("category", category);
       if (jobType !== "All") params.append("jobType", jobType);
 
-      const token = localStorage.getItem("access_token");
       const url = `${BASE_URL}/api/job-postings/?${params.toString()}`;
       console.log("Fetching:", url);
 
-      const res = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+      const res = await fetch(url, buildInit({ credentials: "include" }));
 
       if (!res.ok) {
         const text = await res.text();
@@ -147,17 +141,10 @@ export default function FindJobPage() {
   // -------------------------------
   const fetchResumes = async () => {
     try {
-      const data = await getResumes();
-      const resumeList = Array.isArray(data)
-        ? data
-        : data.data || data.resumes || [];
-      const mapped = resumeList.map((r: any) => ({
+      const resumeList = await listResumes();
+      const mapped = (resumeList || []).map((r: any) => ({
         id: String(r.id),
-        name: r.file_name || r.name || "Unnamed Resume",
-        updatedAt: r.updated_at
-          ? `Updated ${new Date(r.updated_at).toLocaleDateString()}`
-          : undefined,
-        size: r.size ? `${(r.size / 1024).toFixed(1)} KB` : undefined,
+        name: r.name || "Unnamed Resume",
       }));
       setResumes(mapped);
     } catch (err) {
@@ -167,8 +154,29 @@ export default function FindJobPage() {
 
   useEffect(() => {
     fetchJobs();
-    fetchResumes();
   }, []);
+
+  useEffect(() => {
+    if (canApply) {
+      fetchResumes();
+      (async () => {
+        try {
+          const apps = await listMyApplications();
+          const ids = new Set<number>();
+          (apps || []).forEach((a: any) => {
+            if (typeof a?.job_id === "number") ids.add(a.job_id);
+            else if (typeof a?.job_post?.id === "number") ids.add(a.job_post.id);
+          });
+          setAppliedIds(ids);
+        } catch {
+          // ignore access issues
+        }
+      })();
+    } else {
+      setResumes([]);
+      setAppliedIds(new Set());
+    }
+  }, [canApply]);
 
   // -------------------------------
   // Selected job
@@ -178,14 +186,47 @@ export default function FindJobPage() {
   // -------------------------------
   // Apply handler
   // -------------------------------
-  const handleApply = (payload: {
+  const handleApply = async (payload: {
     mode: "existing" | "upload";
     resumeId?: string;
     file?: File;
   }) => {
-    console.log("Submit application", { jobId: selected?.id, ...payload });
-    setIsApplyOpen(false);
-    alert("Application submitted! (Check console for payload)");
+    try {
+      if (!selected?.id) {
+        alert("Please select a job first.");
+        return;
+      }
+
+      let resumeIdToUse: number | null = null;
+
+      if (payload.mode === "existing") {
+        if (!payload.resumeId) {
+          alert("Please select a resume.");
+          return;
+        }
+        resumeIdToUse = parseInt(payload.resumeId, 10);
+      } else if (payload.mode === "upload") {
+        if (!payload.file) {
+          alert("Please choose a file to upload.");
+          return;
+        }
+        const uploaded = await uploadResume(payload.file);
+        resumeIdToUse = (uploaded as any)?.id as number;
+      }
+
+      if (!resumeIdToUse) {
+        alert("Unable to determine resume to use.");
+        return;
+      }
+
+      await applyToJob(selected.id, resumeIdToUse);
+      setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
+      setIsApplyOpen(false);
+      alert("Application submitted successfully.");
+    } catch (err: any) {
+      console.error("Apply failed", err);
+      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+    }
   };
 
   // -------------------------------
@@ -289,7 +330,7 @@ export default function FindJobPage() {
                 <button
                   key={job.id}
                   onClick={() => setSelectedId(job.id)}
-                  className={`w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
+                  className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
                   style={{
@@ -297,11 +338,13 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  <div className="font-semibold leading-5">{job.position}</div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    {job.company?.company_name}
-                    <br />
-                    {job.company?.location}
+                  <div className="absolute right-4 top-4 h-10 w-10 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                    <span className="text-xs font-semibold">{(job.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
+                  </div>
+                  <div className="min-w-0 pr-14">
+                    <div className="font-semibold leading-5">{job.position}</div>
+                    <div className="mt-1 text-xs text-gray-600 truncate">{job.company?.company_name}</div>
+                    <div className="text-[11px] text-gray-500 truncate">{job.company?.location}</div>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 line-clamp-2">
                     {job.description}
@@ -317,7 +360,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
@@ -326,14 +369,13 @@ export default function FindJobPage() {
             </div>
           ) : (
             <>
-              <div
-                className="inline-block rounded-lg px-3 py-2 text-white text-xs font-semibold"
-                style={{ backgroundColor: GREEN }}
-              >
-                {selected.position}
+              <div className="absolute right-5 top-5 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                <span className="text-sm font-semibold">{(selected.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
               </div>
-              <div className="mt-2 text-sm font-semibold">
-                {selected.company?.company_name}, {selected.company?.location}
+              <div className="pr-16">
+                <div className="text-lg font-semibold">{selected.position}</div>
+                <div className="text-sm text-gray-600">{selected.company?.company_name}</div>
+                <div className="text-xs text-gray-500">{selected.company?.location}</div>
               </div>
               <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
               <p className="mt-2 text-xs text-gray-500">
@@ -343,29 +385,54 @@ export default function FindJobPage() {
                 Available Positions: {selected.available_position}
               </p>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  className="rounded-full px-6 py-2 text-sm font-semibold text-white"
-                  style={{ backgroundColor: GREEN }}
-                  onClick={() => setIsApplyOpen(true)}
-                >
-                  APPLY
-                </button>
-              </div>
+              {canApply && (
+                <div className="mt-6 flex justify-end">
+                  {(() => {
+                    const isApplied = !!selected && appliedIds.has(selected.id);
+                    const isInCart = !!selected && contains(selected.id);
+                    return (
+                      <div className="flex gap-2">
+                        <button
+                          disabled={isApplied}
+                          className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          style={{ backgroundColor: GREEN }}
+                          onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
+                        >
+                          {isApplied ? 'APPLIED' : 'APPLY'}
+                        </button>
+                        <button
+                          disabled={isApplied || isInCart}
+                          className={`rounded-full border px-4 py-2 text-sm ${isApplied || isInCart ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                          onClick={() => selected && add(selected)}
+                        >
+                          {isInCart ? 'ADDED' : 'ADD TO LIST'}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </>
           )}
         </section>
       </div>
 
       {/* Apply Modal */}
-      <ApplyModal
-        isOpen={isApplyOpen}
-        onClose={() => setIsApplyOpen(false)}
-        onSubmit={handleApply}
-        resumes={resumes} // ✅ connected to backend
-        jobTitle={selected?.position}
-        brandColor={GREEN}
-      />
+      {canApply && (
+        <ApplyModal
+          isOpen={isApplyOpen}
+          onClose={() => setIsApplyOpen(false)}
+          onSubmit={handleApply}
+          resumes={resumes}
+          jobTitle={selected?.position}
+          brandColor={GREEN}
+        />
+      )}
     </main>
   );
 }
+
+
+
+
+

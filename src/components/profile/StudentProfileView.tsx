@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -12,7 +12,9 @@ import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
-import { getMainResume, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { getMainResume, listResumes, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { useAuth } from "@/context/AuthContext";
+import { UserIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, DocumentTextIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -65,7 +67,7 @@ function InfoRow({
 }: {
   icon: React.ReactNode; label: string; value?: string; href?: string;
 }) {
-  const display = value && String(value).trim() ? value : "—";
+  const display = value && String(value).trim() ? value : "-";
   return (
     <div className="flex items-start gap-3">
       <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full bg-gray-100 text-gray-700">
@@ -73,7 +75,7 @@ function InfoRow({
       </span>
       <div className="text-sm">
         <div className="text-gray-500">{label}</div>
-        {href && display !== "—" ? (
+        {href && display !== "-" ? (
           <a href={href} className="font-medium text-gray-800 hover:underline">
             {display}
           </a>
@@ -96,6 +98,7 @@ export default function StudentProfileView() {
   const [editOpen, setEditOpen] = useState(false);
   const [mainResumeUrl, setMainResumeUrl] = useState<string | null>(null);
 
+  const { isReady } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -110,23 +113,26 @@ export default function StudentProfileView() {
     })();
   }, []);
 
-  // Load main resume on mount and when the modal closes (not while open)
+  // Load main resume after auth is ready and when the modal closes
   useEffect(() => {
     (async () => {
-      if (resumeOpen) return; // don't refetch while editing
+      console.log("[Profile] main-resume probe: isReady=", isReady, "resumeOpen=", resumeOpen);
+      if (!isReady || resumeOpen) return;
       try {
         const r = await getMainResume();
-        setMainResumeUrl((prev) => (r?.file_url ? r.file_url : prev));
-      } catch {
-        // keep previous value on transient errors to avoid flicker to "No main resume"
+        console.log("[Profile] getMainResume() returned:", r);
+        if (r?.file_url) { setMainResumeUrl(r.file_url); console.log("[Profile] set mainResumeUrl (direct) ->", r.file_url); return; } const list = await listResumes(); const main = list.find((x) => x.is_main) || null; const url = main?.file_url || null; setMainResumeUrl(url); console.log("[Profile] fallback listResumes() main ->", main);
+      } catch (e) {
+        console.warn("[Profile] getMainResume() failed:", e);
       }
     })();
-  }, [resumeOpen]);
+  }, [isReady, resumeOpen]);
 
   // Live update of main resume while modal is open
   useEffect(() => {
     const onMain = (e: any) => {
       const url = e?.detail?.url as string | undefined;
+      console.log("[Profile] MAIN_RESUME_UPDATED_EVENT url=", url);
       if (url) setMainResumeUrl(url);
     };
     if (typeof window !== 'undefined') {
@@ -178,7 +184,7 @@ export default function StudentProfileView() {
   // Work History overflow handling + modal
   const [workMaxH, setWorkMaxH] = useState<number | undefined>(undefined);
   const [workOverflow, setWorkOverflow] = useState(false);
-  const [modal, setModal] = useState<null | { title: string; content: string }>(null);
+  const [modal, setModal] = useState<null | { title: string; content?: string; children?: React.ReactNode }>(null);
 
   // Desktop breakpoint flag (md)
   const [isMd, setIsMd] = useState(false);
@@ -224,13 +230,9 @@ export default function StudentProfileView() {
         setWorkOverflow(false);
       }
 
-      // When summary is expanded, keep left aside at least as tall as the whole right column
-      if (summaryExpanded) {
-        const colH = rightColEl?.getBoundingClientRect().height || cardH;
-        setAsideMinH(colH);
-      } else {
-        setAsideMinH(undefined);
-      }
+      // Keep left aside at least as tall as the whole right column
+      const colH = rightColEl?.getBoundingClientRect().height || cardH;
+      setAsideMinH(colH);
     }
 
     recompute();
@@ -281,7 +283,7 @@ export default function StudentProfileView() {
     return () => window.removeEventListener('resize', check);
   }, [eduEl, skillsEl, licEl, langEl, education, skills, licenses, languages, isMd]);
 
-  if (loading) return <div className="p-8 text-gray-600">Loading student profile…</div>;
+  if (loading) return <div className="p-8 text-gray-600">Loading student profileโ€ฆ</div>;
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
@@ -322,11 +324,12 @@ export default function StudentProfileView() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* LEFT: Profile card */}
-          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm" style={asideMinH ? { minHeight: asideMinH } : undefined}>
+          <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm border-midgreen-500" style={asideMinH ? { minHeight: asideMinH } : undefined}>
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
                   kind="employee"
+                  disabled={!canEdit}
                   onUpdated={(u) => setProfile({ ...profile, avatar_url: u })}
                 />
               </div>
@@ -334,22 +337,33 @@ export default function StudentProfileView() {
               <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>
                 {fullName}
               </h2>
-              <p className="text-sm text-gray-600">Student</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm text-gray-600">Student</span>
+                {canEdit ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-200">
+                    <CheckBadgeIcon className="h-4 w-4" /> Verified
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 border border-gray-200">
+                    <ExclamationTriangleIcon className="h-4 w-4" /> Not Verified
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 space-y-4">
-              <InfoRow icon={<span className="text-xs">👤</span>} label="Username" value={profile.user_name} />
+              <InfoRow icon={<UserIcon className="h-4 w-4" />} label="Username" value={profile.user_name} />
               <InfoRow
-                icon={<span className="text-xs">✉️</span>}
+                icon={<EnvelopeIcon className="h-4 w-4" />}
                 label="Mail"
                 value={email}
                 href={email ? `mailto:${email}` : undefined}
               />
               {birthday ? (
-                <InfoRow icon={<span className="text-xs">🎂</span>} label="Birthday" value={birthday} />
+                <InfoRow icon={<CalendarIcon className="h-4 w-4" />} label="Birthday" value={birthday} />
               ) : null}
               {contactInfo ? (
-                <InfoRow icon={<span className="text-xs">📞</span>} label="Contact" value={contactInfo} />
+                <InfoRow icon={<PhoneIcon className="h-4 w-4" />} label="Contact" value={contactInfo} />
               ) : null}
             </div>
           </aside>
@@ -396,12 +410,12 @@ export default function StudentProfileView() {
 
               <div
                 ref={(el) => setWorkContentEl(el)}
-                className="mt-4 text-base flex-1"
-                style={workMaxH ? { maxHeight: workMaxH, overflow: 'hidden' } as any : undefined}
+                className="mt-4 ml-7 text-base flex-1"
+                
               >
                 {workItems.length > 0 ? (
                   <ol className="relative border-s ps-4">
-                    {workItems.map((w, idx) => (
+                    {(workItems.length > 3 ? workItems.slice(0, 3) : workItems).map((w, idx) => (
                       <li key={idx} className="mb-6 ms-4">
                         <div className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border bg-white" style={{ borderColor: GREEN }} />
                         <div className="flex items-center gap-2 text-gray-900 font-medium">
@@ -428,13 +442,43 @@ export default function StudentProfileView() {
               </div>
 
               <div className="mt-4 flex items-center justify-between">
-                {workOverflow ? (
+                {workItems.length > 3 ? (
                   <button
                     className="text-xs hover:underline"
                     style={{ color: GREEN }}
-                    onClick={() => setModal({ title: 'Work History', content: experience })}
+                    onClick={() => {
+                      if (workItems.length > 0) {
+                        setModal({
+                          title: 'Work History',
+                          children: (
+                            <ol className="relative border-s ps-4">
+                              {workItems.map((w, idx) => (
+                                <li key={idx} className="mb-6 ms-4">
+                                  <div className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border bg-white" style={{ borderColor: GREEN }} />
+                                  <div className="flex items-center gap-2 text-gray-900 font-medium">
+                                    <span>{w.role || 'Role'}</span>
+                                    <span className="text-gray-500">@</span>
+                                    <span>{w.company || 'Company'}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {(w.start || '').toString()} – {(w.end && w.end.trim()) ? w.end : 'Present'}
+                                  </div>
+                                  {w.description && (
+                                    <div className="mt-2 text-gray-700">
+                                      <Markdown content={w.description} />
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
+                            </ol>
+                          ),
+                        });
+                      } else {
+                        setModal({ title: 'Work History', content: experience });
+                      }
+                    }}
                   >
-                    See More…
+                    See More...
                   </button>
                 ) : <span />}
 
@@ -462,11 +506,11 @@ export default function StudentProfileView() {
                       href={mainResumeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs hover:underline"
-                      style={{ color: GREEN }}
+                      className="inline-flex items-center gap-2 rounded-md px-3 py-1 text-xs font-semibold text-white"
+                      style={{ backgroundColor: GREEN }}
                       title="View main resume"
                     >
-                      Main Resume
+                      <DocumentTextIcon className="h-4 w-4" /> View Main Resume
                     </a>
                   ) : (
                     <span className="text-xs text-gray-400">No main resume</span>
@@ -483,7 +527,7 @@ export default function StudentProfileView() {
             <PillHeading>Education</PillHeading>
             {educationListArr.length > 0 ? (
               <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800 space-y-3" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {educationListArr.map((ed, idx) => (
+                {(educationListArr.length > 3 ? educationListArr.slice(0, 3) : educationListArr).map((ed, idx) => (
                   <div key={idx}>
                     <div className="font-medium text-gray-900">
                       {(ed.degree ? ed.degree + (ed.field ? `, ${ed.field}` : '') : (ed.field || '')) || 'Education'}
@@ -510,10 +554,43 @@ export default function StudentProfileView() {
                 <li>No education data yet.</li>
               </ul>
             )}
-            {eduOverflow && (
+            {(eduOverflow || educationListArr.length > 3) && (
               <div className="mt-3">
-                <button className="text-xs hover:underline" style={{ color: GREEN }} onClick={() => setModal({ title: 'Education', content: education })}>
-                  See More…
+                <button
+                  className="text-xs hover:underline"
+                  style={{ color: GREEN }}
+                  onClick={() => {
+                    if (educationListArr.length > 0) {
+                      setModal({
+                        title: 'Education',
+                        children: (
+                          <div className="space-y-3">
+                            {educationListArr.map((ed, idx) => (
+                              <div key={idx}>
+                                <div className="font-medium text-gray-900">
+                                  {(ed.degree ? ed.degree + (ed.field ? `, ${ed.field}` : '') : (ed.field || '')) || 'Education'}
+                                  <span className="text-gray-500"> @ </span>
+                                  {ed.school || 'School'}
+                                </div>
+                                {(ed.start || ed.end) && (
+                                  <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                                )}
+                                {ed.description && (
+                                  <div className="mt-1 text-gray-700">
+                                    <Markdown content={ed.description} />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      });
+                    } else {
+                      setModal({ title: 'Education', content: education });
+                    }
+                  }}
+                >
+                  See More...
                 </button>
               </div>
             )}
@@ -523,7 +600,7 @@ export default function StudentProfileView() {
             <PillHeading>Skills</PillHeading>
             {skillListArr.length > 0 ? (
               <div ref={el => setSkillsEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {skillListArr.map((s, idx) => (
+                {(skillListArr.length > 5 ? skillListArr.slice(0, 5) : skillListArr).map((s, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="font-medium">{s.name}</span>
                     <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{s.level}</span>
@@ -539,10 +616,32 @@ export default function StudentProfileView() {
                 <li>No skills added yet.</li>
               </ul>
             )}
-            {skillsOverflow && (
+            {(skillsOverflow || skillListArr.length > 5) && (
               <div className="mt-3">
-                <button className="text-xs hover:underline" style={{ color: GREEN }} onClick={() => setModal({ title: 'Skills', content: skills })}>
-                  See More…
+                <button
+                  className="text-xs hover:underline"
+                  style={{ color: GREEN }}
+                  onClick={() => {
+                    if (skillListArr.length > 0) {
+                      setModal({
+                        title: 'Skills',
+                        children: (
+                          <div className="space-y-2">
+                            {skillListArr.map((s, idx) => (
+                              <div key={idx} className="flex items-center justify-between">
+                                <span className="font-medium">{s.name}</span>
+                                <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{s.level}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      });
+                    } else {
+                      setModal({ title: 'Skills', content: skills });
+                    }
+                  }}
+                >
+                  See More...
                 </button>
               </div>
             )}
@@ -562,7 +661,7 @@ export default function StudentProfileView() {
             {licOverflow && (
               <div className="mt-3">
                 <button className="text-xs hover:underline" style={{ color: GREEN }} onClick={() => setModal({ title: 'Licenses or Certifications', content: licenses })}>
-                  See More…
+                  See More...
                 </button>
               </div>
             )}
@@ -572,7 +671,7 @@ export default function StudentProfileView() {
             <PillHeading>Languages</PillHeading>
             {languageListArr.length > 0 ? (
               <div ref={el => setLangEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
-                {languageListArr.map((l, idx) => (
+                {(languageListArr.length > 5 ? languageListArr.slice(0, 5) : languageListArr).map((l, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <span className="font-medium">{l.name}</span>
                     <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{l.level}</span>
@@ -588,10 +687,32 @@ export default function StudentProfileView() {
                 <li>No language data yet.</li>
               </ul>
             )}
-            {langOverflow && (
+            {(langOverflow || languageListArr.length > 5) && (
               <div className="mt-3">
-                <button className="text-xs hover:underline" style={{ color: GREEN }} onClick={() => setModal({ title: 'Languages', content: languages })}>
-                  See More…
+                <button
+                  className="text-xs hover:underline"
+                  style={{ color: GREEN }}
+                  onClick={() => {
+                    if (languageListArr.length > 0) {
+                      setModal({
+                        title: 'Languages',
+                        children: (
+                          <div className="space-y-2">
+                            {languageListArr.map((l, idx) => (
+                              <div key={idx} className="flex items-center justify-between">
+                                <span className="font-medium">{l.name}</span>
+                                <span className="text-sm rounded-full px-2 py-0.5 border" style={{ borderColor: GREEN, color: GREEN }}>{l.level}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ),
+                      });
+                    } else {
+                      setModal({ title: 'Languages', content: languages });
+                    }
+                  }}
+                >
+                  See More...
                 </button>
               </div>
             )}
@@ -614,7 +735,26 @@ export default function StudentProfileView() {
         content={modal?.content || ''}
         onClose={() => setModal(null)}
         brandColor={GREEN}
-      />
+      >
+        {modal?.children}
+      </MarkdownModal>
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

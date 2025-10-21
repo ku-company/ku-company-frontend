@@ -31,6 +31,12 @@ export default function ProfilePage() {
         const me = await fetchAuthMe(); // uses credentials: 'include' inside your helper
         console.log("[Profile] /api/auth/me raw:", me);
 
+        // If not authenticated, redirect to login without throwing hard errors
+        if (!me) {
+          router.replace("/login");
+          return;
+        }
+
         const role = normalizeRole(me.role ?? me.roles) || "Student";
         // Populate client auth state so the rest of the app works
         login({

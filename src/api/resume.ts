@@ -35,18 +35,28 @@ function extractFileName(url: string): string {
 export async function listResumes(): Promise<ResumeItem[]> {
   const token = localStorage.getItem("access_token") || "";
 
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
     method: "GET",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     credentials: "include",
   });
 
   const raw = await res.text();
   console.log("🧾 [resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
 
-  if (!res.ok) throw new Error(raw || `Failed to fetch resumes`);
+  if (!res.ok) {
+    try {
+      const j = JSON.parse(raw);
+      if (j && (j.message === "Access Denied" || j.error === "Access Denied")) {
+        console.warn("[resumes] Access Denied — returning empty list");
+        return [];
+      }
+    } catch {}
+    throw new Error(raw || `Failed to fetch resumes`);
+  }
 
   let json: any = {};
   try {
@@ -67,11 +77,12 @@ export async function listResumes(): Promise<ResumeItem[]> {
 export async function getMainResume(): Promise<ResumeItem | null> {
   const token = localStorage.getItem("access_token") || "";
 
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes/main`, {
     method: "GET",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     credentials: "include",
   });
 
@@ -79,7 +90,16 @@ export async function getMainResume(): Promise<ResumeItem | null> {
   console.log("🧾 [resumes] GET main raw:", raw.slice(0, 400));
 
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(raw || `Failed to fetch main resume`);
+
+  if (!res.ok) {
+    // Fallback: some servers reject empty Authorization header; try listing and finding is_main
+    try {
+      const list = await listResumes();
+      const m = list.find((r) => r.is_main);
+      return m || null;
+    } catch {}
+    throw new Error(raw || `Failed to fetch main resume`);
+  }
 
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
@@ -97,11 +117,11 @@ export async function getMainResume(): Promise<ResumeItem | null> {
 /** PATCH set a specific resume as main */
 export async function setMainResume(id: number): Promise<void> {
   const token = localStorage.getItem("access_token") || "";
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes/${id}/set-main`, {
     method: "PATCH",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     credentials: "include",
   });
   const raw = await res.text();
@@ -118,11 +138,11 @@ export async function uploadResume(file: File): Promise<ResumeItem> {
   const form = new FormData();
   form.append("resume", file);
 
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
     method: "POST",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     body: form,
     credentials: "include",
   });
@@ -143,11 +163,12 @@ export async function uploadResume(file: File): Promise<ResumeItem> {
 export async function deleteAllResumes(): Promise<void> {
   const token = localStorage.getItem("access_token") || "";
 
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes`, {
     method: "DELETE",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     credentials: "include",
   });
 
@@ -161,11 +182,12 @@ export async function deleteAllResumes(): Promise<void> {
 export async function deleteResume(id: number): Promise<void> {
   const token = localStorage.getItem("access_token") || "";
 
+  const headers: HeadersInit = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${API_BASE}/api/employee/profile/resumes/${id}`, {
     method: "DELETE",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-    },
+    headers,
     credentials: "include",
   });
 

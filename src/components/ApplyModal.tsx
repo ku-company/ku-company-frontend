@@ -12,7 +12,7 @@ type Resume = {
 type ApplyModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (payload: { mode: "existing" | "upload"; resumeId?: string; file?: File }) => void;
+  onSubmit: (payload: { mode: "existing"; resumeId?: string }) => void;
   resumes: Resume[];
   jobTitle?: string;
   brandColor?: string; // fallback to midgreen
@@ -26,9 +26,9 @@ export default function ApplyModal({
   jobTitle,
   brandColor = "#5D9252",
 }: ApplyModalProps) {
-  const [mode, setMode] = useState<"existing" | "upload">("existing");
+  const [mode] = useState<"existing">("existing");
   const [selectedResumeId, setSelectedResumeId] = useState<string | undefined>(undefined);
-  const [file, setFile] = useState<File | undefined>(undefined);
+  // upload removed
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const initialFocusRef = useRef<HTMLButtonElement>(null);
@@ -36,9 +36,7 @@ export default function ApplyModal({
   // Reset when opened
   useEffect(() => {
     if (isOpen) {
-      setMode("existing");
       setSelectedResumeId(resumes[0]?.id);
-      setFile(undefined);
       // small delay to allow mount then focus
       setTimeout(() => initialFocusRef.current?.focus(), 0);
     }
@@ -54,10 +52,7 @@ export default function ApplyModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  const canSubmit = useMemo(() => {
-    if (mode === "existing") return !!selectedResumeId;
-    return !!file;
-  }, [mode, selectedResumeId, file]);
+  const canSubmit = useMemo(() => !!selectedResumeId, [selectedResumeId]);
 
   if (!isOpen) return null;
 
@@ -89,36 +84,25 @@ export default function ApplyModal({
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* No tabs: only existing resumes */}
         <div className="px-5">
           <div className="mb-4 inline-flex rounded-full border p-1">
             <button
               ref={initialFocusRef}
-              onClick={() => setMode("existing")}
-              className={`rounded-full px-4 py-1 text-sm font-medium ${
-                mode === "existing" ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
+              className={`rounded-full px-4 py-1 text-sm font-medium bg-gray-900 text-white`}
             >
               Use uploaded résumé
-            </button>
-            <button
-              onClick={() => setMode("upload")}
-              className={`rounded-full px-4 py-1 text-sm font-medium ${
-                mode === "upload" ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              Upload new
             </button>
           </div>
         </div>
 
         {/* Body */}
         <div className="px-5 pb-5">
-          {mode === "existing" ? (
+          {
             <ul className="space-y-3">
               {resumes.length === 0 && (
                 <li className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
-                  No uploaded résumés yet. Switch to <b>Upload new</b> to add one.
+                  No uploaded résumés yet. Please upload one from your profile.
                 </li>
               )}
               {resumes.map((r) => (
@@ -157,22 +141,7 @@ export default function ApplyModal({
                 </li>
               ))}
             </ul>
-          ) : (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium">Upload a PDF or DOCX</label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => setFile(e.target.files?.[0])}
-                className="block w-full cursor-pointer rounded-lg border px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-900 file:px-3 file:py-2 file:text-white hover:file:bg-gray-800"
-              />
-              {file && (
-                <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-700">
-                  Selected: <b>{file.name}</b> ({Math.round(file.size / 1024)} KB)
-                </div>
-              )}
-            </div>
-          )}
+          }
         </div>
 
         {/* Footer */}
@@ -185,7 +154,7 @@ export default function ApplyModal({
           </button>
           <button
             disabled={!canSubmit}
-            onClick={() => onSubmit({ mode, resumeId: selectedResumeId, file })}
+            onClick={() => onSubmit({ mode, resumeId: selectedResumeId })}
             className={`rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50`}
             style={{ backgroundColor: brandColor }}
           >

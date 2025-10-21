@@ -7,6 +7,8 @@ import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_
 import { getMyStudentProfile } from "@/api/studentprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import RoleSelector from "@/components/roleselector";
+import { useApplyCart } from "@/context/ApplyCartContext";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -25,11 +27,13 @@ function NavItem({ href, label }: { href: string; label: string }) {
 export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { count } = useApplyCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -43,6 +47,7 @@ export default function Navbar() {
   // Load profile image and display name
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const safeUrl = (u?: string | null) => {
       if (!u) return null;
       try {
@@ -71,7 +76,7 @@ export default function Navbar() {
       try {
         const role = (user.role || "").toLowerCase();
         if (role.includes("company")) {
-          const company = await getCompanyProfile();
+          const company = await getCompanyProfile(controller.signal);
           if (!cancelled && company?.company_name) setDisplayName(company.company_name);
         } else {
           const student = await getMyStudentProfile();
@@ -90,6 +95,7 @@ export default function Navbar() {
     window.addEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
     return () => {
       cancelled = true;
+      controller.abort();
       window.removeEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
     };
   }, [user]);
@@ -116,8 +122,11 @@ export default function Navbar() {
           </div>
 
           <nav className="hidden md:flex items-center gap-2">
-            <NavItem href="/homepage" label="HOME" />
+            <NavItem href="/" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
+            {user?.role?.toLowerCase().includes("company") && (
+              <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+            )}
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
             <NavItem href="/status" label="STATUS" />
           </nav>
@@ -125,9 +134,24 @@ export default function Navbar() {
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
-                  {user.role || "Unknown"}
-                </span>
+                {/* Role badge */}
+                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
+
+                {/* Apply list icon (students only) */}
+                {user?.role?.toLowerCase().includes("student") && (
+                  <Link
+                    href="/apply-list"
+                    className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
+                    aria-label="Apply list"
+                  >
+                    <DocumentTextIcon className="h-5 w-5 text-gray-700" aria-hidden="true" />
+                    {count > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
+                        {count}
+                      </span>
+                    )}
+                  </Link>
+                )}
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
@@ -144,13 +168,8 @@ export default function Navbar() {
 
                 {dropdownOpen && (
                   <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
-                    <div className="px-4 pb-2 text-xs text-gray-500">
-                      Signed in as{" "}
-                      <span className="font-medium">{displayName || user.user_name}</span>
-                      <div>
-                        Role: <span className="font-medium">{user.role || "Unknown"}</span>
-                      </div>
-                    </div>
+                    <div className="px-4 pb-2 text-xs text-gray-500">Signed in as <span className="font-medium">{displayName || user.user_name}</span>
+                      <div>Role: <span className="font-medium">{displayRole}</span></div></div>
                     <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
