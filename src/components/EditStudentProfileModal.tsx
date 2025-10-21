@@ -305,7 +305,7 @@ export default function EditStudentProfileModal({
                       />
                       <div className="flex justify-end">
                         <button
-                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
+                          className="rounded-full px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700"
                           onClick={() => setWorkItems((items) => items.filter((_, i) => i !== idx))}
                         >
                           Remove
@@ -317,7 +317,7 @@ export default function EditStudentProfileModal({
                     className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
                     onClick={() => setWorkItems((items) => [...items, { company: "", role: "", start: "", end: undefined, description: "" }])}
                   >
-                    Add Work Item
+                    + Add Work Item
                   </button>
                 </div>
               </div>
@@ -392,7 +392,7 @@ export default function EditStudentProfileModal({
                       />
                       <div className="flex justify-end">
                         <button
-                          className="rounded-full px-3 py-1 text-sm border hover:bg-gray-50"
+                          className="rounded-full px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700"
                           onClick={() => setEducationList((list) => list.filter((_, i) => i !== idx))}
                         >
                           Remove
@@ -404,7 +404,7 @@ export default function EditStudentProfileModal({
                     className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
                     onClick={() => setEducationList((list) => [...list, { school: "", degree: "", field: "", start: "", end: "", description: "" }])}
                   >
-                    Add Education
+                    + Add Education
                   </button>
                 </div>
               </div>
@@ -437,7 +437,7 @@ export default function EditStudentProfileModal({
                         <option>Well</option>
                       </select>
                       <button
-                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        className="rounded-full px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700"
                         onClick={() => setSkillList((list) => list.filter((_, i) => i !== idx))}
                       >
                         Remove
@@ -449,7 +449,7 @@ export default function EditStudentProfileModal({
                       className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
                       onClick={() => setSkillList((list) => [...list, { name: "", level: "Fair" }])}
                     >
-                      Add Skill
+                      + Add Skill
                     </button>
                   </div>
                 </div>
@@ -484,7 +484,7 @@ export default function EditStudentProfileModal({
                         <option>Native</option>
                       </select>
                       <button
-                        className="rounded-full px-3 py-2 text-sm border hover:bg-gray-50"
+                        className="rounded-full px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700"
                         onClick={() => setLanguageList((list) => list.filter((_, i) => i !== idx))}
                       >
                         Remove
@@ -496,7 +496,7 @@ export default function EditStudentProfileModal({
                       className="rounded-full px-4 py-2 text-sm border hover:bg-gray-50"
                       onClick={() => setLanguageList((list) => [...list, { name: "", level: "Fair" }])}
                     >
-                      Add Language
+                      + Add Language
                     </button>
                   </div>
                 </div>

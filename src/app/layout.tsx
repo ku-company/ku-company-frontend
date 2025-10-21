@@ -5,6 +5,7 @@ import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
 import BootstrapSession from "@/components/auth/BootstrapSession";
+import AuthExpiryHandler from "@/components/auth/AuthExpiryHandler";
 import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
 
 // Font setup
@@ -49,6 +50,8 @@ export default function RootLayout({
         <AuthProvider>
           {/* Restore user from server session (cookies) if available */}
           <BootstrapSession />
+          {/* Auto-logout when JWT expires */}
+          <AuthExpiryHandler />
           {/* Dynamically render layout and navbar based on user role */}
           <ClientLayout>
             {/* Add top padding to prevent content from being overlapped by the fixed navbar */}

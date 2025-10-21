@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listResumes } from "@/api/resume";
+import { getMyStudentProfile } from "@/api/studentprofile";
 import { applyJobsBulk } from "@/api/jobs";
 
 type Resume = { id: string; name: string };
@@ -19,6 +20,7 @@ export default function ApplyListPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
+  const [verified, setVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!isReady) return;
@@ -31,6 +33,13 @@ export default function ApplyListPage() {
     if (!isStudent) return;
     (async () => {
       try {
+        // Fetch verification status
+        try {
+          const me = await getMyStudentProfile();
+          setVerified(!!me.verified);
+        } catch {
+          setVerified(false);
+        }
         const list = await listResumes();
         const mapped = (list || []).map((r: any) => ({ id: String(r.id), name: r.name || "Unnamed Resume" }));
         setResumes(mapped);
@@ -71,15 +80,24 @@ export default function ApplyListPage() {
 
       <section className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: GREEN }}>
         <label className="text-sm font-medium">Resume</label>
-        <select
-          value={selectedResumeId}
-          onChange={(e) => setSelectedResumeId(e.target.value)}
-          className="mt-2 h-10 w-full rounded-lg border px-3 text-sm"
-        >
-          {resumes.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
+        {verified === false ? (
+          <div className="mt-2 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            You must be verified to use this function.
+          </div>
+        ) : resumes.length === 0 ? (
+          <div className="mt-2 text-sm text-gray-600">No resume uploaded.</div>
+        ) : (
+          <select
+            value={selectedResumeId}
+            onChange={(e) => setSelectedResumeId(e.target.value)}
+            className="mt-2 h-10 w-full rounded-lg border px-3 text-sm"
+            disabled={verified === false}
+          >
+            {resumes.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        )}
       </section>
 
       <section className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: GREEN }}>
@@ -111,7 +129,7 @@ export default function ApplyListPage() {
 
       <div className="mt-6 flex justify-end">
         <button
-          disabled={submitting || items.length === 0 || !selectedResumeId}
+          disabled={submitting || items.length === 0 || !selectedResumeId || verified === false}
           className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           style={{ backgroundColor: GREEN }}
           onClick={handleApplyAll}

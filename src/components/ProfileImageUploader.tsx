@@ -19,9 +19,10 @@ type Props = {
   className?: string;
   onUpdated?: (url: string) => void;
   size?: number; // square size in px for the container (optional)
+  disabled?: boolean; // when true, hide/disable edit affordance
 };
 
-export default function ProfileImageUploader({ kind, initialUrl, className, onUpdated, size }: Props) {
+export default function ProfileImageUploader({ kind, initialUrl, className, onUpdated, size, disabled = false }: Props) {
   const [hover, setHover] = useState(false);
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState<string | null>(initialUrl ?? null);
@@ -100,21 +101,24 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
         accept="image/*"
         className="hidden"
         onChange={onChange}
+        disabled={disabled}
       />
 
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        title="Change profile picture"
+        onClick={() => !disabled && inputRef.current?.click()}
+        disabled={busy || disabled}
+        title={disabled ? "Verification required" : "Change profile picture"}
         className={`absolute inset-0 grid place-items-center rounded-full transition duration-150 ease-in-out cursor-pointer ${
-          hover
+          disabled
+            ? "opacity-0 bg-transparent text-transparent cursor-not-allowed"
+            : hover
             ? "opacity-100 bg-black/45 text-white shadow-lg ring-2 ring-white/70"
             : "opacity-0 bg-transparent text-transparent"
         }`}
         aria-busy={busy}
       >
-        {busy ? "Uploading..." : "Edit"}
+        {busy ? "Uploading..." : disabled ? "" : "Edit"}
       </button>
     </div>
   );

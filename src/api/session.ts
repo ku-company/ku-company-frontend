@@ -10,29 +10,40 @@ function unwrap<T>(p: any): T {
 }
 
 export async function fetchAuthMe() {
-  const token = localStorage.getItem("access_token"); // ✅ เพิ่มการอ่าน token
-  console.log("🔸 fetchAuthMe() called, token =", token ? "found" : "missing");
+  try {
+    const token = localStorage.getItem("access_token");
+    console.log(
+      "🔸 fetchAuthMe() called, token =",
+      token ? "found" : "missing"
+    );
 
-  const res = await fetch(`${API_BASE}/api/auth/me`, {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
 
-  console.log("🔸 /auth/me response status:", res.status);
+    console.log("🔸 /auth/me response status:", res.status);
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.warn("⚠️ fetchAuthMe failed:", res.status, text);
-    return null; // ✅ return null แทน throw error
+    // Gracefully handle unauthenticated states (401/403) or any non-OK
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      // Keep this a warn to avoid noisy errors when logged out
+      console.warn("⚠️ fetchAuthMe failed:", res.status, text || "(no body)");
+      return null;
+    }
+
+    const json = await res.json().catch(() => ({}));
+    console.log("🟢 fetchAuthMe JSON:", json);
+    return unwrap<{ user_name?: string; email?: string; role?: string; roles?: string }>(json);
+  } catch (err) {
+    // Network errors, CORS issues, or fetch being unavailable
+    console.warn("⚠️ fetchAuthMe error (treated as logged out):", err);
+    return null;
   }
-
-  const json = await res.json().catch(() => ({}));
-  console.log("🟢 fetchAuthMe JSON:", json);
-  return unwrap<{ user_name?: string; email?: string; role?: string; roles?: string }>(json);
 }
 
 export function normalizeRole(r?: string | null) {

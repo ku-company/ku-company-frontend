@@ -7,11 +7,12 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  content: string;
+  content?: string;
   brandColor?: string;
+  children?: React.ReactNode; // if provided, render children instead of Markdown
 };
 
-export default function MarkdownModal({ isOpen, onClose, title = "", content, brandColor = "#5B8F5B" }: Props) {
+export default function MarkdownModal({ isOpen, onClose, title = "", content = "", brandColor = "#5B8F5B", children }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
@@ -43,7 +44,13 @@ export default function MarkdownModal({ isOpen, onClose, title = "", content, br
             </div>
 
             <div className="px-5 py-5">
-              <Markdown content={content} className="prose max-w-none" />
+              {children ? (
+                <div className="max-w-none">
+                  {children}
+                </div>
+              ) : (
+                <Markdown content={content} className="prose max-w-none" />
+              )}
             </div>
 
             <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-gray-50 px-5 py-3 border-t">
