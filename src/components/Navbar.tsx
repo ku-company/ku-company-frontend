@@ -3,6 +3,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_EVENT } from "@/api/profileimage";
+import { getMyStudentProfile } from "@/api/studentprofile";
+import { getCompanyProfile } from "@/api/companyprofile";
 import RoleSelector from "@/components/roleselector";
 
 function NavItem({ href, label }: { href: string; label: string }) {
@@ -25,6 +28,8 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -34,6 +39,60 @@ export default function Navbar() {
     if (dropdownOpen) document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
+
+  // Load profile image and display name
+  useEffect(() => {
+    let cancelled = false;
+    const safeUrl = (u?: string | null) => {
+      if (!u) return null;
+      try {
+        const url = new URL(u, typeof window !== "undefined" ? window.location.origin : undefined);
+        const qp = url.searchParams;
+        const isAwsSigned = qp.has("X-Amz-Algorithm") || qp.has("X-Amz-Signature");
+        if (isAwsSigned) return url.toString();
+        return url.toString();
+      } catch {
+        return u;
+      }
+    };
+    async function load() {
+      if (!user) { setAvatarUrl(null); return; }
+      try {
+        const role = (user.role || "").toLowerCase();
+        const raw = role.includes("company")
+          ? await getCompanyProfileImage()
+          : await getEmployeeProfileImage();
+        if (!cancelled) setAvatarUrl(safeUrl(raw));
+      } catch {
+        if (!cancelled) setAvatarUrl(null);
+      }
+
+      // Display name
+      try {
+        const role = (user.role || "").toLowerCase();
+        if (role.includes("company")) {
+          const company = await getCompanyProfile();
+          if (!cancelled && company?.company_name) setDisplayName(company.company_name);
+        } else {
+          const student = await getMyStudentProfile();
+          const name = student.full_name || student.user_name || "";
+          if (!cancelled && name) setDisplayName(name);
+        }
+      } catch {
+        if (!cancelled) setDisplayName(user.user_name);
+      }
+    }
+    load();
+    const onUpdated = (e: any) => {
+      const u = e?.detail?.url as string | undefined;
+      if (u) setAvatarUrl(safeUrl(u));
+    };
+    window.addEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+    };
+  }, [user]);
 
   function handleLogout() {
     logout();
@@ -60,13 +119,12 @@ export default function Navbar() {
             <NavItem href="/homepage" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
-            <NavItem href="/status" label="STATUS" /> {/* ✅ Added new link */}
+            <NavItem href="/status" label="STATUS" />
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                {/* Role badge */}
                 <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
                   {user.role || "Unknown"}
                 </span>
@@ -78,19 +136,17 @@ export default function Navbar() {
                   aria-expanded={dropdownOpen ? "true" : "false"}
                 >
                   <img
-                    src="/icons/default-profile.png"
-                    alt={`${user.user_name} avatar`}
+                    src={avatarUrl || "/icons/default-profile.png"}
+                    alt={`${displayName || user.user_name} avatar`}
                     className="w-full h-full object-cover"
                   />
                 </button>
 
                 {dropdownOpen && (
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2"
-                  >
+                  <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
                     <div className="px-4 pb-2 text-xs text-gray-500">
-                      Signed in as <span className="font-medium">{user.user_name}</span>
+                      Signed in as{" "}
+                      <span className="font-medium">{displayName || user.user_name}</span>
                       <div>
                         Role: <span className="font-medium">{user.role || "Unknown"}</span>
                       </div>
@@ -143,3 +199,4 @@ export default function Navbar() {
     </>
   );
 }
+
