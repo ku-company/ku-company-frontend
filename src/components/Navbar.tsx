@@ -40,7 +40,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
 
-  // Load profile image for navbar based on role
+  // Load profile image and display name
   useEffect(() => {
     let cancelled = false;
     const safeUrl = (u?: string | null) => {
@@ -49,7 +49,6 @@ export default function Navbar() {
         const url = new URL(u, typeof window !== "undefined" ? window.location.origin : undefined);
         const qp = url.searchParams;
         const isAwsSigned = qp.has("X-Amz-Algorithm") || qp.has("X-Amz-Signature");
-        // Do NOT modify pre-signed S3 URLs. They must match the signature exactly.
         if (isAwsSigned) return url.toString();
         return url.toString();
       } catch {
@@ -67,7 +66,8 @@ export default function Navbar() {
       } catch {
         if (!cancelled) setAvatarUrl(null);
       }
-      // Also fetch a fresher display name from profile
+
+      // Display name
       try {
         const role = (user.role || "").toLowerCase();
         if (role.includes("company")) {
@@ -119,13 +119,15 @@ export default function Navbar() {
             <NavItem href="/homepage" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/status" label="STATUS" />
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                {/* Role badge */}
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{user.role || "Unknown"}</span>
+                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">
+                  {user.role || "Unknown"}
+                </span>
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
@@ -142,8 +144,13 @@ export default function Navbar() {
 
                 {dropdownOpen && (
                   <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
-                    <div className="px-4 pb-2 text-xs text-gray-500">Signed in as <span className="font-medium">{displayName || user.user_name}</span>
-                      <div>Role: <span className="font-medium">{user.role || "Unknown"}</span></div></div>
+                    <div className="px-4 pb-2 text-xs text-gray-500">
+                      Signed in as{" "}
+                      <span className="font-medium">{displayName || user.user_name}</span>
+                      <div>
+                        Role: <span className="font-medium">{user.role || "Unknown"}</span>
+                      </div>
+                    </div>
                     <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
@@ -167,7 +174,10 @@ export default function Navbar() {
                 <Link href="/login" className="text-xs px-3 py-1 rounded border">
                   LOGIN
                 </Link>
-                <button onClick={() => setShowRoleSelector(true)} className="text-xs px-3 py-1 rounded border">
+                <button
+                  onClick={() => setShowRoleSelector(true)}
+                  className="text-xs px-3 py-1 rounded border"
+                >
                   SIGNUP
                 </button>
               </>
@@ -179,10 +189,14 @@ export default function Navbar() {
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
-            <RoleSelector isOpen={showRoleSelector} onClose={() => setShowRoleSelector(false)} />
+            <RoleSelector
+              isOpen={showRoleSelector}
+              onClose={() => setShowRoleSelector(false)}
+            />
           </div>
         </div>
       )}
     </>
   );
 }
+

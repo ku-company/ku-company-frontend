@@ -2,7 +2,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { logoutServerSession } from "@/api/logout";
 
-type AuthUser = { user_name: string; email: string; role: string };
+type AuthUser = {
+  user_name: string;
+  email: string;
+  role: string;
+  access_token: string;
+  refresh_token?: string;
+};
 
 type LoginData = {
   access_token: string;
@@ -41,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const role = localStorage.getItem("role");
 
     if (token && user_name && email && role) {
-      setUser({ user_name, email, role: normalizeRole(role) });
+      setUser({ user_name, email, role: normalizeRole(role), access_token: token });
     }
     setIsReady(true);
   }, []);
@@ -53,7 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user_name", data.user_name ?? "");
     localStorage.setItem("email", data.email ?? "");
     localStorage.setItem("role", role);
-    setUser({ user_name: data.user_name ?? "", email: data.email ?? "", role });
+    setUser({
+      user_name: data.user_name ?? "",
+      email: data.email ?? "",
+      role,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
   }
 
   function logout() {
@@ -74,3 +86,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
+
