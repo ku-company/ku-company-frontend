@@ -46,6 +46,7 @@ export default function Navbar() {
   // Load profile image for navbar based on role
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const safeUrl = (u?: string | null) => {
       if (!u) return null;
       try {
@@ -74,7 +75,7 @@ export default function Navbar() {
       try {
         const role = (user.role || "").toLowerCase();
         if (role.includes("company")) {
-          const company = await getCompanyProfile();
+          const company = await getCompanyProfile(controller.signal);
           if (!cancelled && company?.company_name) setDisplayName(company.company_name);
         } else {
           const student = await getMyStudentProfile();
@@ -93,6 +94,7 @@ export default function Navbar() {
     window.addEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
     return () => {
       cancelled = true;
+      controller.abort();
       window.removeEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
     };
   }, [user]);
@@ -119,7 +121,7 @@ export default function Navbar() {
           </div>
 
           <nav className="hidden md:flex items-center gap-2">
-            <NavItem href="/homepage" label="HOME" />
+            <NavItem href="/" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
             {user?.role?.toLowerCase().includes("company") && (
               <NavItem href="/company/jobpostings" label="JOB POSTINGS" />

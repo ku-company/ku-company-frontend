@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { fetchAuthMe } from "@/api/session"; // ✅ ตรวจว่าไฟล์นี้มีจริงไหม
+import { fetchAuthMe } from "@/api/session";
+import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
 
 export default function BootstrapSession() {
   const { user, login } = useAuth();
@@ -15,6 +16,23 @@ export default function BootstrapSession() {
     console.log("🟡 BootstrapSession started...");
     (async () => {
       try {
+        // 1) Capture OAuth tokens in URL (either ? or #) and store
+        try {
+          const tokens = parseTokensFromLocation();
+          if (tokens?.access_token) {
+            localStorage.setItem("access_token", tokens.access_token);
+            if (tokens.refresh_token) localStorage.setItem("refresh_token", tokens.refresh_token);
+            if (tokens.user_name) localStorage.setItem("user_name", tokens.user_name);
+            if (tokens.email) localStorage.setItem("email", tokens.email);
+            if (tokens.role) localStorage.setItem("role", tokens.role);
+            stripTokensFromUrl();
+            console.log("✅ Stored OAuth tokens from URL");
+          }
+        } catch (e) {
+          console.warn("⚠️ Failed to parse OAuth tokens from URL:", e);
+        }
+
+        // 2) Fetch current user using cookie or newly stored token
         const me = await fetchAuthMe();
         console.log("🟢 fetchAuthMe() returned:", me);
 

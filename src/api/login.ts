@@ -14,6 +14,8 @@ export interface LoginResponse {
   }
 }
 
+import { assertOk } from "@/utils/httpError";
+
 export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
   try {
     const res = await fetch("http://localhost:8000/api/user/login", {
@@ -24,10 +26,7 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
       body: JSON.stringify(payload),
     })
 
-    if (!res.ok) {
-      throw new Error(`Failed to login: ${res.statusText}`)
-    }
-
+    await assertOk(res);
     return await res.json()
   } catch (err) {
     console.error("Login error:", err)

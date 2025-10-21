@@ -33,12 +33,11 @@ function unwrap<T>(payload: any): T {
     : (payload as T);
 }
 
-export async function getCompanyProfile(): Promise<CompanyProfile | null> {
-  const res = await fetch(`${API_BASE}/api/company/profile`, buildInit());
+export async function getCompanyProfile(signal?: AbortSignal): Promise<CompanyProfile | null> {
+  const res = await fetch(`${API_BASE}/api/company/profile`, buildInit({ signal }));
   if (res.status === 404) return null;
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to fetch company profile: ${res.status} ${res.statusText}`);
+    throw new Error(await extractErrorMessage(res));
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
@@ -50,8 +49,7 @@ export async function createCompanyProfile(payload: CompanyProfile): Promise<Com
     body: JSON.stringify(payload),
   }));
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to create company profile: ${res.status} ${res.statusText}`);
+    throw new Error(await extractErrorMessage(res));
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
@@ -75,8 +73,7 @@ export async function createDefaultCompanyProfile(company_name: string) {
     });
 
     if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(`Failed to create profile: ${msg}`);
+      throw new Error(await extractErrorMessage(res));
     }
 
     return await res.json();
@@ -92,9 +89,9 @@ export async function updateCompanyProfile(payload: CompanyProfile): Promise<Com
     body: JSON.stringify(payload),
   }));
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to update company profile: ${res.status} ${res.statusText}`);
+    throw new Error(await extractErrorMessage(res));
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
 }
+import { extractErrorMessage } from "@/utils/httpError";

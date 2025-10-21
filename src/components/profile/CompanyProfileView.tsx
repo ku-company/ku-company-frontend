@@ -60,17 +60,18 @@ export default function CompanyProfile() {
     }
 
     let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       try {
         setLoading(true);
-        const data = await getCompanyProfile(); // uses credentials: 'include' inside helper
+        const data = await getCompanyProfile(controller.signal); // uses credentials: 'include'
         if (!cancelled) {
           setCompany(data);
           setError(null);
         }
       } catch (err: any) {
-        if (!cancelled) {
+        if (!cancelled && err?.name !== "AbortError") {
           console.error("Failed to fetch company profile:", err);
           setError(err.message || "Error loading company profile");
         }
@@ -81,6 +82,7 @@ export default function CompanyProfile() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [isReady, user]);
 

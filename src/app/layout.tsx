@@ -52,7 +52,7 @@ export default function RootLayout({
           {/* Dynamically render layout and navbar based on user role */}
           <ClientLayout>
             {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
-            <main className="min-h-screen pt-[70px]">{children}</main>
+            <main>{children}</main>
           </ClientLayout>
         </AuthProvider>
       </body>
