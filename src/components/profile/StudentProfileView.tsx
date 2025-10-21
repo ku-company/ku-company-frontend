@@ -506,7 +506,7 @@ export default function StudentProfileView() {
                       href={mainResumeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
+                      className="inline-flex items-center gap-2 rounded-md px-3 py-1 text-xs font-semibold text-white"
                       style={{ backgroundColor: GREEN }}
                       title="View main resume"
                     >

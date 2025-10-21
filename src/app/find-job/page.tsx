@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
@@ -45,7 +45,7 @@ export default function FindJobPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]); // ✅ resume state
+  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
@@ -77,15 +77,15 @@ export default function FindJobPage() {
     async function fetchDropdowns() {
       try {
         const [catData, typeData] = await Promise.all([
-          safeFetchJson(`${BASE_URL}/api/job-postings/category/`),
-          safeFetchJson(`${BASE_URL}/api/job-postings/job-type/`),
+          safeFetchJson(`${BASE_URL}/api/job-postings/category`),
+          safeFetchJson(`${BASE_URL}/api/job-postings/job-type`),
         ]);
 
         const extractArray = (data: any) => {
           if (Array.isArray(data)) return data;
           if (Array.isArray(data?.data)) return data.data;
           if (Array.isArray(data?.categories)) return data.categories;
-          if (Array.isArray(data?.job_types)) return data.job_types;
+          if (Array.isArray(data?.jobTypes)) return data.jobTypes; if (Array.isArray(data?.job_types)) return data.job_types;
           if (Array.isArray(Object.values(data)[0])) return Object.values(data)[0];
           return [];
         };
@@ -201,7 +201,7 @@ export default function FindJobPage() {
 
       if (payload.mode === "existing") {
         if (!payload.resumeId) {
-          alert("Please select a résumé.");
+          alert("Please select a resume.");
           return;
         }
         resumeIdToUse = parseInt(payload.resumeId, 10);
@@ -215,7 +215,7 @@ export default function FindJobPage() {
       }
 
       if (!resumeIdToUse) {
-        alert("Unable to determine résumé to use.");
+        alert("Unable to determine resume to use.");
         return;
       }
 
@@ -330,7 +330,7 @@ export default function FindJobPage() {
                 <button
                   key={job.id}
                   onClick={() => setSelectedId(job.id)}
-                  className={`w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
+                  className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
                   style={{
@@ -338,11 +338,13 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  <div className="font-semibold leading-5">{job.position}</div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    {job.company?.company_name}
-                    <br />
-                    {job.company?.location}
+                  <div className="absolute right-4 top-4 h-10 w-10 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                    <span className="text-xs font-semibold">{(job.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
+                  </div>
+                  <div className="min-w-0 pr-14">
+                    <div className="font-semibold leading-5">{job.position}</div>
+                    <div className="mt-1 text-xs text-gray-600 truncate">{job.company?.company_name}</div>
+                    <div className="text-[11px] text-gray-500 truncate">{job.company?.location}</div>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 line-clamp-2">
                     {job.description}
@@ -358,7 +360,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
@@ -367,17 +369,14 @@ export default function FindJobPage() {
             </div>
           ) : (
             <>
-              <div
-                className="inline-block rounded-lg px-3 py-2 text-white text-xs font-semibold"
-                style={{ backgroundColor: GREEN }}
-              >
-                {selected.position}
+              <div className="absolute right-5 top-5 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                <span className="text-sm font-semibold">{(selected.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
               </div>
-              <div className="mt-2 text-sm font-semibold">{
-                [selected.company?.company_name, selected.company?.location]
-                  .filter(Boolean)
-                  .join(', ')
-              }</div>
+              <div className="pr-16">
+                <div className="text-lg font-semibold">{selected.position}</div>
+                <div className="text-sm text-gray-600">{selected.company?.company_name}</div>
+                <div className="text-xs text-gray-500">{selected.company?.location}</div>
+              </div>
               <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
               <p className="mt-2 text-xs text-gray-500">
                 Job Type: {selected.jobType}
@@ -432,3 +431,8 @@ export default function FindJobPage() {
     </main>
   );
 }
+
+
+
+
+
