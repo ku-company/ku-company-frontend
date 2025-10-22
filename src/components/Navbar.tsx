@@ -11,13 +11,24 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 function NavItem({ href, label }: { href: string; label: string }) {
-  const pathname = usePathname();
-  const active = pathname === href;
+  const pathname = usePathname() || "/";
+  // Avoid hydration mismatch by enabling active highlighting only after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const isActive = mounted && (() => {
+    if (href === "/") {
+      // Treat both / and /homepage as HOME
+      return pathname === "/" || pathname === "/homepage";
+    }
+    // Match exact or nested paths under the same section
+    return pathname === href || pathname.startsWith(href + "/");
+  })();
   return (
     <Link
       href={href}
       className={`px-3 py-1 rounded-full text-sm transition
-        ${active ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
+        ${isActive ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
     >
       {label}
     </Link>
@@ -125,10 +136,15 @@ export default function Navbar() {
             <NavItem href="/" label="HOME" />
             <NavItem href="/find-job" label="FIND JOB" />
             {user?.role?.toLowerCase().includes("company") && (
-              <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+              <>
+                <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+                <NavItem href="/view-resume" label="VIEW RESUME" />
+              </>
             )}
             <NavItem href="/announcement" label="ANNOUNCEMENT" />
-            <NavItem href="/status" label="STATUS" />
+            {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
+              <NavItem href="/status" label="STATUS" />
+            ) : null}
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
