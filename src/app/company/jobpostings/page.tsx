@@ -45,7 +45,10 @@ export default function DashboardPage() {
       setLoading(true);
       try {
         // Backend defines GET all at /api/company/job-postings/all
-        const data = await fetchAuthedJson(API_URL_GET_ALL, { method: "GET" });
+        const headers: HeadersInit = user?.access_token
+          ? { Authorization: `Bearer ${user.access_token}` }
+          : {};
+        const data = await fetchAuthedJson(API_URL_GET_ALL, { method: "GET", headers });
         setJobs(data.data || data || []);
       } catch (err) {
         console.error("❌ Failed to fetch jobs:", err);
@@ -68,10 +71,14 @@ export default function DashboardPage() {
         available_position: job.positionsAvailable,
       };
 
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        ...(user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
+      };
       const data = await fetchAuthedJson(API_URL_BASE, {
         method: "POST",
         body: JSON.stringify(body),
-        headers: { "Content-Type": "application/json" },
+        headers,
       });
 
       const newJob = data.data || data;
@@ -97,9 +104,13 @@ export default function DashboardPage() {
         available_position: updated.positionsAvailable,
       };
 
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        ...(user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
+      };
       const data = await fetchAuthedJson(`${API_URL_BASE}/${job.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
       });
 
