@@ -9,6 +9,8 @@ export interface RegisterPayload {
   confirm_password: string
 }
 
+import { assertOk } from "@/utils/httpError";
+
 export async function registerUser(payload: RegisterPayload) {
   try {
     const res = await fetch("http://localhost:8000/api/user/sign-up", {
@@ -18,11 +20,7 @@ export async function registerUser(payload: RegisterPayload) {
       },
       body: JSON.stringify(payload),
     })
-
-    if (!res.ok) {
-      throw new Error(`Failed to register: ${res.statusText}`)
-    }
-
+    await assertOk(res)
     return await res.json()
   } catch (err) {
     console.error(err)

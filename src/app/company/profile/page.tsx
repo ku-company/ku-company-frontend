@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { MapPinIcon, PhoneIcon } from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -88,8 +89,8 @@ export default function CompanyProfile() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <InfoRow icon={<span className="text-xs">📍</span>} label="Location" value={company.location} />
-            <InfoRow icon={<span className="text-xs">📞</span>} label="Telephone" value={company.tel} />
+            <InfoRow icon={<MapPinIcon className="h-4 w-4" />} label="Location" value={company.location} />
+            <InfoRow icon={<PhoneIcon className="h-4 w-4" />} label="Telephone" value={company.tel} />
           </div>
         </aside>
 

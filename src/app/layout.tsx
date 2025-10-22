@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar"; // <- keep relative path (src/components/Navbar)
+
 import { AuthProvider } from "@/context/AuthContext";
 import BootstrapSession from "@/components/auth/BootstrapSession";
+import AuthExpiryHandler from "@/components/auth/AuthExpiryHandler";
+import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
 
+// Font setup
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -22,11 +25,13 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 
+// Metadata
 export const metadata: Metadata = {
   title: "KU-COMPANY",
   description: "Job portal for CPE & SKE students",
 };
 
+// Root layout
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -41,14 +46,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gray-50 text-gray-900`}
       >
-        {/* Wrap everything with AuthProvider */}
+        {/* Provide authentication context to all pages */}
         <AuthProvider>
+          {/* Restore user from server session (cookies) if available */}
           <BootstrapSession />
-          {/* Global top navigation */}
-          <Navbar />
-
-          {/* Page content */}
-          <main className="min-h-screen">{children}</main>
+          {/* Auto-logout when JWT expires */}
+          <AuthExpiryHandler />
+          {/* Dynamically render layout and navbar based on user role */}
+          <ClientLayout>
+            {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
+            <main>{children}</main>
+          </ClientLayout>
         </AuthProvider>
       </body>
     </html>

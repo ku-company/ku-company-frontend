@@ -1,276 +1,438 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState } from "react";
-import ApplyModal from "@/components/ApplyModal"; // <-- NEW
+import { useEffect, useMemo, useState } from "react";
+import ApplyModal from "@/components/ApplyModal";
+import { listResumes, uploadResume } from "@/api/resume";
+import { applyToJob } from "@/api/jobs";
+import { buildInit } from "@/api/base";
+import { useAuth } from "@/context/AuthContext";
+import { useApplyCart } from "@/context/ApplyCartContext";
+import { listMyApplications } from "@/api/applications";
 
-// ----- Types -----
 type Job = {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  postedDaysAgo: number;
-  bullets: string[];
-  tag?: string;
-  brand?: { initials: string; color: string };
-  category: string;
+  id: number;
+  description: string;
+  jobType: string;
+  position: string;
+  available_position: number;
+  created_at: string;
+  company: {
+    id: number;
+    company_name: string;
+    location: string;
+  };
 };
 
-// ----- Mock data -----
-const JOBS: Job[] = [
-  {
-    id: "scb-ml-eng",
-    title: "Machine Learning Engineer",
-    company: "Siam Commercial Bank Public Co., Ltd.",
-    location: "Bangkok (Hybrid)",
-    postedDaysAgo: 11,
-    tag: "Machine Learning Engineer",
-    bullets: [
-      "Design & Deploy ML Systems: end-to-end design, training, testing, and deployment of ML models in production.",
-      "MLOps Setup & Optimization: pipelines, scalable model deployment, monitoring systems, version control.",
-      "Collaborate widely: data scientists, SWE, product teams, etc.",
-      "Best Practices & Scalability: clean code, standards, documentation, and processes to support ML workflows.",
-    ],
-    brand: { initials: "SCB", color: "bg-violet-600" },
-    category: "AI/ML",
-  },
-  {
-    id: "30s-dev",
-    title: "Full Stack Developer",
-    company: "30 SECONDSTOFY (THAILAND) CO., LTD.",
-    location: "Phra Khanong, Bangkok (Hybrid) ฿95,000 – 140,000",
-    postedDaysAgo: 24,
-    bullets: ["Hybrid working environment.", "Challenging tasks.", "Competitive salary & benefits."],
-    brand: { initials: "30S", color: "bg-slate-700" },
-    category: "Full-stack",
-  },
-  {
-    id: "prime-solution-dev",
-    title: "Full Stack Developer",
-    company: "PRIME SELECTION (THAILAND)",
-    location: "Hybrid Working Environment",
-    postedDaysAgo: 18,
-    bullets: ["Hybrid working environment", "Challenging tasks"],
-    brand: { initials: "PS", color: "bg-cyan-600" },
-    category: "Full-stack",
-  },
-];
+type Resume = {
+  id: string;
+  name: string;
+  updatedAt?: string;
+  size?: string;
+};
 
-// Mock uploaded resumes (you’ll replace with real data from your API/auth user)
-const UPLOADED_RESUMES = [
-  { id: "r1", name: "Ann-Montakarn-Resume.pdf", updatedAt: "Updated 2 days ago", size: "214 KB" },
-  { id: "r2", name: "Ann-Data-Engineer-CV.pdf", updatedAt: "Updated 2 months ago", size: "198 KB" },
-];
-
-// Brand green
 const GREEN = "#5b8f5b";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
-// Small UI helpers
-function TinyIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-grid h-5 w-5 place-items-center rounded-full border text-[10px] text-gray-600">
-      {children}
-    </span>
-  );
-}
-
-function RoundBrand({ initials, color }: { initials: string; color: string }) {
-  return (
-    <div className={`ml-auto grid h-10 w-10 place-items-center rounded-full text-[11px] font-semibold text-white ${color}`}>
-      {initials}
-    </div>
-  );
-}
-
-// ----- Page -----
 export default function FindJobPage() {
-  // applied filters
+  const { user } = useAuth();
+  const { add, contains } = useApplyCart();
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<string>("All");
-
-  // draft inputs
-  const [draftKeyword, setDraftKeyword] = useState(keyword);
-  const [draftCategory, setDraftCategory] = useState(category);
-
-  const [selectedId, setSelectedId] = useState<string>(JOBS[0].id);
-
-  // NEW: modal open/close
+  const [jobType, setJobType] = useState<string>("All");
+  const [categories, setCategories] = useState<any[]>(["All"]);
+  const [jobTypes, setJobTypes] = useState<any[]>(["All"]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
+  const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
-  const filtered = useMemo(() => {
-    return JOBS.filter((j) => {
-      const kw = keyword.toLowerCase().trim();
-      const okKw =
-        !kw ||
-        j.title.toLowerCase().includes(kw) ||
-        j.company.toLowerCase().includes(kw) ||
-        j.location.toLowerCase().includes(kw);
-      const okCat = category === "All" || j.category === category;
-      return okKw && okCat;
-    });
-  }, [keyword, category]);
+  const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
 
-  const selected = filtered.find((j) => j.id === selectedId) ?? filtered[0];
+  // Utility: fetch with token safely
+  const authFetch = async (url: string) => {
+    const res = await fetch(url, buildInit({ credentials: "include" }));
+    return res;
+  };
 
-  // handlers
-  const applySearch = () => {
-    setKeyword(draftKeyword);
-    setCategory(draftCategory);
-    if (selected && !filtered.some((j) => j.id === selected.id)) {
-      setSelectedId(JOBS[0].id);
+  const safeFetchJson = async (url: string) => {
+    try {
+      const res = await authFetch(url);
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        console.warn(`[${url}] Not JSON:`, text.slice(0, 100));
+        return [];
+      }
+    } catch (err) {
+      console.error("safeFetchJson error", err);
+      return [];
     }
   };
 
-  const resetFilters = () => {
-    setDraftKeyword("");
-    setDraftCategory("All");
-    setKeyword("");
-    setCategory("All");
+  // Load dropdowns (category + jobType)
+  useEffect(() => {
+    async function fetchDropdowns() {
+      try {
+        const [catData, typeData] = await Promise.all([
+          safeFetchJson(`${BASE_URL}/api/job-postings/category`),
+          safeFetchJson(`${BASE_URL}/api/job-postings/job-type`),
+        ]);
+
+        const extractArray = (data: any) => {
+          if (Array.isArray(data)) return data;
+          if (Array.isArray(data?.data)) return data.data;
+          if (Array.isArray(data?.categories)) return data.categories;
+          if (Array.isArray(data?.jobTypes)) return data.jobTypes; if (Array.isArray(data?.job_types)) return data.job_types;
+          if (Array.isArray(Object.values(data)[0])) return Object.values(data)[0];
+          return [];
+        };
+
+        const catArray = extractArray(catData);
+        const typeArray = extractArray(typeData);
+
+        setCategories(["All", ...catArray]);
+        setJobTypes(["All", ...typeArray]);
+      } catch (err) {
+        console.error("Failed to load dropdowns", err);
+      }
+    }
+    fetchDropdowns();
+  }, []);
+
+  // -------------------------------
+  // Fetch job postings
+  // -------------------------------
+  const fetchJobs = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (keyword) params.append("keyword", keyword);
+      if (category !== "All") params.append("category", category);
+      if (jobType !== "All") params.append("jobType", jobType);
+
+      const url = `${BASE_URL}/api/job-postings/?${params.toString()}`;
+      console.log("Fetching:", url);
+
+      const res = await fetch(url, buildInit({ credentials: "include" }));
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Server error detail:", text);
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+
+      const data = await res.json();
+      const jobList = data.job_postings || data.data || data;
+      setJobs(jobList);
+      if (jobList.length > 0) setSelectedId(jobList[0].id);
+    } catch (err) {
+      console.error("Failed to fetch jobs", err);
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onInputKeyDown: React.KeyboardEventHandler<HTMLInputElement | HTMLSelectElement> = (e) => {
-    if (e.key === "Enter") applySearch();
+  // -------------------------------
+  // Fetch resumes from backend
+  // -------------------------------
+  const fetchResumes = async () => {
+    try {
+      const resumeList = await listResumes();
+      const mapped = (resumeList || []).map((r: any) => ({
+        id: String(r.id),
+        name: r.name || "Unnamed Resume",
+      }));
+      setResumes(mapped);
+    } catch (err) {
+      console.error("Failed to fetch resumes", err);
+    }
   };
 
-  // NEW: submit application handler
-  const handleSubmitApplication = (payload: { mode: "existing" | "upload"; resumeId?: string; file?: File }) => {
-    // TODO: integrate with your backend:
-    // - If payload.mode === "existing": POST { jobId: selected.id, resumeId: payload.resumeId }
-    // - If payload.mode === "upload": upload payload.file then submit application with returned resumeId
-    console.log("Submit application", { jobId: selected?.id, ...payload });
-    setIsApplyOpen(false);
-    alert("Application submitted! (Check console for payload)");
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    if (canApply) {
+      fetchResumes();
+      (async () => {
+        try {
+          const apps = await listMyApplications();
+          const ids = new Set<number>();
+          (apps || []).forEach((a: any) => {
+            if (typeof a?.job_id === "number") ids.add(a.job_id);
+            else if (typeof a?.job_post?.id === "number") ids.add(a.job_post.id);
+          });
+          setAppliedIds(ids);
+        } catch {
+          // ignore access issues
+        }
+      })();
+    } else {
+      setResumes([]);
+      setAppliedIds(new Set());
+    }
+  }, [canApply]);
+
+  // -------------------------------
+  // Selected job
+  // -------------------------------
+  const selected = jobs.find((j) => j.id === selectedId) ?? null;
+
+  // -------------------------------
+  // Apply handler
+  // -------------------------------
+  const handleApply = async (payload: {
+    mode: "existing" | "upload";
+    resumeId?: string;
+    file?: File;
+  }) => {
+    try {
+      if (!selected?.id) {
+        alert("Please select a job first.");
+        return;
+      }
+
+      let resumeIdToUse: number | null = null;
+
+      if (payload.mode === "existing") {
+        if (!payload.resumeId) {
+          alert("Please select a resume.");
+          return;
+        }
+        resumeIdToUse = parseInt(payload.resumeId, 10);
+      } else if (payload.mode === "upload") {
+        if (!payload.file) {
+          alert("Please choose a file to upload.");
+          return;
+        }
+        const uploaded = await uploadResume(payload.file);
+        resumeIdToUse = (uploaded as any)?.id as number;
+      }
+
+      if (!resumeIdToUse) {
+        alert("Unable to determine resume to use.");
+        return;
+      }
+
+      await applyToJob(selected.id, resumeIdToUse);
+      setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
+      setIsApplyOpen(false);
+      alert("Application submitted successfully.");
+    } catch (err: any) {
+      console.error("Apply failed", err);
+      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+    }
   };
 
+  // -------------------------------
+  // Render
+  // -------------------------------
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      {/* Top filter bar */}
-      <section className="rounded-2xl border bg-white p-3 sm:p-4 shadow-sm" style={{ borderColor: GREEN }}>
+      {/* Search Bar */}
+      <section
+        className="rounded-2xl border bg-white p-3 sm:p-4 shadow-sm"
+        style={{ borderColor: GREEN }}
+      >
         <div className="flex flex-wrap items-center gap-3">
           <input
-            value={draftKeyword}
-            onChange={(e) => setDraftKeyword(e.target.value)}
-            onKeyDown={onInputKeyDown}
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
             placeholder="Keyword"
             className="h-10 w-[200px] flex-1 rounded-full border px-4 text-sm focus:outline-none focus:ring"
           />
+
           <select
-            value={draftCategory}
-            onChange={(e) => setDraftCategory(e.target.value)}
-            onKeyDown={onInputKeyDown}
-            className="h-10 w-[200px] rounded-full border px-3 text-sm"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="h-10 w-[180px] rounded-full border px-3 text-sm"
           >
-            <option>All</option>
-            <option>AI/ML</option>
-            <option>Full-stack</option>
+            {categories.map((c, i) => {
+              const label =
+                typeof c === "object"
+                  ? c.label || c.name || c.title || c.value || "Unnamed"
+                  : String(c);
+              const value =
+                typeof c === "object"
+                  ? c.value || c.name || c.title || label
+                  : String(c);
+              return (
+                <option key={`${i}-${value}`} value={value}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+
+          <select
+            value={jobType}
+            onChange={(e) => setJobType(e.target.value)}
+            className="h-10 w-[180px] rounded-full border px-3 text-sm"
+          >
+            {jobTypes.map((t, i) => {
+              const label =
+                typeof t === "object"
+                  ? t.label || t.name || t.title || t.value || "Unnamed"
+                  : String(t);
+              const value =
+                typeof t === "object"
+                  ? t.value || t.name || t.title || label
+                  : String(t);
+              return (
+                <option key={`${i}-${value}`} value={value}>
+                  {label}
+                </option>
+              );
+            })}
           </select>
 
           <div className="ml-auto flex gap-2">
             <button
               className="rounded-full px-4 py-2 text-sm text-white"
               style={{ backgroundColor: GREEN }}
-              onClick={applySearch}
+              onClick={fetchJobs}
             >
               Search
             </button>
-            <button className="rounded-full border px-4 py-2 text-sm hover:bg-gray-50" onClick={resetFilters}>
-              All Positions
+            <button
+              className="rounded-full border px-4 py-2 text-sm hover:bg-gray-50"
+              onClick={() => {
+                setKeyword("");
+                setCategory("All");
+                setJobType("All");
+                fetchJobs();
+              }}
+            >
+              Reset
             </button>
-            <button className="rounded-full border px-4 py-2 text-sm hover:bg-gray-50">New for You</button>
           </div>
         </div>
       </section>
 
+      {/* Job list + detail panel */}
       <div className="mt-6 grid gap-6 lg:grid-cols-[420px,1fr]">
-        {/* Left: job list */}
         <aside className="space-y-3">
-          {filtered.map((job) => {
-            const active = job.id === (selected?.id ?? "");
-            return (
-              <button
-                key={job.id}
-                onClick={() => setSelectedId(job.id)}
-                className={`w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${active ? "ring-2" : ""}`}
-                style={{ borderColor: GREEN, boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0">
-                    <div className="font-semibold leading-5">{job.title}</div>
-                    <div className="mt-1 text-xs text-gray-600">
-                      {job.company}
-                      <br />
-                      {job.location}
-                    </div>
-                    <ul className="mt-2 list-disc pl-4 text-xs text-gray-700 space-y-1">
-                      {job.bullets.slice(0, 3).map((b, i) => (
-                        <li key={i} className="line-clamp-1">
-                          {b}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-2 text-[11px] text-gray-500">{job.postedDaysAgo} days ago</div>
+          {loading ? (
+            <div className="text-gray-600 text-sm">Loading jobs...</div>
+          ) : jobs.length === 0 ? (
+            <div className="rounded-2xl border p-6 text-sm text-gray-600">
+              No jobs match your filters.
+            </div>
+          ) : (
+            jobs.map((job) => {
+              const active = job.id === selectedId;
+              return (
+                <button
+                  key={job.id}
+                  onClick={() => setSelectedId(job.id)}
+                  className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
+                    active ? "ring-2" : ""
+                  }`}
+                  style={{
+                    borderColor: GREEN,
+                    boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
+                  }}
+                >
+                  <div className="absolute right-4 top-4 h-10 w-10 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                    <span className="text-xs font-semibold">{(job.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
                   </div>
-                  {job.brand && <RoundBrand initials={job.brand.initials} color={job.brand.color} />}
-                </div>
-              </button>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="rounded-2xl border p-6 text-sm text-gray-600">No jobs match your filters.</div>
+                  <div className="min-w-0 pr-14">
+                    <div className="font-semibold leading-5">{job.position}</div>
+                    <div className="mt-1 text-xs text-gray-600 truncate">{job.company?.company_name}</div>
+                    <div className="text-[11px] text-gray-500 truncate">{job.company?.location}</div>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-700 line-clamp-2">
+                    {job.description}
+                  </p>
+                  <div className="mt-2 text-[11px] text-gray-500">
+                    {job.available_position} position(s) • {job.jobType}
+                  </div>
+                </button>
+              );
+            })
           )}
         </aside>
 
-        {/* Right: detail panel */}
-        <section className="rounded-2xl border bg-white p-5 sm:p-6 shadow-sm" style={{ borderColor: GREEN }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <TinyIcon>←</TinyIcon>
-              <span className="hidden sm:inline">Select Job</span>
-              <span className="sm:hidden">Back</span>
+        {/* Right panel */}
+        <section
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
+          style={{ borderColor: GREEN }}
+        >
+          {!selected ? (
+            <div className="text-gray-600 text-sm">
+              Select a job from the left panel.
             </div>
-            <div className="text-[11px] text-gray-500">{selected?.postedDaysAgo} days ago</div>
-          </div>
-
-          {selected && (
+          ) : (
             <>
-              <div className="mt-4">
-                <div className="inline-block rounded-lg px-3 py-2 text-white text-xs font-semibold" style={{ backgroundColor: GREEN }}>
-                  {selected.tag ?? selected.title}
-                </div>
-                <div className="mt-2 text-sm font-semibold">
-                  {selected.company}, {selected.location}
-                </div>
+              <div className="absolute right-5 top-5 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                <span className="text-sm font-semibold">{(selected.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
               </div>
-
-              <ul className="mt-4 list-disc pl-5 text-sm text-gray-700 space-y-2">
-                {selected.bullets.map((b, i) => (
-                  <li key={i}>{b}</li>
-                ))}
-              </ul>
-
-              <div className="mt-6 flex justify-end">
-                <button
-                  className="rounded-full px-6 py-2 text-sm font-semibold text-white"
-                  style={{ backgroundColor: GREEN }}
-                  onClick={() => setIsApplyOpen(true)} // <-- OPEN MODAL
-                >
-                  APPLY
-                </button>
+              <div className="pr-16">
+                <div className="text-lg font-semibold">{selected.position}</div>
+                <div className="text-sm text-gray-600">{selected.company?.company_name}</div>
+                <div className="text-xs text-gray-500">{selected.company?.location}</div>
               </div>
+              <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
+              <p className="mt-2 text-xs text-gray-500">
+                Job Type: {selected.jobType}
+              </p>
+              <p className="mt-2 text-xs text-gray-500">
+                Available Positions: {selected.available_position}
+              </p>
+
+              {canApply && (
+                <div className="mt-6 flex justify-end">
+                  {(() => {
+                    const isApplied = !!selected && appliedIds.has(selected.id);
+                    const isInCart = !!selected && contains(selected.id);
+                    return (
+                      <div className="flex gap-2">
+                        <button
+                          disabled={isApplied}
+                          className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          style={{ backgroundColor: GREEN }}
+                          onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
+                        >
+                          {isApplied ? 'APPLIED' : 'APPLY'}
+                        </button>
+                        <button
+                          disabled={isApplied || isInCart}
+                          className={`rounded-full border px-4 py-2 text-sm ${isApplied || isInCart ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                          onClick={() => selected && add(selected)}
+                        >
+                          {isInCart ? 'ADDED' : 'ADD TO LIST'}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </>
           )}
         </section>
       </div>
 
       {/* Apply Modal */}
-      <ApplyModal
-        isOpen={isApplyOpen}
-        onClose={() => setIsApplyOpen(false)}
-        onSubmit={handleSubmitApplication}
-        resumes={UPLOADED_RESUMES}
-        jobTitle={selected?.title}
-        brandColor={GREEN}
-      />
+      {canApply && (
+        <ApplyModal
+          isOpen={isApplyOpen}
+          onClose={() => setIsApplyOpen(false)}
+          onSubmit={handleApply}
+          resumes={resumes}
+          jobTitle={selected?.position}
+          brandColor={GREEN}
+        />
+      )}
     </main>
   );
 }
+
+
+
+
+
