@@ -1,41 +1,40 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE, buildInit, unwrap } from "@/api/base";
 
 type Application = {
   id: number;
   company_name: string;
   position: string;
   applied_date: string;
-  status: "Offered" | "Confirmed" | "Declined";
+  status: "Offered" | "Confirmed" | "Declined" | "Pending";
 };
 
-const BASE_URL = "http://127.0.0.1:8000/api";
+const API_URL = `${API_BASE}/api`;
 
 export default function AppliedCompanyStatusPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, isReady } = useAuth();
 
   useEffect(() => {
     const fetchApplications = async () => {
-      if (!user?.access_token) {
-        console.warn("⚠️ No token found in user context. Please log in first.");
+      if (!isReady) return; // wait until auth has loaded
+      if (!user) {
+        console.warn("⚠️ No user context. Please log in first.");
         setLoading(false);
         return;
       }
 
       console.log("🚀 Starting fetchApplications...");
-      console.log("🔑 Using token:", user.access_token);
+      console.log("👤 Authenticated user present; fetching applications...");
 
       try {
-        const res = await fetch(`${BASE_URL}/employee/my-applications`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${user.access_token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const res = await fetch(
+          `${API_URL}/employee/my-applications`,
+          buildInit({ method: "GET", credentials: "include" })
+        );
 
         console.log("📨 Response received. Status:", res.status);
 
@@ -55,9 +54,28 @@ export default function AppliedCompanyStatusPage() {
           return;
         }
 
-        const data = await res.json();
-        console.log("✅ Application data fetched successfully:", data);
-        setApplications(data);
+        const json = await res.json();
+        const raw = unwrap<any[]>(json) || [];
+        const mapped: Application[] = raw.map((a: any) => {
+          const position = a?.job_post?.position ?? "";
+          const companyName = a?.job_post?.company?.company_name ?? a?.job_post?.company_name ?? "";
+          const appliedAt = a?.applied_at ?? a?.created_at ?? null;
+          const emp = (a?.employee_send_status ?? "").toString();
+          const comp = (a?.company_send_status ?? "").toString();
+          let status: Application["status"] = "Pending";
+          if (emp === "Confirmed") status = "Confirmed";
+          else if (emp === "Rejected") status = "Declined";
+          else if (comp === "Confirmed") status = "Offered";
+          return {
+            id: Number(a?.id ?? 0),
+            company_name: companyName || "—",
+            position: position || "—",
+            applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "—",
+            status,
+          };
+        });
+        console.log("✅ Application data mapped:", mapped);
+        setApplications(mapped);
       } catch (err) {
         console.error("🔥 Error while fetching applications:", err);
       } finally {
@@ -67,21 +85,19 @@ export default function AppliedCompanyStatusPage() {
     };
 
     fetchApplications();
-  }, [user]);
+  }, [user, isReady]);
 
   // ──────────────────────── Confirm handler ────────────────────────
   const handleConfirm = async (id: number) => {
-    if (!user?.access_token) return;
+    if (!user) return;
 
     console.log("🟢 Confirming job application:", id);
     try {
-      const res = await fetch(`${BASE_URL}/company/job-applications/${id}/confirm`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${user.access_token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      // As a student, confirmation should hit the employee endpoint
+      const res = await fetch(
+        `${API_URL}/employee/job-applications/${id}/confirm`,
+        buildInit({ method: "POST", credentials: "include" })
+      );
 
       console.log("Confirm Response:", res.status);
       if (!res.ok) {
@@ -101,17 +117,14 @@ export default function AppliedCompanyStatusPage() {
 
   // ──────────────────────── Cancel handler ────────────────────────
   const handleCancel = async (id: number) => {
-    if (!user?.access_token) return;
+    if (!user) return;
 
     console.log("🔴 Cancelling job application:", id);
     try {
-      const res = await fetch(`${BASE_URL}/employee/cancel-application/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${user.access_token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const res = await fetch(
+        `${API_URL}/employee/cancel-application/${id}`,
+        buildInit({ method: "DELETE", credentials: "include" })
+      );
 
       console.log("Cancel Response:", res.status);
       if (!res.ok) {
@@ -120,10 +133,9 @@ export default function AppliedCompanyStatusPage() {
         return;
       }
 
-      setApplications((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: "Declined" } : a))
-      );
-      console.log("✅ Cancelled successfully.");
+      // Backend deletes the application; remove it from the list
+      setApplications((prev) => prev.filter((a) => a.id !== id));
+      console.log("✅ Application cancelled and removed.");
     } catch (err) {
       console.error("Cancel error:", err);
     }
@@ -144,6 +156,12 @@ export default function AppliedCompanyStatusPage() {
           Confirmed
         </span>
       );
+    if (status === "Pending")
+      return (
+        <span className={`${base} bg-gray-100 text-gray-700 border border-gray-300`}>
+          Pending
+        </span>
+      );
     return (
       <span className={`${base} bg-red-100 text-red-700 border border-red-300`}>
         Declined
@@ -152,7 +170,7 @@ export default function AppliedCompanyStatusPage() {
   };
 
   // ──────────────────────── Loading State ────────────────────────
-  if (loading)
+  if (loading || !isReady)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
         <div>
@@ -163,7 +181,7 @@ export default function AppliedCompanyStatusPage() {
     );
 
   // ──────────────────────── Not Logged In ────────────────────────
-  if (!user?.access_token)
+  if (!user)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
         Please log in to view your applications.
@@ -221,6 +239,13 @@ export default function AppliedCompanyStatusPage() {
                             Cancel
                           </button>
                         </div>
+                      ) : app.status === "Pending" ? (
+                        <button
+                          onClick={() => handleCancel(app.id)}
+                          className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
+                        >
+                          Cancel
+                        </button>
                       ) : (
                         <span className="text-gray-500 text-sm">No Action</span>
                       )}

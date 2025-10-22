@@ -42,11 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    const user_name = localStorage.getItem("user_name");
-    const email = localStorage.getItem("email");
-    const role = localStorage.getItem("role");
+    const user_name = localStorage.getItem("user_name") ?? "";
+    const email = localStorage.getItem("email") ?? "";
+    const role = localStorage.getItem("role") ?? "";
 
-    if (token && user_name && email && role) {
+    // Consider user authenticated if an access token exists; fill other fields if present
+    if (token) {
       setUser({ user_name, email, role: normalizeRole(role), access_token: token });
     }
     setIsReady(true);

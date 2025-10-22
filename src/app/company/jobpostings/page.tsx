@@ -8,7 +8,8 @@ import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const API_URL = `${BASE_URL}/api/company/job-postings`;
+const API_URL_BASE = `${BASE_URL}/api/company/job-postings`;
+const API_URL_GET_ALL = `${API_URL_BASE}/all`;
 
 async function fetchAuthedJson(url: string, init: RequestInit = {}) {
   const res = await fetch(url, buildInit({ credentials: "include", ...init }));
@@ -43,7 +44,8 @@ export default function DashboardPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await fetchAuthedJson(API_URL, { method: "GET" });
+        // Backend defines GET all at /api/company/job-postings/all
+        const data = await fetchAuthedJson(API_URL_GET_ALL, { method: "GET" });
         setJobs(data.data || data || []);
       } catch (err) {
         console.error("❌ Failed to fetch jobs:", err);
@@ -66,7 +68,7 @@ export default function DashboardPage() {
         available_position: job.positionsAvailable,
       };
 
-      const data = await fetchAuthedJson(API_URL, {
+      const data = await fetchAuthedJson(API_URL_BASE, {
         method: "POST",
         body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" },
@@ -95,7 +97,7 @@ export default function DashboardPage() {
         available_position: updated.positionsAvailable,
       };
 
-      const data = await fetchAuthedJson(`${API_URL}/${job.id}`, {
+      const data = await fetchAuthedJson(`${API_URL_BASE}/${job.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
