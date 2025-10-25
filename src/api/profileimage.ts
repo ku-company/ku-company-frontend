@@ -1,5 +1,6 @@
 // src/api/profileimage.ts
 import { API_BASE, getAuthHeaders } from "./base";
+import { autoLogout, shouldDeferAutoLogout } from "@/utils/httpError";
 
 async function fetchJSON(url: string, init: RequestInit): Promise<any> {
   const res = await fetch(url, { ...init, credentials: "include" });
@@ -7,6 +8,19 @@ async function fetchJSON(url: string, init: RequestInit): Promise<any> {
   let json: any = null;
   try { json = text ? JSON.parse(text) : {}; } catch { json = {}; }
   if (!res.ok) {
+    if (res.status === 401 && !shouldDeferAutoLogout()) {
+      const lower = (text || "").toLowerCase();
+      if (
+        lower.includes("jwt expired") ||
+        lower.includes("token expired") ||
+        lower.includes("expired token") ||
+        lower.includes("invalid token") ||
+        lower.includes("invalid or expired") ||
+        lower.includes("signature has expired")
+      ) {
+        autoLogout();
+      }
+    }
     const msg = json?.message || text || `${res.status} ${res.statusText}`;
     throw new Error(msg);
   }

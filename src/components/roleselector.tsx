@@ -6,6 +6,7 @@ interface RoleSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect?: (role: string) => void;
+  disableClose?: boolean; // when true, hide close and block backdrop close
 }
 
 const roles = [
@@ -14,7 +15,7 @@ const roles = [
   { name: "Company", icon: "/icons/company.png", href: "/register/company" },
 ];
 
-export default function RoleSelectModal({ isOpen, onClose, onSelect }: RoleSelectModalProps) {
+export default function RoleSelectModal({ isOpen, onClose, onSelect, disableClose = false }: RoleSelectModalProps) {
   const router = useRouter();
 
   function handleSelect(role: string) {
@@ -34,20 +35,22 @@ export default function RoleSelectModal({ isOpen, onClose, onSelect }: RoleSelec
   return (
     <div
       className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-      onClick={onClose}
+      onClick={disableClose ? undefined : onClose}
     >
       <div
         className="bg-white rounded-3xl p-12 w-full max-w-4xl shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 text-gray-500 hover:text-gray-800 text-3xl"
-          title="Close"
-        >
-          ✕
-        </button>
+        {!disableClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 text-gray-500 hover:text-gray-800 text-3xl"
+            title="Close"
+          >
+            ✕
+          </button>
+        )}
 
         <h2 className="text-4xl font-bold text-black text-center mb-10">
           Choose Your Role

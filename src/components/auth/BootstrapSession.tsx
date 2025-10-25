@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchAuthMe } from "@/api/session";
 import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
+import { getCompanyProfile, createDefaultCompanyProfile } from "@/api/companyprofile";
 
 export default function BootstrapSession() {
   const { user, login } = useAuth();
@@ -45,6 +46,21 @@ export default function BootstrapSession() {
             role: me.role ?? me.roles ?? "student",
           });
           console.log("✅ Logged in as:", me.role ?? me.roles);
+
+          // If OAuth resulted in a Company role, ensure a default profile exists
+          const roleNorm = String(me.role ?? me.roles ?? "").toLowerCase();
+          if (roleNorm.includes("company")) {
+            try {
+              const existing = await getCompanyProfile();
+              if (!existing) {
+                const name = (me as any)?.company_name || me.user_name || "";
+                await createDefaultCompanyProfile(name);
+                console.log("🏢 Ensured default company profile exists");
+              }
+            } catch (e) {
+              console.warn("⚠️ Unable to ensure company profile:", e);
+            }
+          }
         } else {
           console.warn("⚠️ No user data from fetchAuthMe()");
         }

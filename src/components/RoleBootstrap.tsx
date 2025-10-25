@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import RoleSelectModal from "@/components/roleselector";
+import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
 
@@ -18,6 +19,7 @@ export default function RoleBootstrap() {
   const { user, isReady, login } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
+  const [showCompanyOnboarding, setShowCompanyOnboarding] = useState(false);
 
   const isUnknown = useMemo(() => normalizeRole(user?.role) === "Unknown", [user?.role]);
 
@@ -69,6 +71,11 @@ export default function RoleBootstrap() {
       if (finalRole !== "Unknown") {
         setShowRoleModal(false);
       }
+
+      // If user chose Company, prompt for company info
+      if (finalRole === "Company") {
+        setShowCompanyOnboarding(true);
+      }
     } catch (err) {
       console.error("Failed to update role:", err);
       // keep modal open for retry
@@ -77,14 +84,23 @@ export default function RoleBootstrap() {
     }
   }
 
-  if (!showRoleModal) return null;
-
   return (
-    <RoleSelectModal
-      isOpen={showRoleModal}
-      onClose={() => !patchingRole && setShowRoleModal(false)}
-      onSelect={handleRoleSelect}
-    />
+    <>
+      {showRoleModal && (
+        <RoleSelectModal
+          isOpen={showRoleModal}
+          onClose={() => !patchingRole && setShowRoleModal(false)}
+          onSelect={handleRoleSelect}
+          disableClose
+        />
+      )}
+      {showCompanyOnboarding && (
+        <CompanyOnboardingModal
+          isOpen={showCompanyOnboarding}
+          onClose={() => setShowCompanyOnboarding(false)}
+        />
+      )}
+    </>
   );
 }
 
