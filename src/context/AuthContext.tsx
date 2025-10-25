@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { logoutServerSession } from "@/api/logout";
 
 type AuthUser = {
@@ -39,6 +39,7 @@ function normalizeRole(r?: string | null): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const expTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsReady(true);
   }, []);
 
-  // Auto-logout on JWT expiry
+  // Auto-logout on JWT expiry or 15 minutes after login (hard cap)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -68,25 +69,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch { return null; }
     }
 
-    let cancelled = false;
-
-    async function check() {
-      if (cancelled) return;
-      const token = localStorage.getItem('access_token');
-      const exp = decodeExp(token);
-      if (exp && exp * 1000 <= Date.now()) {
-        const { autoLogout, shouldDeferAutoLogout } = await import("@/utils/httpError");
-        if (!shouldDeferAutoLogout()) {
-          autoLogout();
-        }
-      }
+    // Clear any previous timer
+    if (expTimerRef.current) {
+      window.clearTimeout(expTimerRef.current);
+      expTimerRef.current = null;
     }
 
-    // initial check + interval
-    check();
-    const id = window.setInterval(check, 30000);
-    return () => { cancelled = true; window.clearInterval(id); };
-  }, []);
+    const token = localStorage.getItem('access_token');
+    const expSec = decodeExp(token);
+    const now = Date.now();
+    const fifteenMinMs = 15 * 60 * 1000;
+    const expMs = expSec ? expSec * 1000 : now + fifteenMinMs;
+
+    // If exp appears later than 15 minutes, still enforce 15 minutes cap
+    const fireAt = Math.min(expMs, now + fifteenMinMs);
+    const delay = Math.max(0, fireAt - now);
+
+    expTimerRef.current = window.setTimeout(async () => {
+      try {
+        const { autoLogout, shouldDeferAutoLogout } = await import("@/utils/httpError");
+        if (!shouldDeferAutoLogout()) autoLogout();
+      } catch {}
+    }, delay) as unknown as number;
+
+    return () => {
+      if (expTimerRef.current) {
+        window.clearTimeout(expTimerRef.current);
+        expTimerRef.current = null;
+      }
+    };
+  }, [user?.access_token]);
 
   function login(data: LoginData) {
     const role = normalizeRole(data.roles ?? data.role ?? "");
