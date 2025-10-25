@@ -1,0 +1,7 @@
+.navbar {
+  @apply fixed top-0 left-0 w-full bg-white shadow-sm z-50 transition-all duration-300;
+}
+
+.nav-link {
+  @apply px-3 py-2 text-gray-700 hover:text-primary transition-all;
+}

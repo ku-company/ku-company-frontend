@@ -1,0 +1,13 @@
+.section {
+  @apply py-16;
+}
+
+.container {
+  @apply mx-auto max-w-[1380px] px-3;
+}
+
+.content {
+  @apply prose max-w-none prose-headings:text-gray-900 prose-p:text-base;
+  @apply prose-a:text-primary hover:prose-a:underline;
+  @apply prose-hr:border-gray-300;
+}
