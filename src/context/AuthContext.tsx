@@ -53,6 +53,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsReady(true);
   }, []);
 
+  // Auto-logout on JWT expiry
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function decodeExp(t?: string | null): number | null {
+      if (!t) return null;
+      try {
+        const base64 = t.split('.')[1];
+        if (!base64) return null;
+        const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(json);
+        return typeof payload?.exp === 'number' ? payload.exp : null;
+      } catch { return null; }
+    }
+
+    let cancelled = false;
+
+    async function check() {
+      if (cancelled) return;
+      const token = localStorage.getItem('access_token');
+      const exp = decodeExp(token);
+      if (exp && exp * 1000 <= Date.now()) {
+        const { autoLogout, shouldDeferAutoLogout } = await import("@/utils/httpError");
+        if (!shouldDeferAutoLogout()) {
+          autoLogout();
+        }
+      }
+    }
+
+    // initial check + interval
+    check();
+    const id = window.setInterval(check, 30000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, []);
+
   function login(data: LoginData) {
     const role = normalizeRole(data.roles ?? data.role ?? "");
     localStorage.setItem("access_token", data.access_token ?? "");
@@ -73,6 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutServerSession();
     localStorage.clear();
     setUser(null);
+    if (typeof window !== 'undefined') {
+      const path = window.location?.pathname || '';
+      if (!path.startsWith('/login')) window.location.href = '/login';
+    }
   }
 
   return (
