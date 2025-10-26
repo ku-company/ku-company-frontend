@@ -5,6 +5,7 @@ import RoleSelectModal from "@/components/roleselector";
 import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
+import { getCompanyProfile } from "@/api/companyprofile";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -36,7 +37,36 @@ export default function RoleBootstrap() {
     } else {
       setShowRoleModal(false);
     }
+
+    // If user is a Company and signup flow marked onboarding, open only if country is empty
+    (async () => {
+      try {
+        const roleNorm = (user?.role ?? "").toLowerCase();
+        if (!roleNorm.includes("company")) return;
+        const needs = typeof window !== "undefined" ? localStorage.getItem("needs_company_onboarding") : null;
+        if (needs !== "1") return;
+
+        // Check profile country before showing modal
+        try {
+          const profile = await getCompanyProfile();
+          const shouldOpen = !profile || profile.country === "";
+          if (shouldOpen) {
+            setShowCompanyOnboarding(true);
+          } else {
+            // Country already set; clear the flag so it won't show in future logins
+            if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
+          }
+        } catch (e) {
+          console.warn("company profile check failed", e);
+          // Open modal on failure to avoid losing the opportunity in race conditions
+          setShowCompanyOnboarding(true);
+        }
+      } catch {}
+    })();
+
   }, [isReady, user, isUnknown]);
+
+  // Note: no secondary guard; onboarding modal opens only when flagged by signup flow.
 
   async function handleRoleSelect(selected: string) {
     try {
@@ -97,7 +127,12 @@ export default function RoleBootstrap() {
       {showCompanyOnboarding && (
         <CompanyOnboardingModal
           isOpen={showCompanyOnboarding}
-          onClose={() => setShowCompanyOnboarding(false)}
+          onClose={() => {
+            try {
+              if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
+            } catch {}
+            setShowCompanyOnboarding(false);
+          }}
         />
       )}
     </>
