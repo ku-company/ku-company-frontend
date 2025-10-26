@@ -20,16 +20,20 @@ function NavItem({ href, label }: { href: string; label: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const isActive = mounted && (() => {
-    if (href === "/") return pathname === "/" || pathname === "/homepage";
-    return pathname === href || pathname.startsWith(href + "/");
-  })();
+  const isActive =
+    mounted &&
+    (() => {
+      if (href === "/") return pathname === "/" || pathname === "/homepage";
+      return pathname === href || pathname.startsWith(href + "/");
+    })();
 
   return (
     <Link
       href={href}
       className={`btn btn-ghost btn-sm rounded-full text-sm font-medium transition ${
-        isActive ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-100"
+        isActive
+          ? "bg-[#5b8f5b] text-white"
+          : "text-gray-700 hover:bg-[#5b8f5b]/10"
       }`}
     >
       {label}
@@ -41,26 +45,16 @@ export default function Navbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { count } = useApplyCart();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+
   const displayRole =
     (user?.role || "Unknown").slice(0, 1).toUpperCase() +
     (user?.role || "Unknown").slice(1);
 
-  // ปิด dropdown เมื่อคลิกนอก
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) setDropdownOpen(false);
-    };
-    if (dropdownOpen) document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [dropdownOpen]);
-
-  // โหลดโปรไฟล์และชื่อ
+  /* 🧩 Load profile image + name */
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
@@ -92,7 +86,6 @@ export default function Navbar() {
         if (!cancelled) setAvatarUrl(null);
       }
 
-      // Display name
       try {
         const role = user.role?.toLowerCase() || "";
         if (role.includes("company")) {
@@ -124,41 +117,62 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    setDropdownOpen(false);
     router.push("/login");
   };
 
   return (
     <>
-      <div className="navbar bg-base-100 border-b shadow-sm px-4 lg:px-8">
-        {/* ───── Left: Logo ───── */}
+      {/* ───── NAVBAR ───── */}
+      <div className="navbar bg-white border-b border-gray-200 shadow-sm px-4 lg:px-8">
+        {/* ─ Left: Logo ─ */}
         <div className="navbar-start">
-          <Link href="/" className="text-primary text-lg font-bold">
+          <Link
+            href="/"
+            className="text-[#5b8f5b] text-lg font-bold tracking-wide"
+          >
             KU-COMPANY
           </Link>
         </div>
 
-        {/* ───── Center: Menu ───── */}
+        {/* ─ Center: Menu ─ */}
         <div className="navbar-center hidden lg:flex">
           <ul className="menu menu-horizontal px-1 gap-2">
-            <li><NavItem href="/" label="HOME" /></li>
-            <li><NavItem href="/find-job" label="FIND JOB" /></li>
+            <li>
+              <NavItem href="/" label="HOME" />
+            </li>
+            <li>
+              <NavItem href="/find-job" label="FIND JOB" />
+            </li>
             {user?.role?.toLowerCase().includes("company") && (
               <>
-                <li><NavItem href="/company/jobpostings" label="JOB POSTINGS" /></li>
-                <li><NavItem href="/view-resume" label="VIEW RESUME" /></li>
+                <li>
+                  <NavItem
+                    href="/company/jobpostings"
+                    label="JOB POSTINGS"
+                  />
+                </li>
+                <li>
+                  <NavItem href="/view-resume" label="VIEW RESUME" />
+                </li>
               </>
             )}
-            <li><NavItem href="/announcement" label="ANNOUNCEMENT" /></li>
+            <li>
+              <NavItem
+                href="/professor-annoucement"
+                label="ANNOUNCEMENT"
+              />
+            </li>
             {(user?.role?.toLowerCase().includes("student") ||
               user?.role?.toLowerCase().includes("alumni")) && (
-              <li><NavItem href="/status" label="STATUS" /></li>
+              <li>
+                <NavItem href="/status" label="STATUS" />
+              </li>
             )}
           </ul>
         </div>
 
-        {/* ───── Right: Profile & Auth ───── */}
-        <div className="navbar-end flex items-center gap-2" ref={menuRef}>
+        {/* ─ Right: Auth/Profile ─ */}
+        <div className="navbar-end flex items-center gap-3" ref={menuRef}>
           {user ? (
             <>
               {/* Apply Cart */}
@@ -168,7 +182,7 @@ export default function Navbar() {
                   className="btn btn-ghost btn-circle relative"
                   aria-label="Apply list"
                 >
-                  <DocumentTextIcon className="h-5 w-5 text-primary" />
+                  <DocumentTextIcon className="h-5 w-5 text-[#5b8f5b]" />
                   {count > 0 && (
                     <span className="badge badge-error badge-xs absolute top-1 right-1 text-white">
                       {count}
@@ -179,12 +193,8 @@ export default function Navbar() {
 
               {/* Avatar dropdown */}
               <div className="dropdown dropdown-end">
-                <div
-                  tabIndex={0}
-                  role="button"
-                  className="btn btn-circle avatar"
-                >
-                  <div className="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                <div tabIndex={0} role="button" className="btn btn-circle avatar">
+                  <div className="w-10 rounded-full ring ring-[#5b8f5b] ring-offset-base-100 ring-offset-2">
                     <img
                       src={avatarUrl || "/icons/default-profile.png"}
                       alt="profile"
@@ -194,7 +204,7 @@ export default function Navbar() {
 
                 <ul
                   tabIndex={0}
-                  className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+                  className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-white rounded-xl w-52 border border-gray-100"
                 >
                   <li className="text-xs text-gray-500 px-2 mb-1">
                     Signed in as
@@ -203,7 +213,10 @@ export default function Navbar() {
                       {displayName || user.user_name}
                     </span>
                     <br />
-                    Role: <span className="text-primary font-medium">{displayRole}</span>
+                    Role:{" "}
+                    <span className="text-[#5b8f5b] font-medium">
+                      {displayRole}
+                    </span>
                   </li>
                   <li>
                     <Link href="/profile">Profile</Link>
@@ -217,35 +230,52 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <>
-              <Link href="/login" className="btn btn-outline btn-sm text-primary">
+            <div className="flex gap-3">
+              <Link
+                href="/login"
+                className="btn btn-outline btn-sm rounded-full border-[#5b8f5b] text-[#5b8f5b] hover:bg-[#5b8f5b] hover:text-white px-5"
+              >
                 LOGIN
               </Link>
               <button
                 onClick={() => setShowRoleSelector(true)}
-                className="btn btn-primary btn-sm text-white"
+                className="btn btn-sm bg-[#5b8f5b] text-white rounded-full px-5 hover:bg-emerald-700"
               >
-                SIGNUP
+                SIGN UP
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
 
       {/* ───── Role Selector Modal ───── */}
-      {showRoleSelector && (
+        {showRoleSelector && (
         <dialog open className="modal">
-          <div className="modal-box">
+        <div
+          className="modal-box bg-white rounded-2xl border border-gray-100 
+                    w-full max-w-4xl flex flex-col items-center justify-center py-10 overflow-visible"
+        >
+          <h2 className="text-2xl font-semibold text-[#5b8f5b] mb-8 text-center">
+            Select Your Role
+          </h2>
+
+          <div className="w-full flex justify-center overflow-hidden">
             <RoleSelector
               isOpen={showRoleSelector}
               onClose={() => setShowRoleSelector(false)}
             />
           </div>
-          <form method="dialog" className="modal-backdrop">
-            <button onClick={() => setShowRoleSelector(false)}>close</button>
-          </form>
-        </dialog>
-      )}
+        </div>
+
+      <form
+        method="dialog"
+        className="modal-backdrop bg-black/40 backdrop-blur-sm"
+      >
+        <button onClick={() => setShowRoleSelector(false)}>close</button>
+      </form>
+    </dialog>
+  )}
+
     </>
   );
 }
