@@ -9,6 +9,8 @@ export function getAuthHeaders(): HeadersInit {
 // Wrapper for fetch initialization
 export function buildInit(init: RequestInit = {}): RequestInit {
   return {
+    // Always include cookies for auth-backed endpoints
+    credentials: init.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),
