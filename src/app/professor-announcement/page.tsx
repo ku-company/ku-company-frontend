@@ -26,21 +26,42 @@ export default function ProfessorAnnouncementPage() {
     (async () => {
       try {
         const data = await fetchProfessorAnnouncements();
-        if (Array.isArray(data)) setAnnouncements(data);
-        else if (data?.results) setAnnouncements(data.results);
-        else setAnnouncements([]);
+        console.log("📢 Announcements response:", data); // Debug ดู response backend
+
+        if (Array.isArray(data)) {
+          // backend คืน array โดยตรง
+          setAnnouncements(data);
+        } else if (data?.results) {
+          // backend คืน object ที่มี key results
+          setAnnouncements(data.results);
+        } else if (data?.data) {
+          // backend คืน object ที่มี key data
+          setAnnouncements(data.data);
+        } else {
+          // ไม่มีข้อมูลที่ใช้ได้
+          setAnnouncements([]);
+        }
+
         setErrorMessage(null);
       } catch (err: any) {
         console.error("⚠️ Announcement fetch failed:", err);
-        if (String(err).includes("Profile not found")) {
+        const errStr = String(err);
+
+        if (errStr.includes("Profile not found")) {
           setErrorMessage(
             "Your Professor profile has not been created yet. Please contact admin."
           );
-        } else if (String(err).includes("401")) {
+        } else if (errStr.includes("401")) {
           setErrorMessage("Unauthorized — please log in again.");
+        } else if (errStr.includes("403")) {
+          setErrorMessage("Access denied. You are not allowed to view announcements.");
+        } else if (errStr.includes("Failed to fetch")) {
+          setErrorMessage("Cannot connect to the server. Please check your network.");
         } else {
           setErrorMessage("Failed to load announcements. Please try again later.");
         }
+
+        setAnnouncements([]);
       }
     })();
   }, []);
@@ -55,18 +76,26 @@ export default function ProfessorAnnouncementPage() {
         content,
         is_connection: false,
       });
-      if (newPost && newPost.id) {
-        setAnnouncements((prev) => [newPost, ...prev]);
+
+      console.log("✅ Created announcement:", newPost); // debug
+
+      if (newPost && (newPost.id || newPost?.data?.id)) {
+        const created =
+          newPost.id !== undefined ? newPost : newPost.data || newPost.results?.[0];
+        setAnnouncements((prev) => [created, ...prev]);
       }
+
       setContent("");
       setErrorMessage(null);
     } catch (err: any) {
       console.error("⚠️ Failed to create announcement:", err);
-      if (String(err).includes("Profile not found")) {
+      const errStr = String(err);
+
+      if (errStr.includes("Profile not found")) {
         setErrorMessage(
           "Cannot post yet — your Professor profile hasn’t been created."
         );
-      } else if (String(err).includes("401")) {
+      } else if (errStr.includes("401")) {
         setErrorMessage("Unauthorized. Please login again.");
       } else {
         setErrorMessage("Failed to create announcement. Try again.");
