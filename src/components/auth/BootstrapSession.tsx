@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { fetchAuthMe } from "@/api/session";
+import { fetchAuthMe, normalizeRole } from "@/api/session";
 import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
+import { createProfessorProfile } from "@/api/professorprofile";
 
 export default function BootstrapSession() {
   const { user, login } = useAuth();
@@ -45,6 +46,17 @@ export default function BootstrapSession() {
             role: me.role ?? me.roles ?? "student",
           });
           console.log("✅ Logged in as:", me.role ?? me.roles);
+
+          // Auto-create professor profile to bypass backend bug
+          try {
+            const roleNorm = normalizeRole(me.role ?? me.roles);
+            if (roleNorm === "professor") {
+              await createProfessorProfile({ department: "computer", faculty: "engineering" });
+              console.log("🟢 Professor profile ensured");
+            }
+          } catch (e) {
+            console.warn("⚠️ Skipping professor profile auto-create:", e);
+          }
         } else {
           console.warn("⚠️ No user data from fetchAuthMe()");
         }
