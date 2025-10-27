@@ -1,45 +1,83 @@
 import { buildInit } from "./base";
 
-const BASE_URL =
+/* -------------------- Base URLs -------------------- */
+const RAW_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = RAW_BASE.replace(/\/$/, ""); // กัน double slash
 
 const API_URL = `${BASE_URL}/api/professor/announcements/`;
 const API_URL_ALL = `${BASE_URL}/api/professor/announcements/all/`;
 const API_URL_POSTS = `${BASE_URL}/api/professor/posts/`;
 
-/* ---------------- Fetch all announcements ---------------- */
-export async function fetchProfessorAnnouncements() {
-  const res = await fetch(API_URL_ALL, buildInit({ method: "GET" }));
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to fetch announcements: ${res.status} - ${text}`);
-  }
-  return res.json();
+/* -------------------- Helpers -------------------- */
+function withAuthHeaders(init: RequestInit = {}): RequestInit {
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem("access_token")
+    : null;
+
+  // Default headers + แนบ Bearer ถ้ามี
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  // ใช้ cookie session ได้ด้วย (ถ้ามี), ปิด cache กันข้อมูลค้าง
+  return buildInit({
+    credentials: "include",
+    cache: "no-store",
+    ...init,
+    headers: { ...headers, ...(init.headers || {}) },
+  });
 }
 
-/* ---------------- Create new announcement ---------------- */
+async function handleResponse<T>(res: Response, action: string): Promise<T> {
+  const ctype = res.headers.get("content-type") || "";
+  const isJson = ctype.includes("application/json");
+  const body = isJson ? await res.json().catch(() => ({})) : await res.text();
+
+  if (!res.ok) {
+    const message =
+      (isJson && (body?.message || body?.detail)) || (typeof body === "string" ? body : "");
+    const suffix = message ? ` - ${message}` : "";
+    throw new Error(`${action}: ${res.status} ${res.statusText}${suffix}`);
+  }
+
+  return (isJson ? body : ({} as any)) as T;
+}
+
+/* -----------------------------------------------------------
+   🔹 Fetch all announcements
+----------------------------------------------------------- */
+export async function fetchProfessorAnnouncements(signal?: AbortSignal) {
+  const res = await fetch(API_URL_ALL, withAuthHeaders({ method: "GET", signal }));
+  return handleResponse<any[]>(res, "Failed to fetch announcements");
+}
+
+/* -----------------------------------------------------------
+   🔹 Create new announcement
+----------------------------------------------------------- */
 export async function createProfessorAnnouncement(data: {
   content: string;
   is_connection?: boolean;
 }) {
-  const res = await fetch(API_URL, buildInit({
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  }));
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to create announcement: ${res.status} - ${text}`);
-  }
-  return res.json();
+  const res = await fetch(
+    API_URL,
+    withAuthHeaders({
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  );
+  return handleResponse<any>(res, "Failed to create announcement");
 }
 
-/* ---------------- Delete announcement ---------------- */
+/* -----------------------------------------------------------
+   🔹 Delete announcement
+----------------------------------------------------------- */
 export async function deleteProfessorAnnouncement(id: number) {
-  const res = await fetch(`${API_URL_POSTS}${id}/`, buildInit({ method: "DELETE" }));
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to delete announcement: ${res.status} - ${text}`);
-  }
+  const res = await fetch(
+    `${API_URL_POSTS}${id}/`,
+    withAuthHeaders({ method: "DELETE" })
+  );
+  await handleResponse<{}>(res, "Failed to delete announcement");
   return true;
 }

@@ -2,13 +2,19 @@ export const API_BASE = "http://localhost:8000";
 
 // Helper to include authorization headers (if tokens exist)
 export function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("access_token")
+      : null;
+
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // Wrapper for fetch initialization
 export function buildInit(init: RequestInit = {}): RequestInit {
   return {
+    credentials: "include",
+
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),

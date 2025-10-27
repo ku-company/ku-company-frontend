@@ -19,7 +19,9 @@ type Announcement = {
 export default function ProfessorAnnouncementPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [content, setContent] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  /* ---------------- Fetch announcements ---------------- */
   useEffect(() => {
     (async () => {
       try {
@@ -27,14 +29,25 @@ export default function ProfessorAnnouncementPage() {
         if (Array.isArray(data)) setAnnouncements(data);
         else if (data?.results) setAnnouncements(data.results);
         else setAnnouncements([]);
-      } catch (err) {
-        console.error("❌ Failed to load announcements:", err);
+        setErrorMessage(null);
+      } catch (err: any) {
+        console.error("⚠️ Announcement fetch failed:", err);
+        if (String(err).includes("Profile not found")) {
+          setErrorMessage(
+            "Your Professor profile has not been created yet. Please contact admin."
+          );
+        } else if (String(err).includes("401")) {
+          setErrorMessage("Unauthorized — please log in again.");
+        } else {
+          setErrorMessage("Failed to load announcements. Please try again later.");
+        }
       }
     })();
   }, []);
 
   const canPost = useMemo(() => content.trim().length > 0, [content]);
 
+  /* ---------------- Create new announcement ---------------- */
   const handlePost = async () => {
     if (!canPost) return;
     try {
@@ -46,17 +59,30 @@ export default function ProfessorAnnouncementPage() {
         setAnnouncements((prev) => [newPost, ...prev]);
       }
       setContent("");
-    } catch (err) {
-      console.error("❌ Failed to create announcement:", err);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("⚠️ Failed to create announcement:", err);
+      if (String(err).includes("Profile not found")) {
+        setErrorMessage(
+          "Cannot post yet — your Professor profile hasn’t been created."
+        );
+      } else if (String(err).includes("401")) {
+        setErrorMessage("Unauthorized. Please login again.");
+      } else {
+        setErrorMessage("Failed to create announcement. Try again.");
+      }
     }
   };
 
+  /* ---------------- Delete announcement ---------------- */
   const handleDelete = async (id: number) => {
     try {
       await deleteProfessorAnnouncement(id);
       setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      setErrorMessage(null);
     } catch (err) {
       console.error("❌ Failed to delete:", err);
+      setErrorMessage("Failed to delete announcement. Try again.");
     }
   };
 
@@ -67,6 +93,14 @@ export default function ProfessorAnnouncementPage() {
       </h1>
       <div className="mt-6 border-t" />
 
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mt-6 rounded-lg bg-red-100 border border-red-300 text-red-700 p-3 text-sm text-center">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Composer */}
       <section
         className="mt-6 rounded-2xl border bg-white shadow-sm p-4"
         style={{ borderColor: GREEN }}
@@ -89,6 +123,7 @@ export default function ProfessorAnnouncementPage() {
         </div>
       </section>
 
+      {/* Feed */}
       <div className="mt-6 space-y-5">
         {announcements.length === 0 ? (
           <p className="text-gray-500 text-sm text-center mt-10">
