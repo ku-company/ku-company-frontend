@@ -7,7 +7,8 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { buildInit } from "@/api/base";
 
 const GREEN = "#5b8f5b";
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function FindJobPage() {
   const { user } = useAuth();
@@ -22,7 +23,10 @@ export default function FindJobPage() {
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+  const canApply = useMemo(
+    () => (user?.role || "").toLowerCase() === "student",
+    [user]
+  );
 
   const fetchJson = async (url: string) => {
     try {
@@ -35,16 +39,25 @@ export default function FindJobPage() {
     }
   };
 
+  // ────────────────────────────── Fetch dropdown data ──────────────────────────────
   useEffect(() => {
     async function fetchDropdowns() {
       const cat = await fetchJson(`${BASE_URL}/api/job-postings/category`);
       const type = await fetchJson(`${BASE_URL}/api/job-postings/job-type`);
-      setCategories(["All", ...(cat?.data || cat)]);
-      setJobTypes(["All", ...(type?.data || type)]);
+
+      setCategories([
+        "All",
+        ...(Array.isArray(cat?.data || cat) ? cat?.data || cat : []),
+      ]);
+      setJobTypes([
+        "All",
+        ...(Array.isArray(type?.data || type) ? type?.data || type : []),
+      ]);
     }
     fetchDropdowns();
   }, []);
 
+  // ────────────────────────────── Fetch jobs ──────────────────────────────
   const fetchJobs = async () => {
     setLoading(true);
     try {
@@ -56,8 +69,8 @@ export default function FindJobPage() {
       const res = await fetch(url, buildInit({ credentials: "include" }));
       const data = await res.json();
       const list = data.job_postings || data.data || data;
-      setJobs(list);
-      if (list.length > 0) setSelectedId(list[0].id);
+      setJobs(Array.isArray(list) ? list : []);
+      if (Array.isArray(list) && list.length > 0) setSelectedId(list[0].id);
     } catch {
       setJobs([]);
     } finally {
@@ -71,26 +84,28 @@ export default function FindJobPage() {
 
   const selected = jobs.find((j) => j.id === selectedId);
 
+  // ────────────────────────────── UI ──────────────────────────────
   return (
-    <main className="min-h-screen bg-white py-10">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 mb-8">
-          <h2 className="text-2xl font-semibold text-[#5b8f5b] mb-4">
+    <main className="min-h-screen bg-[#f7f9f7] py-10 font-sans">
+      <div className="max-w-6xl mx-auto px-4 space-y-8">
+        {/* ─────────────── Header Filter Section ─────────────── */}
+        <div className="bg-white/80 backdrop-blur border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-[#5b8f5b] mb-5 tracking-tight">
             Find Your Dream Job
           </h2>
-          <div className="flex flex-wrap gap-3 items-center">
+
+          <div className="flex flex-wrap items-center gap-3">
             <input
               type="text"
               placeholder="Search by keyword..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              className="input input-bordered input-sm rounded-full w-full sm:w-[240px] focus:border-[#5b8f5b]"
+              className="input input-bordered input-sm rounded-full w-full sm:w-[240px] border-gray-200 focus:border-[#5b8f5b]"
             />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="select select-bordered select-sm rounded-full focus:border-[#5b8f5b]"
+              className="select select-bordered select-sm rounded-full border-gray-200 focus:border-[#5b8f5b]"
             >
               {categories.map((c, i) => (
                 <option key={i}>{c}</option>
@@ -99,16 +114,17 @@ export default function FindJobPage() {
             <select
               value={jobType}
               onChange={(e) => setJobType(e.target.value)}
-              className="select select-bordered select-sm rounded-full focus:border-[#5b8f5b]"
+              className="select select-bordered select-sm rounded-full border-gray-200 focus:border-[#5b8f5b]"
             >
               {jobTypes.map((t, i) => (
                 <option key={i}>{t}</option>
               ))}
             </select>
+
             <div className="ml-auto flex gap-2">
               <button
                 onClick={fetchJobs}
-                className="btn btn-sm bg-[#5b8f5b] text-white rounded-full hover:bg-emerald-700"
+                className="btn btn-sm bg-[#5b8f5b] text-white rounded-full hover:bg-[#4a7a4a]"
               >
                 Search
               </button>
@@ -117,7 +133,7 @@ export default function FindJobPage() {
                   setKeyword("");
                   setCategory("All");
                   setJobType("All");
-                  fetchJobs();
+                  setTimeout(fetchJobs, 0);
                 }}
                 className="btn btn-sm btn-outline rounded-full border-[#5b8f5b] text-[#5b8f5b] hover:bg-[#5b8f5b] hover:text-white"
               >
@@ -127,14 +143,14 @@ export default function FindJobPage() {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="grid lg:grid-cols-[360px,1fr] gap-8">
-          {/* Sidebar */}
+        {/* ─────────────── Job List & Detail ─────────────── */}
+        <div className="grid lg:grid-cols-[340px,1fr] gap-8">
+          {/* Sidebar List */}
           <aside className="space-y-3">
             {loading ? (
               <div className="skeleton h-20 rounded-2xl"></div>
             ) : jobs.length === 0 ? (
-              <div className="text-center p-6 border border-emerald-100 rounded-2xl bg-emerald-50 text-[#5b8f5b]">
+              <div className="text-center p-6 border border-gray-100 rounded-2xl bg-white/60 text-[#5b8f5b]">
                 <p className="font-medium">No jobs found</p>
                 <p className="text-sm text-gray-500">
                   Try adjusting your filters above.
@@ -145,14 +161,16 @@ export default function FindJobPage() {
                 <div
                   key={job.id}
                   onClick={() => setSelectedId(job.id)}
-                  className={`card cursor-pointer transition-all duration-300 ${
+                  className={`cursor-pointer transition-all duration-300 rounded-2xl border ${
                     job.id === selectedId
-                      ? "border border-[#5b8f5b] bg-emerald-50"
-                      : "border border-emerald-100 hover:border-[#5b8f5b]/40"
+                      ? "border-[#5b8f5b] bg-[#e8f3ea]"
+                      : "border-gray-100 hover:border-[#5b8f5b]/50 hover:bg-[#f4faf5]"
                   }`}
                 >
-                  <div className="card-body py-4">
-                    <h3 className="font-medium text-[#5b8f5b]">{job.position}</h3>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-[#5b8f5b]">
+                      {job.position}
+                    </h3>
                     <p className="text-xs text-gray-500">
                       {job.company?.company_name} • {job.jobType}
                     </p>
@@ -165,9 +183,9 @@ export default function FindJobPage() {
             )}
           </aside>
 
-          {/* Detail */}
-          <section className="card border border-emerald-100 rounded-2xl bg-white shadow-sm">
-            <div className="card-body">
+          {/* Detail Section */}
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="p-6">
               {!selected ? (
                 <div className="flex flex-col items-center justify-center text-center text-gray-500 h-full">
                   <h3 className="text-lg font-medium text-[#5b8f5b] mb-1">
@@ -186,18 +204,25 @@ export default function FindJobPage() {
                   <p className="text-xs text-gray-400 mb-4">
                     {selected.company?.location}
                   </p>
+
                   <p className="text-sm text-gray-700 leading-relaxed">
                     {selected.description}
                   </p>
-                  <div className="divider before:bg-emerald-100 after:bg-emerald-100"></div>
+
+                  {/* ✅ ใช้ <hr> แทน divider เพื่อเลี่ยง bug */}
+                  {selected && (
+                    <hr className="my-5 border-t border-[#dcebdc]" />
+                  )}
+
                   <p className="text-xs text-gray-600">
                     <b>Job Type:</b> {selected.jobType} •{" "}
                     {selected.available_position} position(s)
                   </p>
+
                   {canApply && (
                     <div className="mt-6 flex justify-end gap-3">
                       <button
-                        className="btn btn-sm bg-[#5b8f5b] text-white rounded-full px-6 hover:bg-emerald-700"
+                        className="btn btn-sm bg-[#5b8f5b] text-white rounded-full px-6 hover:bg-[#4a7a4a]"
                         onClick={() => setIsApplyOpen(true)}
                       >
                         Apply Now
@@ -217,6 +242,7 @@ export default function FindJobPage() {
         </div>
       </div>
 
+      {/* ─────────────── Apply Modal ─────────────── */}
       {canApply && (
         <ApplyModal
           isOpen={isApplyOpen}

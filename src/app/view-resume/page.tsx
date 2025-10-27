@@ -1,7 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getAllApplications, updateApplicationStatus } from "@/api/companyapplications";
-
+import {
+  getAllApplications,
+  updateApplicationStatus,
+} from "@/api/companyapplications";
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 
 type Application = {
   id: number;
@@ -15,6 +22,9 @@ type Application = {
 
 export default function ResumeInApplicationPage() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [filter, setFilter] = useState<
+    "All" | "Approved" | "Rejected" | "Pending"
+  >("All");
 
   useEffect(() => {
     getAllApplications()
@@ -22,152 +32,165 @@ export default function ResumeInApplicationPage() {
       .catch((err) => console.error("Failed to fetch applications:", err));
   }, []);
 
-  // state for filter
-  const [filter, setFilter] = useState<"All Positions" | "Approved" | "Rejected" | "Pending">(
-    "All Positions"
-  );
-
-  const updateStatus = (id: number, newStatus: Application["status"]) => {
+  const updateStatus = async (id: number, newStatus: Application["status"]) => {
     setApplications((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, status: newStatus } : app
-      )
+      prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app))
     );
     try {
-      updateApplicationStatus(id, newStatus);
+      await updateApplicationStatus(id, newStatus);
     } catch (error) {
       console.error("Failed to update application status:", error);
-
-      // revert UI change on error
-      setApplications((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, status: "Pending" } : app
-      )
-    );
     }
   };
 
-  // filter logic
-  const filteredApplications =
-    filter === "All Positions"
+  const filtered =
+    filter === "All"
       ? applications
       : applications.filter((app) => app.status === filter);
 
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return <CheckCircleIcon className="w-5 h-5 text-green-600" />;
+      case "Rejected":
+        return <XCircleIcon className="w-5 h-5 text-red-500" />;
+      default:
+        return <ClockIcon className="w-5 h-5 text-yellow-500" />;
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gray-50 py-10 font-sans">
-      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md p-10 border border-gray-100">
+    <main className="min-h-screen bg-[#f7f9f7] py-12 px-4 font-sans">
+      <div className="max-w-6xl mx-auto space-y-10">
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-800">
-            Resume in the Application
-          </h1>
-        </header>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-4 mb-6 flex-wrap">
-          {["All Positions", "Approved", "Rejected", "Pending"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() =>
-                setFilter(tab as "All Positions" | "Approved" | "Rejected" | "Pending")
-              }
-              className={`px-6 py-2 rounded-full font-medium transition ${
-                filter === tab
-                  ? "bg-[#558E46] text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto rounded-lg border border-gray-100 shadow-sm">
-          <table className="w-full border-collapse text-gray-800">
-            <thead>
-              <tr className="bg-[#558E46] text-white text-left">
-                <th className="p-4 font-semibold">Name</th>
-                <th className="p-4 font-semibold">Email</th>
-                <th className="p-4 font-semibold">Position</th>
-                <th className="p-4 font-semibold">Applied Date</th>
-                <th className="p-4 font-semibold">Resume</th>
-                <th className="p-4 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((app, i) => (
-                <tr
-                  key={app.id}
-                  className={`border-b hover:bg-gray-50 transition ${
-                    i % 2 === 0 ? "bg-white" : "bg-gray-50/70"
-                  }`}
-                >
-                  <td className="p-4 font-medium">{app.name}</td>
-                  <td className="p-4">{app.email}</td>
-                  <td className="p-4">{app.position}</td>
-                  <td className="p-4">
-                    <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">
-                      {app.appliedDate}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <a
-                      href={app.resumeLink}
-                      className="text-[#558E46] hover:underline font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Resume
-                    </a>
-                  </td>
-                  <td className="p-4">
-                    <select
-                      value={app.status}
-                      onChange={(e) =>
-                        updateStatus(
-                          app.id,
-                          e.target.value as Application["status"]
-                        )
-                      }
-                      className={`rounded-md px-3 py-1 text-sm font-medium border ${
-                        app.status === "Approved"
-                          ? "bg-green-100 text-green-700 border-green-300"
-                          : app.status === "Rejected"
-                          ? "bg-red-100 text-red-700 border-red-300"
-                          : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                      }`}
-                    >
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Pending">Pending</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-end items-center gap-3 mt-6 text-gray-600">
-          <button className="hover:underline">Previous</button>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-[#558E46] tracking-tight">
+              Applications Overview
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Review and manage applicant resumes by status.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {["All", "Approved", "Rejected", "Pending"].map((tab) => (
               <button
-                key={n}
-                className={`px-2 ${
-                  n === 1
-                    ? "font-bold text-[#558E46]"
-                    : "hover:text-[#558E46] hover:underline"
+                key={tab}
+                onClick={() =>
+                  setFilter(tab as "All" | "Approved" | "Rejected" | "Pending")
+                }
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  filter === tab
+                    ? "bg-[#558E46] text-white shadow-md"
+                    : "text-[#558E46] border border-[#558E46]/40 hover:bg-[#558E46]/10"
                 }`}
               >
-                {n}
+                {tab}
               </button>
             ))}
           </div>
-          <button className="hover:underline">Next</button>
+        </header>
+
+        {/* Table */}
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead className="bg-[#558E46] text-white">
+                <tr>
+                  <th className="font-semibold text-sm py-4">Name</th>
+                  <th className="font-semibold text-sm">Email</th>
+                  <th className="font-semibold text-sm">Position</th>
+                  <th className="font-semibold text-sm">Applied</th>
+                  <th className="font-semibold text-sm">Resume</th>
+                  <th className="font-semibold text-sm text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((app, i) => (
+                  <tr
+                    key={app.id}
+                    className={`transition-all ${
+                      i % 2 === 0 ? "bg-white" : "bg-[#f8faf8]"
+                    } hover:bg-[#eef7ee]`}
+                  >
+                    <td className="py-3 font-medium">{app.name}</td>
+                    <td className="text-gray-600">{app.email}</td>
+                    <td className="text-gray-700">{app.position}</td>
+                    <td className="text-sm text-gray-500">{app.appliedDate}</td>
+                    <td>
+                      <a
+                        href={app.resumeLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#558E46] hover:underline font-medium"
+                      >
+                        View
+                      </a>
+                    </td>
+                    <td className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {statusIcon(app.status)}
+                        <select
+                          value={app.status}
+                          onChange={(e) =>
+                            updateStatus(
+                              app.id,
+                              e.target.value as Application["status"]
+                            )
+                          }
+                          className={`select select-sm border-0 rounded-full text-sm font-medium focus:outline-none ${
+                            app.status === "Approved"
+                              ? "bg-green-100 text-green-700"
+                              : app.status === "Rejected"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          <option value="Approved">Approved</option>
+                          <option value="Rejected">Rejected</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <p className="font-medium">No applications found</p>
+            </div>
+          )}
         </div>
+
+        {/* Pagination */}
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button className="px-3 py-1 rounded-full text-sm text-[#558E46] hover:bg-[#558E46]/10 transition">
+            « Prev
+          </button>
+          {[1, 2, 3].map((n) => (
+            <button
+              key={n}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                n === 1
+                  ? "bg-[#558E46] text-white shadow-sm"
+                  : "text-[#558E46] hover:bg-[#558E46]/10"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+          <button className="px-3 py-1 rounded-full text-sm text-[#558E46] hover:bg-[#558E46]/10 transition">
+            Next »
+          </button>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-gray-500 text-sm mt-2">
+          Showing <b>{filtered.length}</b> of {applications.length} applications
+        </p>
       </div>
     </main>
   );
