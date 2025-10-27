@@ -5,9 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
 import { buildGoogleSignupUrl } from "@/api/oauth";
+import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
+import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -20,6 +24,7 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,8 +43,12 @@ export default function RegisterPage() {
 
       await registerUser(payload);
 
-      // redirect to login after success
-      router.push("/login");
+      // Immediately log in to get token for profile creation
+      const res = await loginUser({ user_name: form.user_name, password: form.password });
+      login(res.data);
+
+      // Show onboarding to collect faculty/department and create profile
+      setShowOnboarding(true);
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
@@ -165,6 +174,19 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      <ProfessorOnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          // After closing (saved or not), move to home; they can edit later
+          router.push("/");
+        }}
+        onCreated={() => {
+          // After profile creation, route to home
+          router.push("/");
+        }}
+      />
     </div>
   );
 }

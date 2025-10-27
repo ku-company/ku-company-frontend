@@ -26,6 +26,34 @@ export default function AuthExpiryHandler() {
       w.__authFetchOriginal = originalFetch;
 
       window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
+        try {
+          const input = args[0] as any;
+          const init = (args[1] || {}) as RequestInit;
+          const url = typeof input === "string" ? input : (input?.url ?? "");
+          const method = (init.method || (typeof input !== "string" ? input?.method : "GET") || "GET").toUpperCase();
+          if (url.includes("/api/professor/my-profile") && method === "POST") {
+            // Normalize headers to a plain object for visibility
+            const hdrs: Record<string, string> = {};
+            const headersIn = (init.headers || (typeof input !== "string" ? (input?.headers as any) : undefined)) as any;
+            if (headersIn) {
+              if (headersIn instanceof Headers) {
+                headersIn.forEach((v, k) => (hdrs[k] = v));
+              } else if (Array.isArray(headersIn)) {
+                for (const [k, v] of headersIn as any) hdrs[String(k)] = String(v);
+              } else if (typeof headersIn === "object") {
+                Object.keys(headersIn).forEach((k) => (hdrs[k] = (headersIn as any)[k]));
+              }
+            }
+            const bodyPreview = typeof init.body === "string" ? init.body : "<non-string body>";
+            console.log("[AUTH WRAP][REQUEST]", {
+              url,
+              method,
+              headers: hdrs,
+              body: bodyPreview,
+            });
+          }
+        } catch {}
+
         const res = await originalFetch(...args);
         try {
           const status = res.status;

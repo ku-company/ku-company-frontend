@@ -69,7 +69,7 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
     setSaving(true);
     setError(null);
     try {
-      const updated = await patchProfessorProfile({
+      const updates = {
         first_name: form.first_name || undefined,
         last_name: form.last_name || undefined,
         department: form.department || null,
@@ -77,7 +77,9 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
         position: form.position || null,
         contactInfo: form.contactInfo || null,
         summary: form.summary || null,
-      });
+      };
+      console.log("[EditProfessorProfileModal] Save clicked. Patching:", updates);
+      const updated = await patchProfessorProfile(updates);
       onSaved(updated);
       onClose();
     } catch (err: any) {

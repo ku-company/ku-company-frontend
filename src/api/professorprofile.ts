@@ -59,24 +59,74 @@ export async function getMyProfessorProfile(signal?: AbortSignal): Promise<Profe
  * POST /api/professor/my-profile
  * Optionally attaches an internal secret header if NEXT_PUBLIC_INTERNAL_SECRET is set.
  */
-export async function createProfessorProfile(payload: ProfessorCreatePayload): Promise<ProfessorProfile> {
+export async function createProfessorProfile(payload?: ProfessorCreatePayload): Promise<ProfessorProfile> {
   await ensureAccessToken();
+  console.log("[createProfessorProfile] Payload:", payload);
   const secret = process.env.NEXT_PUBLIC_INTERNAL_SECRET || process.env.NEXT_PUBLIC_PROFESSOR_SECRET;
-  const headers: HeadersInit = secret ? { "x-internal-secret": secret } : {};
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : "";
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(secret ? { "x-internal-secret": secret } : {}),
+  };
+
+  const src: any = payload ?? {};
+  const dept = typeof src.department === "string" ? src.department.trim() : String(src.department ?? "").trim();
+  const fac = typeof src.faculty === "string" ? src.faculty.trim() : String(src.faculty ?? "").trim();
+  // Build the exact JSON body the server expects
+  const bodyJson = JSON.stringify({ department: dept, faculty: fac });
+
+  // Debug log for troubleshooting payload issues (show actual JSON string)
+  try {
+    console.log("[createProfessorProfile][DEBUG] URL:", `${API_BASE}/api/professor/my-profile`);
+    console.log("[createProfessorProfile][DEBUG] Method:", "POST");
+    console.log("[createProfessorProfile][DEBUG] Headers:", headers);
+    console.log("[createProfessorProfile][DEBUG] Body:", bodyJson);
+    // Expose on window for inspection if console logs are not visible
+    if (typeof window !== "undefined") {
+      (window as any).__profPostDebug = {
+        url: `${API_BASE}/api/professor/my-profile`,
+        method: "POST",
+        headers,
+        token,
+        body: bodyJson,
+      };
+    }
+  } catch {}
+
+  if (!dept || !fac) {
+    try { console.warn("[createProfessorProfile] Missing required fields:", { department: dept, faculty: fac }); } catch {}
+  }
 
   const res = await fetch(`${API_BASE}/api/professor/my-profile`, buildInit({
     method: "POST",
     headers,
-    body: JSON.stringify({
-      department: payload.department,
-      faculty: payload.faculty,
-      position: payload.position ?? null,
-      contactInfo: payload.contactInfo ?? null,
-      summary: payload.summary ?? null,
-    }),
+    body: bodyJson,
   }));
+  // Log raw response for debugging
+  try {
+    const preview = await res.clone().text();
+    console.log("[createProfessorProfile][DEBUG] Response status:", res.status);
+    console.log("[createProfessorProfile][DEBUG] Response text:", preview);
+    if (typeof window !== "undefined") {
+      (window as any).__profPostRespDebug = {
+        status: res.status,
+        text: preview,
+      };
+    }
+  } catch {}
+
   if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
+    const text = await res.text().catch(() => "");
+    try { console.warn("[createProfessorProfile] Server error:", res.status, text); } catch {}
+    // If profile already exists, fetch and return it to make callers resilient to races
+    if (res.status === 400 && /already exists/i.test(text)) {
+      try {
+        const existing = await getMyProfessorProfile();
+        if (existing) return existing;
+      } catch {}
+    }
+    throw new Error(text || (await extractErrorMessage(res)));
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<ProfessorProfile>(json);
