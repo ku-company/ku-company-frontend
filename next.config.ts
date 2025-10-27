@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "lh3.googleusercontent.com", 
+        hostname: "lh3.googleusercontent.com",
       },
       {
         protocol: "http",
@@ -13,12 +13,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   async redirects() {
     return [
+      // 🔹 Redirect root to homepage
       {
         source: "/",
         destination: "/homepage",
         permanent: false,
+      },
+      // 🔹 Redirect typo route to correct one
+      {
+        source: "/professor-annoucement",
+        destination: "/professor-announcement",
+        permanent: true,
+      },
+      // (Optional) handle trailing slash too
+      {
+        source: "/professor-annoucement/",
+        destination: "/professor-announcement",
+        permanent: true,
       },
     ];
   },
