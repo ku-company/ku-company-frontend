@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getMyProfessorProfile, type ProfessorProfile } from "@/api/professorprofile";
+import { listProfessorDegrees, type ProfessorDegree } from "@/api/professordegrees";
 import EditProfessorProfileModal from "@/components/EditProfessorProfileModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import ReactMarkdown from "react-markdown";
@@ -36,6 +37,8 @@ export default function ProfessorProfileView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
+  const [degrees, setDegrees] = useState<ProfessorDegree[]>([]);
+  const [degLoading, setDegLoading] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -70,21 +73,47 @@ export default function ProfessorProfileView() {
     };
   }, [isReady, user]);
 
+  // Load degrees once logged-in
+  useEffect(() => {
+    if (!isReady || !user) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        setDegLoading(true);
+        const list = await listProfessorDegrees(controller.signal);
+        if (!cancelled) setDegrees(list || []);
+      } catch (e) {
+        // non-fatal — show empty list
+        if (!cancelled) setDegrees([]);
+      } finally {
+        if (!cancelled) setDegLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isReady, user]);
+
   if (!isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
   if (loading) return <div className="p-8 text-gray-600">Loading professor profile…</div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found. Please create or edit your profile.</div>;
 
   const fullName = [profile.user?.first_name ?? "", profile.user?.last_name ?? ""].map((s) => (s || "").trim()).filter(Boolean).join(" ") || user?.user_name || "";
+  const isVerified = Boolean(profile.user?.verified);
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-4 flex justify-end">
         <button
           type="button"
-          onClick={() => setOpenEdit(true)}
-          className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+          onClick={() => isVerified && setOpenEdit(true)}
+          className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           style={{ borderColor: GREEN }}
+          disabled={!isVerified}
+          title={isVerified ? "Edit your profile" : "Account not verified"}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
           <span style={{ color: GREEN }}>Edit</span>
@@ -117,6 +146,32 @@ export default function ProfessorProfileView() {
               <ReactMarkdown>{profile.summary || "_No summary yet._"}</ReactMarkdown>
             </div>
           </div>
+
+          {/* Degrees (read-only here; manage inside Edit modal) */}
+          <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
+            <PillHeading>Degrees</PillHeading>
+            <div className="mt-4 space-y-3">
+              {degLoading && <div className="text-gray-500">Loading degrees…</div>}
+              {!degLoading && degrees.length === 0 && (
+                <div className="text-gray-500">No degrees added yet.</div>
+              )}
+              {!degLoading && degrees.map((d) => (
+                <div key={d.id} className="rounded-md border p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-gray-500">{d.institution || "Institution"}</div>
+                      <div className="text-base font-semibold text-gray-800">{d.title}</div>
+                      <div className="text-xs text-gray-500">{d.graduation_date || ""}</div>
+                    </div>
+                    {/* edit via modal; no inline actions */}
+                  </div>
+                  {d.description && (
+                    <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{d.description}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       </div>
 
@@ -124,6 +179,8 @@ export default function ProfessorProfileView() {
         isOpen={openEdit}
         onClose={() => setOpenEdit(false)}
         initial={profile}
+        initialDegrees={degrees}
+        onDegreesSaved={(newList) => setDegrees(newList)}
         onSaved={(updated) => setProfile(updated)}
         brandColor={GREEN}
       />
