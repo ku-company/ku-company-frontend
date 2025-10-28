@@ -76,7 +76,7 @@ export default function BootstrapSession() {
             try {
               const existing = await getCompanyProfile();
               if (!existing) {
-                const name = (me as any)?.company_name || me.user_name || "";
+                const name = me.company_name || me.user_name || "";
                 await createDefaultCompanyProfile(name);
                 console.log("🏢 Ensured default company profile exists");
               }
