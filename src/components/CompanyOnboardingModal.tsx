@@ -255,10 +255,6 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      // Do not allow closing by clicking the backdrop; force completion
-      onMouseDown={(e) => {
-        // Intentionally do nothing to force onboarding
-      }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between px-5 py-4">
