@@ -85,7 +85,7 @@ export async function extractErrorMessage(res: Response): Promise<string> {
   if (status === 401) {
     const lower = String(msg || text || "").toLowerCase();
     if (isExpiredAuthMessage(lower) && !shouldDeferAutoLogout()) {
-      autoLogout();
+      await autoLogout();
     }
   }
 
