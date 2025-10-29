@@ -36,7 +36,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="ku-company">
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
@@ -44,7 +44,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gray-50 text-gray-900`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-base-200 text-base-content`}
       >
         {/* Provide authentication context to all pages */}
         <AuthProvider>
@@ -55,7 +55,7 @@ export default function RootLayout({
           {/* Dynamically render layout and navbar based on user role */}
           <ClientLayout>
             {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
-            <main>{children}</main>
+            <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
           </ClientLayout>
         </AuthProvider>
       </body>

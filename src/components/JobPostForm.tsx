@@ -138,16 +138,14 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border rounded-md p-4 shadow-sm bg-white"
-    >
+    <form onSubmit={handleSubmit} className="card bg-base-100 border shadow-sm">
+      <div className="card-body">
       <div className="flex flex-col gap-3 mb-3">
         {/* Job Type */}
         <div>
           <label className="block text-sm font-semibold mb-1">Job Type</label>
           <select
-            className="border rounded-md px-2 py-1 w-full"
+            className="select select-bordered w-full"
             value={jobType}
             onChange={(e) => setJobType(e.target.value)}
           >
@@ -163,7 +161,7 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
         <div>
           <label className="block text-sm font-semibold mb-1">Position</label>
           <select
-            className="border rounded-md px-2 py-1 w-full"
+            className="select select-bordered w-full"
             value={position}
             onChange={(e) => setPosition(e.target.value)}
           >
@@ -180,7 +178,7 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
           <label className="block text-sm font-semibold mb-1">Description</label>
           <textarea
             placeholder="More Details here..."
-            className="w-full border rounded-md p-2"
+            className="textarea textarea-bordered w-full"
             rows={4}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -197,17 +195,15 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
           <input
             type="number"
             min={1}
-            className="border rounded-md px-2 py-1 w-20 text-center"
+            className="input input-bordered w-24 text-center"
             value={positionsAvailable}
             onChange={(e) => setPositionsAvailable(Number(e.target.value))}
           />
-          <button
-            type="submit"
-            className="rounded-md bg-green-600 text-white px-4 py-1 hover:bg-green-700"
-          >
+          <button type="submit" className="btn btn-primary text-white">
             Post
           </button>
         </div>
+      </div>
       </div>
     </form>
   );

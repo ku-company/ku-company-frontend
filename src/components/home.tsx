@@ -4,36 +4,20 @@ import Image from "next/image";
 export default function Home() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
-      {/* relative + กำหนดความสูง */}
-      <div className="relative h-64 sm:h-80 lg:h-96 overflow-hidden rounded-2xl">
-        {/* background */}
-        <Image
-          src="/home.png"          
-          alt="Home background"
-          fill
-          className="object-cover"
-          priority
-          sizes="100vw"
-        />
-
-        {/* overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
-
-        {/* word details */}
-        <div className="absolute inset-0 flex items-center">
-          <div className="ml-auto p-6 sm:p-10 text-white max-w-xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight">
+      <div className="hero min-h-64 sm:min-h-80 lg:min-h-96 rounded-2xl overflow-hidden">
+        <Image src="/home.png" alt="Home background" fill className="object-cover" priority sizes="100vw" />
+        <div className="hero-overlay bg-gradient-to-r from-base-100/10 via-primary/30 to-transparent" />
+        <div className="hero-content justify-end w-full">
+          <div className="max-w-xl text-base-100">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold drop-shadow">
               GET YOUR BEST PROFESSION
             </h1>
-            <p className="mt-3 text-white/90 text-sm sm:text-base">
+            <p className="mt-3 opacity-90 text-sm sm:text-base">
               EXCLUSIVE FOR CPE AND SKE STUDENTS
             </p>
             <div className="mt-6">
-              <Link
-                href="/find-job"
-                className="inline-block rounded-full bg-white text-emerald-800 px-5 py-2 text-sm font-semibold hover:bg-gray-100"
-              >
-                FIND JOB →
+              <Link href="/find-job" className="btn btn-primary rounded-full text-white">
+                FIND JOB
               </Link>
             </div>
           </div>
@@ -42,3 +26,4 @@ export default function Home() {
     </section>
   );
 }
+

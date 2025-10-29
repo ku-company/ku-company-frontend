@@ -2,8 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import CompanyNavbar from "@/components/CompanyNavbar"; 
-
 /* -------------------- Brand color -------------------- */
 const GREEN = "#5b8f5b";
 
@@ -112,11 +110,9 @@ export default function AnnouncementPage() {
 
   return (
     <>
-      {/* ✅ Company Navbar */}
-      <CompanyNavbar />
-
-      {/* ✅ Main Content */}
-      <main className="mt-24 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6">
+      {/* âœ… Company Navbar */}
+      {/* âœ… Main Content */}
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6">
         <TitleBar />
         <div className="mt-6 border-t" />
 
@@ -233,7 +229,7 @@ export default function AnnouncementPage() {
                     className="grid h-6 w-6 place-items-center rounded-full"
                     style={{ backgroundColor: `${GREEN}22`, color: GREEN }}
                   >
-                    •
+                    â€¢
                   </span>
                   <div className="text-sm">
                     <span className="font-semibold">{p.author}</span>
@@ -265,3 +261,5 @@ export default function AnnouncementPage() {
     </>
   );
 }
+
+

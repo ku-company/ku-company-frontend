@@ -108,8 +108,8 @@ export default function RegisterCompanyPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-4">
-      <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">
+    <div className="hero min-h-[calc(100vh-56px)] bg-base-200 px-4">
+      <div className="flex w-full max-w-5xl items-center justify-between p-6 sm:p-10">
         {/* Register Form */}
         <div className="w-full md:w-1/2">
           <div className="text-center">
@@ -129,7 +129,7 @@ export default function RegisterCompanyPage() {
               placeholder="Company name"
               value={form.company_name}
               onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              className="input input-bordered w-full"
             />
 
             {/* Email */}
@@ -139,7 +139,7 @@ export default function RegisterCompanyPage() {
               placeholder="Email"
               value={form.email}
               onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              className="input input-bordered w-full"
             />
 
             {/* Username */}
@@ -149,7 +149,7 @@ export default function RegisterCompanyPage() {
               placeholder="Username"
               value={form.user_name}
               onChange={handleChange}
-              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              className="input input-bordered w-full"
             />
 
             {/* Passwords */}
@@ -160,7 +160,7 @@ export default function RegisterCompanyPage() {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+                className="input input-bordered w-1/2"
               />
               <input
                 type="password"
@@ -168,27 +168,17 @@ export default function RegisterCompanyPage() {
                 placeholder="Confirm password"
                 value={form.confirm_password}
                 onChange={handleChange}
-                className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+                className="input input-bordered w-1/2"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-full bg-midgreen-500 py-3 text-white font-semibold transition hover:bg-midgreen-500 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="btn btn-primary w-full rounded-full text-white">
               {loading ? "Signing up..." : "Sign up"}
             </button>
             <button
               type="button"
-              onClick={() => {
-                // Kick off Google signup for Company (mark as signup)
-                try {
-                  localStorage.setItem("pending_oauth_signup_company", "1");
-                } catch {}
-                window.location.href = buildGoogleSignupUrl("Company") + "&signup=1";
-              }}
-              className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
+              onClick={() => { try { localStorage.setItem("pending_oauth_signup_company", "1"); } catch {} window.location.href = buildGoogleSignupUrl("Company") + "&signup=1"; }}
+              className="btn btn-neutral w-full rounded-full"
             >
               <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
               <span>Continue with Google</span>
@@ -197,9 +187,9 @@ export default function RegisterCompanyPage() {
 
           {error && <p className="mt-3 text-center text-red-500">{error}</p>}
 
-          <p className="mt-4 text-center text-sm text-gray-600">
+          <p className="mt-4 text-center text-sm opacity-70">
             Already have an account?{" "}
-            <Link href="/login" className="text-midgreen-500 font-medium hover:underline">
+            <Link href="/login" className="link link-primary">
               Log in here
             </Link>
           </p>

@@ -27,8 +27,7 @@ function NavItem({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`px-3 py-1 rounded-full text-sm transition
-        ${isActive ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
+      className={`btn btn-sm rounded-full ${isActive ? "btn-primary text-white" : "btn-ghost text-base-content"}`}
     >
       {label}
     </Link>
@@ -45,6 +44,9 @@ export default function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
+  // Ensure SSR and CSR markup matches to avoid hydration warnings
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -130,111 +132,117 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
-        <div className="mx-auto max-w-7xl h-14 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <Link href="/" className="font-semibold tracking-widest">
-            KU-COMPANY
-          </Link>
-
-          <div className="hidden md:block">
-            <input
-              placeholder="SEARCH"
-              className="h-9 w-64 rounded-full border px-4 text-sm focus:outline-none focus:ring"
-            />
+      <header suppressHydrationWarning className="sticky top-0 z-40 border-b bg-base-100 shadow-sm">
+        <div className="navbar mx-auto max-w-7xl h-16 px-4 sm:px-6 lg:px-8 w-full">
+          {/* Left: brand + mobile dropdown */}
+          <div className="navbar-start gap-3">
+            <div className="dropdown md:hidden">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </div>
+              <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-56">
+                <li><Link href="/homepage">HOME</Link></li>
+                <li><Link href="/find-job">FIND JOB</Link></li>
+                {user?.role?.toLowerCase().includes("company") && (
+                  <>
+                    <li><Link href="/company/jobpostings">JOB POSTINGS</Link></li>
+                    <li><Link href="/view-resume">VIEW RESUME</Link></li>
+                  </>
+                )}
+                <li><Link href="/professor-annoucement">ANNOUNCEMENT</Link></li>
+                {(user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni")) && (
+                  <li><Link href="/status">STATUS</Link></li>
+                )}
+              </ul>
+            </div>
+            <Link href="/homepage" className="font-extrabold tracking-wider text-primary">
+              KU-COMPANY
+            </Link>
           </div>
 
-          <nav className="hidden md:flex items-center gap-2">
-            <NavItem href="/" label="HOME" />
-            <NavItem href="/find-job" label="FIND JOB" />
-            {user?.role?.toLowerCase().includes("company") && (
+          {/* Center: desktop nav */}
+          <div className="navbar-center hidden md:flex">
+            <nav className="flex items-center gap-1">
+              <NavItem href="/homepage" label="HOME" />
+              <NavItem href="/find-job" label="FIND JOB" />
+              {user?.role?.toLowerCase().includes("company") && (
+                <>
+                  <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+                  <NavItem href="/view-resume" label="VIEW RESUME" />
+                </>
+              )}
+              <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
+              {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
+                <NavItem href="/status" label="STATUS" />
+              ) : null}
+            </nav>
+          </div>
+
+          {/* Right: search + user actions */}
+          <div className="navbar-end gap-3" ref={menuRef}>
+            {!hydrated ? null : user ? (
               <>
-                <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
-                <NavItem href="/view-resume" label="VIEW RESUME" />
-              </>
-            )}
-            <NavItem href="/announcement" label="ANNOUNCEMENT" />
-            {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
-              <NavItem href="/status" label="STATUS" />
-            ) : null}
-          </nav>
+                  <span className="hidden sm:inline-flex items-center badge badge-outline badge-sm">
+                    {displayRole}
+                  </span>
 
-          <div className="relative flex items-center gap-2" ref={menuRef}>
-            {user ? (
-              <>
-                {/* Role badge */}
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
-
-                {/* Apply list icon (students only) */}
-                {user?.role?.toLowerCase().includes("student") && (
-                  <Link
-                    href="/apply-list"
-                    className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
-                    aria-label="Apply list"
-                  >
-                    <DocumentTextIcon className="h-5 w-5 text-gray-700" aria-hidden="true" />
-                    {count > 0 && (
-                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
-                        {count}
-                      </span>
-                    )}
-                  </Link>
-                )}
-
-                <button
-                  className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  aria-haspopup="menu"
-                  aria-expanded={dropdownOpen ? "true" : "false"}
-                >
-                  <img
-                    src={avatarUrl || "/icons/default-profile.png"}
-                    alt={`${displayName || user.user_name} avatar`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-
-                {dropdownOpen && (
-                  <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
-                    <div className="px-4 pb-2 text-xs text-gray-500">Signed in as <span className="font-medium">{displayName || user.user_name}</span>
-                      <div>Role: <span className="font-medium">{displayRole}</span></div></div>
+                  {user?.role?.toLowerCase().includes("student") && (
                     <Link
-                      href="/profile"
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
+                      href="/apply-list"
+                      className="btn btn-circle btn-ghost"
+                      aria-label="Apply list"
                     >
-                      Profile
+                      <DocumentTextIcon className="h-5 w-5" aria-hidden="true" />
+                      {count > 0 && (
+                        <span className="badge badge-sm badge-error absolute -top-1 -right-1">
+                          {count}
+                        </span>
+                      )}
                     </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      role="menuitem"
+                  )}
+
+                  <div className="dropdown dropdown-end">
+                    <div
+                      tabIndex={0}
+                      role="button"
+                      className="avatar placeholder"
+                      onClick={() => setDropdownOpen((v) => !v)}
                     >
-                      Logout
-                    </button>
+                      <div className="w-9 rounded-full ring ring-base-300 overflow-hidden">
+                        <img src={avatarUrl || "/icons/default-profile.png"} alt={`${displayName || user.user_name} avatar`} />
+                      </div>
+                    </div>
+                    {dropdownOpen && (
+                      <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-56 p-2 shadow">
+                        <li className="menu-title text-xs">
+                          <span>Signed in as {displayName || user.user_name}</span>
+                          <span>Role: {displayRole}</span>
+                        </li>
+                        <li>
+                          <Link href="/profile" onClick={() => setDropdownOpen(false)}>Profile</Link>
+                        </li>
+                        <li>
+                          <button onClick={handleLogout} className="text-error">Logout</button>
+                        </li>
+                      </ul>
+                    )}
                   </div>
-                )}
               </>
-            ) : (
-              <>
-                <Link href="/login" className="text-xs px-3 py-1 rounded border">
-                  LOGIN
-                </Link>
-                <button
-                  onClick={() => setShowRoleSelector(true)}
-                  className="text-xs px-3 py-1 rounded border"
-                >
-                  SIGNUP
-                </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <Link href="/login" className="btn btn-sm btn-ghost rounded-full">LOGIN</Link>
+                  <button onClick={() => setShowRoleSelector(true)} className="btn btn-sm btn-primary rounded-full text-white">
+                    SIGN UP
+                  </button>
+                </>
+              )}
           </div>
         </div>
       </header>
 
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full">
+          <div className="bg-base-100 p-0 rounded-2xl shadow-xl w-full max-w-md">
             <RoleSelector
               isOpen={showRoleSelector}
               onClose={() => setShowRoleSelector(false)}

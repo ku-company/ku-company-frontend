@@ -11,12 +11,8 @@ type Company = {
 
 export default function CompanyCard({ company }: { company: Company }) {
   return (
-    <div className="group relative rounded-2xl border bg-white shadow-sm overflow-hidden">
-      {/* Image container: fixed height, relative for Next.js Image with 'fill' */}
-      <div className={`relative h-48 ${company.accent ?? "bg-gray-50"} overflow-hidden`}>
-        {/* Next.js Image with 'fill' makes it cover the parent container.
-            'object-contain' keeps aspect ratio so the logo never overflows.
-            'p-6' adds padding so the logo doesn't stick to the edges. */}
+    <div className="card bg-base-100 border shadow-sm rounded-2xl overflow-hidden">
+      <div className={`relative h-48 ${company.accent ?? "bg-base-200"} overflow-hidden`}>
         <Image
           src={company.logo}
           alt={company.name}
@@ -25,17 +21,13 @@ export default function CompanyCard({ company }: { company: Company }) {
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         />
       </div>
-
-      {/* Company name and "View More" link below the image */}
       <div className="p-4">
-        <div className="font-semibold text-gray-800 truncate">{company.name}</div>
-        <Link
-          href={`/company/${company.id}`}
-          className="mt-2 inline-block text-xs text-emerald-700 hover:underline"
-        >
-          VIEW MORE…
+        <div className="font-semibold truncate">{company.name}</div>
+        <Link href={`/company/${company.id}`} className="btn btn-xs btn-primary mt-2 rounded-full text-white">
+          View Detail
         </Link>
       </div>
     </div>
   );
 }
+
