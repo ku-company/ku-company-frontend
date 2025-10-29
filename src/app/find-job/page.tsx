@@ -248,7 +248,7 @@ export default function FindJobPage() {
           />
 
           <select
-            value={category}
+            value={category} aria-label="Position"
             onChange={(e) => setCategory(e.target.value)}
             className="h-10 w-[180px] rounded-full border px-3 text-sm"
           >
@@ -270,7 +270,7 @@ export default function FindJobPage() {
           </select>
 
           <select
-            value={jobType}
+            value={jobType} aria-label="Job type"
             onChange={(e) => setJobType(e.target.value)}
             className="h-10 w-[180px] rounded-full border px-3 text-sm"
           >
@@ -338,19 +338,19 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  <div className="absolute right-4 top-4 h-10 w-10 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
+                  <div className="absolute right-4 -top-3 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
                     <span className="text-xs font-semibold">{(job.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5">{job.position}</div>
-                    <div className="mt-1 text-xs text-gray-600 truncate">{job.company?.company_name}</div>
-                    <div className="text-[11px] text-gray-500 truncate">{job.company?.location}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3">{job.position}</div>
+                    <div className="mt-1 text-xs text-gray-600 break-words">{job.company?.company_name}</div>
+                    <div className="text-[11px] text-gray-500 break-words">{job.company?.location}</div>
                   </div>
-                  <p className="mt-2 text-sm text-gray-700 line-clamp-2">
+                  <p className="mt-2 text-sm text-gray-700 line-clamp-3 break-words">
                     {job.description}
                   </p>
                   <div className="mt-2 text-[11px] text-gray-500">
-                    {job.available_position} position(s) • {job.jobType}
+                    {job.available_position} position(s) | {job.jobType}
                   </div>
                 </button>
               );
@@ -360,7 +360,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
@@ -369,21 +369,18 @@ export default function FindJobPage() {
             </div>
           ) : (
             <>
-              <div className="absolute right-5 top-5 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
-                <span className="text-sm font-semibold">{(selected.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
-              </div>
-              <div className="pr-16">
+              
+              <div className="pr-20">
                 <div className="text-lg font-semibold">{selected.position}</div>
-                <div className="text-sm text-gray-600">{selected.company?.company_name}</div>
-                <div className="text-xs text-gray-500">{selected.company?.location}</div>
+                <div className="text-sm text-gray-600 break-words">{selected.company?.company_name}</div>
+                <div className="text-xs text-gray-500 break-words">{selected.company?.location}</div>
               </div>
-              <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
-              <p className="mt-2 text-xs text-gray-500">
-                Job Type: {selected.jobType}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                Available Positions: {selected.available_position}
-              </p>
+                            <div className="mt-3 grid gap-1 text-xs text-gray-600">
+                <div>Job Type: {selected.jobType || '-'}</div>
+                <div>Available Positions: {selected.available_position}</div>
+                <div>Work Type: {(selected as any).workType || '-'}</div>
+                <div>Expected Salary: {(selected as any).expectedSalary || '-'}</div>
+              </div>              <div className="mt-4 text-sm text-gray-700 whitespace-pre-wrap break-words">{selected.description}</div>
 
               {canApply && (
                 <div className="mt-6 flex justify-end">
@@ -431,6 +428,8 @@ export default function FindJobPage() {
     </main>
   );
 }
+
+
 
 
 
