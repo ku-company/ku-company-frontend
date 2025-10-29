@@ -7,7 +7,8 @@ import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
-import { MapPinIcon, PhoneIcon } from "@heroicons/react/24/outline";
+import { MapPinIcon, PhoneIcon, GlobeAltIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { getAuthMe } from "@/api/user";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -49,6 +50,7 @@ export default function CompanyProfile() {
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editSection, setEditSection] = useState<"basics" | "description" | null>(null);
+  const [verified, setVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Wait until auth is hydrated to avoid hydration/CORS/cookie races
@@ -71,6 +73,13 @@ export default function CompanyProfile() {
         if (!cancelled) {
           setCompany(data);
           setError(null);
+        }
+        // Fetch verification flag from auth/me
+        try {
+          const me = await getAuthMe();
+          if (!cancelled) setVerified(!!me?.verify);
+        } catch {
+          if (!cancelled) setVerified(null);
         }
       } catch (err: any) {
         if (!cancelled && err?.name !== "AbortError") {
@@ -136,9 +145,22 @@ export default function CompanyProfile() {
               {company.company_name}
             </h2>
             <p className="text-sm text-gray-600">{company.industry}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-xs text-gray-600">Company</span>
+              {verified ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-200">
+                  <CheckBadgeIcon className="h-4 w-4" /> Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 border border-gray-200">
+                  <ExclamationTriangleIcon className="h-4 w-4" /> Not Verified
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 space-y-4">
+            <InfoRow icon={<GlobeAltIcon className="h-4 w-4" />} label="Country" value={company.country} />
             <InfoRow icon={<MapPinIcon className="h-4 w-4" />} label="Location" value={company.location} />
             <InfoRow icon={<PhoneIcon className="h-4 w-4" />} label="Telephone" value={company.tel} />
           </div>

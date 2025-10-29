@@ -4,10 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -39,8 +42,15 @@ export default function RegisterPage() {
 
       await registerUser(payload);
 
-      // redirect to login after success
-      router.push("/login");
+      // Auto login immediately after successful registration
+      const res = await loginUser({
+        user_name: form.user_name,
+        password: form.password,
+      });
+      login(res.data);
+
+      // Redirect to home
+      router.push("/");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");

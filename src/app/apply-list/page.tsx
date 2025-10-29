@@ -153,9 +153,20 @@ export default function ApplyListPage() {
                       onChange={() => toggleOne(job.id)}
                     />
                     <div>
-                      <div className="font-medium">{job.position}</div>
-                      <div className="text-xs text-gray-600">{job.company?.company_name} • {job.company?.location}</div>
-                      <div className="mt-1 text-xs text-gray-500">{job.jobType}</div>
+                      {(() => {
+                        const title = (job as any).job_title || job.position || "Untitled";
+                        const position = job.position || (job as any).position || "";
+                        const companyName = (job as any).company_name || job.company?.company_name || "";
+                        const companyLoc = (job as any).company_location || job.company?.location || "";
+                        return (
+                          <>
+                            <div className="font-medium">{title}</div>
+                            <div className="text-xs text-gray-600">{position}{companyName ? ` • ${companyName}` : ""}</div>
+                            <div className="mt-1 text-xs text-gray-500">{companyLoc}</div>
+                            <div className="mt-1 text-[11px] text-gray-500">{job.jobType}</div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   <button onClick={() => remove(job.id)} className="text-xs rounded-full border px-2 py-1 hover:bg-gray-50">Remove</button>

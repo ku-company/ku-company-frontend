@@ -86,13 +86,8 @@ export default function ApplyModal({
 
         {/* No tabs: only existing resumes */}
         <div className="px-5">
-          <div className="mb-4 inline-flex rounded-full border p-1">
-            <button
-              ref={initialFocusRef}
-              className={`rounded-full px-4 py-1 text-sm font-medium bg-gray-900 text-white`}
-            >
-              Choose your resume
-            </button>
+          <div className="mb-4">
+            <span className="text-sm font-medium text-gray-700">Choose your resume</span>
           </div>
         </div>
 
@@ -102,7 +97,7 @@ export default function ApplyModal({
             <ul className="space-y-3">
               {resumes.length === 0 && (
                 <li className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
-                  No uploaded résumés yet. Please upload one from your profile.
+                  No uploaded resume yet. Please upload one from your profile.
                 </li>
               )}
               {resumes.map((r) => (

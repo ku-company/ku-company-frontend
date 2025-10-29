@@ -70,8 +70,19 @@ export default function Navbar() {
         return u;
       }
     };
+    function roleKnown(r?: string | null): r is string {
+      const raw = (r || '').toLowerCase();
+      return raw.includes('student') || raw.includes('company') || raw.includes('professor');
+    }
+
     async function load() {
       if (!user) { setAvatarUrl(null); return; }
+      if (!roleKnown(user.role)) {
+        // Defer fetching until role is chosen to avoid 401s that would auto-logout
+        setAvatarUrl(null);
+        setDisplayName(user.user_name || '');
+        return;
+      }
       try {
         const role = (user.role || "").toLowerCase();
         const raw = role.includes("company")
@@ -140,7 +151,7 @@ export default function Navbar() {
                 <NavItem href="/view-resume" label="VIEW RESUME" />
               </>
             )}
-            <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
             {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
               <NavItem href="/status" label="STATUS" />
             ) : null}

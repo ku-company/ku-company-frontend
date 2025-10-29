@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import RoleSelectModal from "@/components/roleselector";
+import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
 import { createProfessorProfile } from "@/api/professorprofile";
+import { getCompanyProfile } from "@/api/companyprofile";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -19,6 +21,7 @@ export default function RoleBootstrap() {
   const { user, isReady, login } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
+  const [showCompanyOnboarding, setShowCompanyOnboarding] = useState(false);
 
   const isUnknown = useMemo(() => normalizeRole(user?.role) === "Unknown", [user?.role]);
 
@@ -35,7 +38,36 @@ export default function RoleBootstrap() {
     } else {
       setShowRoleModal(false);
     }
+
+    // If user is a Company and signup flow marked onboarding, open only if country is empty
+    (async () => {
+      try {
+        const roleNorm = (user?.role ?? "").toLowerCase();
+        if (!roleNorm.includes("company")) return;
+        const needs = typeof window !== "undefined" ? localStorage.getItem("needs_company_onboarding") : null;
+        if (needs !== "1") return;
+
+        // Check profile country before showing modal
+        try {
+          const profile = await getCompanyProfile();
+          const shouldOpen = !profile || profile.country === "";
+          if (shouldOpen) {
+            setShowCompanyOnboarding(true);
+          } else {
+            // Country already set; clear the flag so it won't show in future logins
+            if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
+          }
+        } catch (e) {
+          console.warn("company profile check failed", e);
+          // Open modal on failure to avoid losing the opportunity in race conditions
+          setShowCompanyOnboarding(true);
+        }
+      } catch {}
+    })();
+
   }, [isReady, user, isUnknown]);
+
+  // Note: no secondary guard; onboarding modal opens only when flagged by signup flow.
 
   async function handleRoleSelect(selected: string) {
     try {
@@ -79,6 +111,11 @@ export default function RoleBootstrap() {
       if (finalRole !== "Unknown") {
         setShowRoleModal(false);
       }
+
+      // If user chose Company, prompt for company info
+      if (finalRole === "Company") {
+        setShowCompanyOnboarding(true);
+      }
     } catch (err) {
       console.error("Failed to update role:", err);
       // keep modal open for retry
@@ -87,14 +124,28 @@ export default function RoleBootstrap() {
     }
   }
 
-  if (!showRoleModal) return null;
-
   return (
-    <RoleSelectModal
-      isOpen={showRoleModal}
-      onClose={() => !patchingRole && setShowRoleModal(false)}
-      onSelect={handleRoleSelect}
-    />
+    <>
+      {showRoleModal && (
+        <RoleSelectModal
+          isOpen={showRoleModal}
+          onClose={() => !patchingRole && setShowRoleModal(false)}
+          onSelect={handleRoleSelect}
+          disableClose
+        />
+      )}
+      {showCompanyOnboarding && (
+        <CompanyOnboardingModal
+          isOpen={showCompanyOnboarding}
+          onClose={() => {
+            try {
+              if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
+            } catch {}
+            setShowCompanyOnboarding(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 

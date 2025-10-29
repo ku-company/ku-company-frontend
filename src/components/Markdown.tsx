@@ -139,8 +139,10 @@ export default function Markdown({ content, className }: Props) {
           case "h6": {
             const L = b.type;
             const Tag = L as any;
-            const cls = "text-gray-900 font-semibold" + (L === "h1" ? " text-2xl" : L === "h2" ? " text-xl" : L === "h3" ? " text-lg" : "");
-            return <Tag key={i} className={cls + " break-words"}>{renderInline(b.text)}</Tag>;
+            const size = L === "h1" ? " text-2xl" : L === "h2" ? " text-xl" : L === "h3" ? " text-lg" : "";
+            const spacing = L === "h1" ? " mt-4 mb-2" : L === "h2" ? " mt-3 mb-2" : " mt-2 mb-1";
+            const cls = "text-gray-900 font-semibold" + size + spacing + " break-words";
+            return <Tag key={i} className={cls}>{renderInline(b.text)}</Tag>;
           }
         }
       })}

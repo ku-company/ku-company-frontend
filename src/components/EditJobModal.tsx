@@ -159,6 +159,7 @@ export default function EditJobModal({
             style={{ outlineColor: brandColor }}
             placeholder="Enter job description…"
           />
+          <div className="text-xs text-gray-500">Description supports basic Markdown (headings, lists, bold/italic, links, code).</div>
 
           {/* Available positions */}
           <div className="flex items-center justify-between">
@@ -220,7 +221,7 @@ export default function EditJobModal({
               </select>
             </div>
             <div className="grid gap-1">
-              <label className="text-sm font-medium text-gray-700">Expiration Date</label>
+              <label className="text-sm font-medium text-gray-700">Expiration Date <span className="text-gray-400 font-normal">(optional)</span></label>
               <input type="date" className="rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expiredAt} onChange={(e) => setExpiredAt(e.target.value)} />
             </div>
           </div>

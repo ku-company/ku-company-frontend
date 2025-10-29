@@ -4,6 +4,7 @@ export type CompanyProfile = {
   industry: string;
   tel: string;
   location: string;
+  country: string;
 };
 
 const API_BASE =
@@ -69,6 +70,7 @@ export async function createDefaultCompanyProfile(company_name: string) {
         industry: "",
         tel: "",
         location: "",
+        country: "",
       }),
     });
 
