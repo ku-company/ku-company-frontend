@@ -14,7 +14,7 @@ export default function Homepage() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg sm:text-xl font-semibold">Company Highlight</h2>
-          <a href="/companies" className="text-xs text-gray-500 hover:text-gray-700">See More…</a>
+          <a href="/companies" className="text-xs text-gray-500 hover:text-gray-700">See More   </a>
         </div>
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {companies.map((c) => <CompanyCard key={c.id} company={c} />)}

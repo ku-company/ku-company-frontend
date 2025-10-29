@@ -4,7 +4,7 @@ import Image from "next/image";
 export default function Home() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
-      {/* relative + กำหนดความสูง */}
+      {/* relative +                                      */}
       <div className="relative h-64 sm:h-80 lg:h-96 overflow-hidden rounded-2xl">
         {/* background */}
         <Image
@@ -33,7 +33,7 @@ export default function Home() {
                 href="/find-job"
                 className="inline-block rounded-full bg-white text-emerald-800 px-5 py-2 text-sm font-semibold hover:bg-gray-100"
               >
-                FIND JOB →
+                FIND JOB    
               </Link>
             </div>
           </div>

@@ -33,7 +33,7 @@ export default function CompanyCard({ company }: { company: Company }) {
           href={`/company/${company.id}`}
           className="mt-2 inline-block text-xs text-emerald-700 hover:underline"
         >
-          VIEW MORE…
+          VIEW MORE   
         </Link>
       </div>
     </div>

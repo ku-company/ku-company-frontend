@@ -45,13 +45,13 @@ export async function listResumes(): Promise<ResumeItem[]> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
+  console.log("     [resumes] GET raw:", raw.slice(0, 500), "    ", maskToken(token));
 
   if (!res.ok) {
     try {
       const j = JSON.parse(raw);
       if (j && (j.message === "Access Denied" || j.error === "Access Denied")) {
-        console.warn("[resumes] Access Denied — returning empty list");
+        console.warn("[resumes] Access Denied     returning empty list");
         return [];
       }
     } catch {}
@@ -87,7 +87,7 @@ export async function getMainResume(): Promise<ResumeItem | null> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] GET main raw:", raw.slice(0, 400));
+  console.log("     [resumes] GET main raw:", raw.slice(0, 400));
 
   if (res.status === 404) return null;
 
@@ -125,7 +125,7 @@ export async function setMainResume(id: number): Promise<void> {
     credentials: "include",
   });
   const raw = await res.text();
-  console.log(`⭐ [resumes] PATCH set-main ${id} raw:`, raw);
+  console.log(`    [resumes] PATCH set-main ${id} raw:`, raw);
   if (!res.ok) throw new Error(raw || `Failed to set main resume`);
 }
 
@@ -133,7 +133,7 @@ export async function setMainResume(id: number): Promise<void> {
 export async function uploadResume(file: File): Promise<ResumeItem> {
   const token = localStorage.getItem("access_token") || "";
   if (file.type !== "application/pdf") throw new Error("Only PDF files are allowed.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("File must be ≤ 10MB.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("File must be     10MB.");
 
   const form = new FormData();
   form.append("resume", file);
@@ -148,7 +148,7 @@ export async function uploadResume(file: File): Promise<ResumeItem> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] POST raw:", raw.slice(0, 500));
+  console.log("     [resumes] POST raw:", raw.slice(0, 500));
 
   if (!res.ok) throw new Error(raw || `Failed to upload resume`);
 
@@ -173,7 +173,7 @@ export async function deleteAllResumes(): Promise<void> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] DELETE ALL raw:", raw);
+  console.log("     [resumes] DELETE ALL raw:", raw);
 
   if (!res.ok) throw new Error(raw || `Failed to delete resumes`);
 }
@@ -192,7 +192,7 @@ export async function deleteResume(id: number): Promise<void> {
   });
 
   const raw = await res.text();
-  console.log(`🗑️ [resumes] DELETE ${id} raw:`, raw);
+  console.log(`        [resumes] DELETE ${id} raw:`, raw);
 
   if (!res.ok) throw new Error(raw || `Failed to delete resume`);
 }

@@ -9,6 +9,7 @@ import { getCompanyProfile } from "@/api/companyprofile";
 import RoleSelector from "@/components/roleselector";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import Button from "@/ui/button";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname() || "/";
@@ -119,10 +120,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
+      <header className="sticky top-0 z-40 border-b bg-white/75 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="mx-auto max-w-7xl h-14 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <Link href="/" className="font-semibold tracking-widest">
-            KU-COMPANY
+          <Link href="/" className="group flex items-center gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 text-white text-xs font-bold shadow-md">KU</span>
+            <span className="font-semibold tracking-wide text-gray-900 group-hover:text-black">KU-COMPANY</span>
           </Link>
 
           <div className="hidden md:block">
@@ -170,7 +172,7 @@ export default function Navbar() {
                 )}
 
                 <button
-                  className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
+                  className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden ring-1 ring-gray-300 hover:ring-gray-400 transition"
                   onClick={() => setDropdownOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={dropdownOpen ? "true" : "false"}
@@ -183,20 +185,20 @@ export default function Navbar() {
                 </button>
 
                 {dropdownOpen && (
-                  <div role="menu" className="absolute right-0 top-12 w-48 bg-white border rounded-lg shadow-lg py-2">
+                  <div role="menu" className="absolute right-0 top-12 w-56 rounded-2xl border bg-white/95 shadow-xl py-2 animate-in fade-in-0">
                     <div className="px-4 pb-2 text-xs text-gray-500">Signed in as <span className="font-medium">{displayName || user.user_name}</span>
                       <div>Role: <span className="font-medium">{displayRole}</span></div></div>
                     <Link
                       href="/profile"
                       onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md mx-2"
                       role="menuitem"
                     >
                       Profile
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md mx-2"
                       role="menuitem"
                     >
                       Logout
@@ -206,15 +208,8 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/login" className="text-xs px-3 py-1 rounded border">
-                  LOGIN
-                </Link>
-                <button
-                  onClick={() => setShowRoleSelector(true)}
-                  className="text-xs px-3 py-1 rounded border"
-                >
-                  SIGNUP
-                </button>
+                <Button variant="outline" size="sm" onClick={() => router.push("/login")}>Login</Button>
+                <Button size="sm" onClick={() => setShowRoleSelector(true)}>Sign up</Button>
               </>
             )}
           </div>

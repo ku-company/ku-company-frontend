@@ -20,7 +20,7 @@ export function buildInit(init: RequestInit = {}): RequestInit {
   };
 }
 
-// Some APIs wrap data under a "data" field — this safely unwraps it
+// Some APIs wrap data under a "data" field     this safely unwraps it
 export function unwrap<T = any>(json: any): T {
   if (!json) return {} as T;
   return (json.data ?? json) as T;

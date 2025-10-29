@@ -104,7 +104,7 @@ export default function EditStudentProfileModal({
     // Your flattened StudentProfile maps backend fields to these props:
     // - education/skills/languages may be string[] OR string OR null
     // - birthday is a string (ISO or yyyy-mm-dd)
-    // - bio is your “summary”
+    // - bio is your    summary   
     setEducation(toCleanText(initial?.education));
     setBirthDate(initial?.birthday ?? "");
     setSummary(initial?.bio ?? "");
@@ -217,7 +217,7 @@ export default function EditStudentProfileModal({
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
-                ✕
+                   
               </button>
             </div>
 
@@ -521,7 +521,7 @@ export default function EditStudentProfileModal({
                 className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: brandColor }}
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Saving   " : "Save changes"}
               </button>
             </div>
           </div>

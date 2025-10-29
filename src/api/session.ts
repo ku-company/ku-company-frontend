@@ -13,7 +13,7 @@ export async function fetchAuthMe() {
   try {
     const token = localStorage.getItem("access_token");
     console.log(
-      "🔸 fetchAuthMe() called, token =",
+      "     fetchAuthMe() called, token =",
       token ? "found" : "missing"
     );
 
@@ -26,22 +26,22 @@ export async function fetchAuthMe() {
       },
     });
 
-    console.log("🔸 /auth/me response status:", res.status);
+    console.log("     /auth/me response status:", res.status);
 
     // Gracefully handle unauthenticated states (401/403) or any non-OK
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       // Keep this a warn to avoid noisy errors when logged out
-      console.warn("⚠️ fetchAuthMe failed:", res.status, text || "(no body)");
+      console.warn("       fetchAuthMe failed:", res.status, text || "(no body)");
       return null;
     }
 
     const json = await res.json().catch(() => ({}));
-    console.log("🟢 fetchAuthMe JSON:", json);
+    console.log("     fetchAuthMe JSON:", json);
     return unwrap<{ user_name?: string; email?: string; role?: string; roles?: string }>(json);
   } catch (err) {
     // Network errors, CORS issues, or fetch being unavailable
-    console.warn("⚠️ fetchAuthMe error (treated as logged out):", err);
+    console.warn("       fetchAuthMe error (treated as logged out):", err);
     return null;
   }
 }

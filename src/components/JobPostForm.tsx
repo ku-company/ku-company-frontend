@@ -104,9 +104,12 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/ui/select";
+import { Textarea } from "@/ui/textarea";
+import Button from "@/ui/button";
 
 export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void }) {
-  // enums จาก Prisma (ต้องตรง)
+  // enums           Prisma (                     )
   const jobTypes = [
     { label: "Full Time", value: "FullTime" },
     { label: "Part Time", value: "PartTime" },
@@ -128,8 +131,8 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      jobType,               // ส่งตรง enum จาก Prisma
-      title: position,       // ส่งตรง enum จาก Prisma
+      jobType,               //                    enum           Prisma
+      title: position,       //                    enum           Prisma
       details,
       positionsAvailable,
     });
@@ -138,54 +141,36 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border rounded-md p-4 shadow-sm bg-white"
-    >
+    <form onSubmit={handleSubmit} className="rounded-2xl border p-5 shadow-sm bg-white">
       <div className="flex flex-col gap-3 mb-3">
         {/* Job Type */}
         <div>
           <label className="block text-sm font-semibold mb-1">Job Type</label>
-          <select
-            className="border rounded-md px-2 py-1 w-full"
-            value={jobType}
-            onChange={(e) => setJobType(e.target.value)}
-          >
+          <Select value={jobType} onChange={(e) => setJobType(e.target.value)}>
             {jobTypes.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Position */}
         <div>
           <label className="block text-sm font-semibold mb-1">Position</label>
-          <select
-            className="border rounded-md px-2 py-1 w-full"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-          >
+          <Select value={position} onChange={(e) => setPosition(e.target.value)}>
             {positions.map((p) => (
               <option key={p.value} value={p.value}>
                 {p.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {/* Description */}
         <div>
           <label className="block text-sm font-semibold mb-1">Description</label>
-          <textarea
-            placeholder="More Details here..."
-            className="w-full border rounded-md p-2"
-            rows={4}
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            required
-          />
+          <Textarea placeholder="More Details here..." rows={4} value={details} onChange={(e) => setDetails(e.target.value)} required />
         </div>
       </div>
 
@@ -201,12 +186,7 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
             value={positionsAvailable}
             onChange={(e) => setPositionsAvailable(Number(e.target.value))}
           />
-          <button
-            type="submit"
-            className="rounded-md bg-green-600 text-white px-4 py-1 hover:bg-green-700"
-          >
-            Post
-          </button>
+          <Button type="submit">Post</Button>
         </div>
       </div>
     </form>

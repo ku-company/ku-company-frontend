@@ -16,7 +16,7 @@ export default function OAuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="p-8 text-gray-600">Finishing sign-in…</div>
+    <div className="p-8 text-gray-600">Finishing sign-in   </div>
   );
 }
 

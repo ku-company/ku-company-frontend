@@ -71,7 +71,7 @@ export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, b
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
             aria-label="Close"
           >
-            ✕
+               
           </button>
         </div>
 
@@ -112,7 +112,7 @@ export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, b
             className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
             style={{ backgroundColor: brandColor }}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving   " : "Save"}
           </button>
         </div>
       </div>

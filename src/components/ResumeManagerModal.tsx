@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Button from "@/ui/button";
 import {
   listResumes,
   uploadResume,
@@ -40,14 +41,14 @@ export default function ResumeManagerModal({
     setLoadErr(null);
     try {
       const list = await listResumes();
-      console.log("📦 [ResumeModal] list:", list);
+      console.log("     [ResumeModal] list:", list);
       setExisting(list);
       // Initialize temp main from current list
       const currentMain = list.find((r) => r.is_main);
       setTempMainId(currentMain ? currentMain.id : null);
       setHasUnsavedMain(false);
     } catch (e: any) {
-      console.error("❌ listResumes failed:", e);
+      console.error("    listResumes failed:", e);
       setLoadErr(e.message || "Failed to load resumes");
       setExisting([]);
     } finally {
@@ -111,7 +112,7 @@ export default function ResumeManagerModal({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 animate-in fade-in-0"
       aria-modal="true"
       role="dialog"
       aria-labelledby="resume-manager-title"
@@ -119,7 +120,7 @@ export default function ResumeManagerModal({
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl outline outline-1 outline-gray-200">
+      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl outline outline-1 outline-gray-200 animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between rounded-t-2xl px-5 py-4">
           <h2 id="resume-manager-title" className="text-lg font-semibold">
@@ -131,7 +132,7 @@ export default function ResumeManagerModal({
             aria-label="Close"
             title="Close"
           >
-            ✕
+               
           </button>
         </div>
 
@@ -152,7 +153,7 @@ export default function ResumeManagerModal({
             </div>
 
             {loading ? (
-              <div className="rounded border p-3 text-sm text-gray-600">Loading…</div>
+              <div className="rounded border p-3 text-sm text-gray-600">Loading   </div>
             ) : loadErr ? (
               <div className="rounded border p-3 text-sm text-red-600">{loadErr}</div>
             ) : existingIsEmpty ? (
@@ -213,7 +214,7 @@ export default function ResumeManagerModal({
           {/* Upload slot (single) */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-gray-700">
-              Upload (PDF, ≤ 10MB)
+              Upload (PDF,     10MB)
             </h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -232,7 +233,7 @@ export default function ResumeManagerModal({
                   className="rounded-md px-3 py-2 text-sm text-white disabled:opacity-50"
                   style={{ backgroundColor: brandColor }}
                 >
-                  {slot.uploading ? "Uploading…" : "Upload"}
+                  {slot.uploading ? "Uploading   " : "Upload"}
                 </button>
               </div>
               {slot.file && (
@@ -272,7 +273,7 @@ export default function ResumeManagerModal({
               className="rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               style={{ backgroundColor: brandColor }}
             >
-              {savingMain ? "Saving…" : "Save"}
+              {savingMain ? "Saving   " : "Save"}
             </button>
           )}
           <button
@@ -286,3 +287,4 @@ export default function ResumeManagerModal({
     </div>
   );
 }
+

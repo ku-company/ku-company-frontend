@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import ApplyModal from "@/components/ApplyModal";
@@ -45,7 +45,7 @@ export default function FindJobPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
+  const [resumes, setResumes] = useState<Resume[]>([]); //     resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
@@ -350,7 +350,7 @@ export default function FindJobPage() {
                     {job.description}
                   </p>
                   <div className="mt-2 text-[11px] text-gray-500">
-                    {job.available_position} position(s) • {job.jobType}
+                    {job.available_position} position(s)   {job.jobType}
                   </div>
                 </button>
               );

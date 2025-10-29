@@ -46,7 +46,7 @@ export default function RoleSelectModal({ isOpen, onClose, onSelect }: RoleSelec
           className="absolute top-5 right-5 text-gray-500 hover:text-gray-800 text-3xl"
           title="Close"
         >
-          ✕
+             
         </button>
 
         <h2 className="text-4xl font-bold text-black text-center mb-10">

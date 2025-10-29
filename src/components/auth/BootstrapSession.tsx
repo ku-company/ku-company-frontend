@@ -14,7 +14,7 @@ export default function BootstrapSession() {
     if (ran.current) return;
     ran.current = true;
 
-    console.log("🟡 BootstrapSession started...");
+    console.log("     BootstrapSession started...");
     (async () => {
       try {
         // 1) Capture OAuth tokens in URL (either ? or #) and store
@@ -27,15 +27,15 @@ export default function BootstrapSession() {
             if (tokens.email) localStorage.setItem("email", tokens.email);
             if (tokens.role) localStorage.setItem("role", tokens.role);
             stripTokensFromUrl();
-            console.log("✅ Stored OAuth tokens from URL");
+            console.log("    Stored OAuth tokens from URL");
           }
         } catch (e) {
-          console.warn("⚠️ Failed to parse OAuth tokens from URL:", e);
+          console.warn("       Failed to parse OAuth tokens from URL:", e);
         }
 
         // 2) Fetch current user using cookie or newly stored token
         const me = await fetchAuthMe();
-        console.log("🟢 fetchAuthMe() returned:", me);
+        console.log("     fetchAuthMe() returned:", me);
 
         if (me && me.user_name) {
           login({
@@ -45,23 +45,23 @@ export default function BootstrapSession() {
             email: me.email ?? "",
             role: me.role ?? me.roles ?? "student",
           });
-          console.log("✅ Logged in as:", me.role ?? me.roles);
+          console.log("    Logged in as:", me.role ?? me.roles);
 
           // Auto-create professor profile to bypass backend bug
           try {
             const roleNorm = normalizeRole(me.role ?? me.roles);
             if (roleNorm === "professor") {
               await createProfessorProfile({ department: "computer", faculty: "engineering" });
-              console.log("🟢 Professor profile ensured");
+              console.log("     Professor profile ensured");
             }
           } catch (e) {
-            console.warn("⚠️ Skipping professor profile auto-create:", e);
+            console.warn("       Skipping professor profile auto-create:", e);
           }
         } else {
-          console.warn("⚠️ No user data from fetchAuthMe()");
+          console.warn("       No user data from fetchAuthMe()");
         }
       } catch (err) {
-        console.error("❌ BootstrapSession failed:", err);
+        console.error("    BootstrapSession failed:", err);
       }
     })();
   }, [login]);

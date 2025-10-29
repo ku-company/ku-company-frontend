@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Button from "@/ui/button";
 
 type Resume = {
   id: string;
@@ -59,7 +60,7 @@ export default function ApplyModal({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 animate-in fade-in-0"
       aria-modal="true"
       role="dialog"
       aria-labelledby="apply-modal-title"
@@ -68,30 +69,20 @@ export default function ApplyModal({
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl outline outline-1 outline-gray-200">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl outline outline-1 outline-gray-200 animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between rounded-t-2xl px-5 py-4">
           <h2 id="apply-modal-title" className="text-lg font-semibold">
             Apply to {jobTitle ?? "this job"}
           </h2>
-          <button
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-            aria-label="Close"
-            title="Close"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Close" title="Close">×</button>
         </div>
 
         {/* No tabs: only existing resumes */}
         <div className="px-5">
           <div className="mb-4 inline-flex rounded-full border p-1">
-            <button
-              ref={initialFocusRef}
-              className={`rounded-full px-4 py-1 text-sm font-medium bg-gray-900 text-white`}
-            >
-              Use uploaded résumé
+            <button ref={initialFocusRef} className={`rounded-full px-4 py-1 text-sm font-medium bg-gray-900 text-white`}>
+              Use uploaded resume
             </button>
           </div>
         </div>
@@ -102,7 +93,7 @@ export default function ApplyModal({
             <ul className="space-y-3">
               {resumes.length === 0 && (
                 <li className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
-                  No uploaded résumés yet. Please upload one from your profile.
+                  No uploaded r  sum  s yet. Please upload one from your profile.
                 </li>
               )}
               {resumes.map((r) => (
@@ -129,7 +120,7 @@ export default function ApplyModal({
                       <div className="font-medium">{r.name}</div>
                       {(r.updatedAt || r.size) && (
                         <div className="text-xs text-gray-500">
-                          {r.updatedAt ? r.updatedAt : ""} {r.updatedAt && r.size ? "•" : ""}{" "}
+                          {r.updatedAt ? r.updatedAt : ""} {r.updatedAt && r.size ? "   " : ""}{" "}
                           {r.size ? r.size : ""}
                         </div>
                       )}
@@ -146,20 +137,8 @@ export default function ApplyModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 rounded-b-2xl bg-gray-50 px-5 py-3">
-          <button
-            onClick={onClose}
-            className="rounded-full border px-4 py-2 text-sm hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!canSubmit}
-            onClick={() => onSubmit({ mode, resumeId: selectedResumeId })}
-            className={`rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50`}
-            style={{ backgroundColor: brandColor }}
-          >
-            Submit application
-          </button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={!canSubmit} onClick={() => onSubmit({ mode, resumeId: selectedResumeId })}>Submit application</Button>
         </div>
       </div>
     </div>

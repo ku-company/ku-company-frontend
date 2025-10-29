@@ -81,14 +81,14 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <InfoRow icon={<span className="text-xs">👤</span>} label="Username" value="Smith_op" />
+            <InfoRow icon={<span className="text-xs">    </span>} label="Username" value="Smith_op" />
             <InfoRow
-              icon={<span className="text-xs">✉️</span>}
+              icon={<span className="text-xs">      </span>}
               label="Mail"
               value="jt23.97@gmail.com"
               href="mailto:jt23.97@gmail.com"
             />
-            <InfoRow icon={<span className="text-xs">🎂</span>} label="Birthday" value="23 Dec 1997" />
+            <InfoRow icon={<span className="text-xs">    </span>} label="Birthday" value="23 Dec 1997" />
           </div>
         </aside>
 
@@ -120,10 +120,10 @@ export default function ProfilePage() {
             <div className="mt-4 text-sm">
               <p className="font-semibold">
                 Data Science Intern{" "}
-                <span className="font-normal">— BrightWave Solutions Co., Ltd., Bangkok</span>
+                <span className="font-normal">    BrightWave Solutions Co., Ltd., Bangkok</span>
               </p>
               <ul className="mt-2 list-disc pl-5 space-y-1 text-gray-700">
-                <li>June 2024 – November 2024</li>
+                <li>June 2024     November 2024</li>
                 <li>
                   Developed a content-based recommendation system for the Employee Networking System
                   project.
@@ -136,7 +136,7 @@ export default function ProfilePage() {
 
               <div className="mt-3 flex items-center justify-between">
                 <Link href="#" className="text-xs hover:underline" style={{ color: GREEN }}>
-                  See More…
+                  See More   
                 </Link>
 
                 {/* Upload resume button */}
@@ -170,7 +170,7 @@ export default function ProfilePage() {
           <CornerIcon title="Edit education" />
           <PillHeading>Education</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
-            <li>Kasetsart University — Bachelor of Engineering in Software and Knowledge Engineering</li>
+            <li>Kasetsart University     Bachelor of Engineering in Software and Knowledge Engineering</li>
             <li>Expected Graduation: 2025</li>
             <li>Relevant Courses: Data Mining, Machine Learning, Web Programming, Database Systems</li>
           </ul>
@@ -198,8 +198,8 @@ export default function ProfilePage() {
           <CornerIcon title="Edit licenses" />
           <PillHeading>Licenses or Certifications</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
-            <li>Google Data Analytics Professional Certificate — Coursera (2024)</li>
-            <li>Python for Everybody — University of Michigan (2023)</li>
+            <li>Google Data Analytics Professional Certificate     Coursera (2024)</li>
+            <li>Python for Everybody     University of Michigan (2023)</li>
           </ul>
         </div>
 
@@ -211,8 +211,8 @@ export default function ProfilePage() {
           <CornerIcon title="Edit languages" />
           <PillHeading>Languages</PillHeading>
           <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-gray-700">
-            <li>Thai — Native</li>
-            <li>English — Professional working proficiency (TOEIC 870)</li>
+            <li>Thai     Native</li>
+            <li>English     Professional working proficiency (TOEIC 870)</li>
           </ul>
         </div>
       </div>

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import JobPostForm from "@/components/JobPostForm";
+import { Card, CardContent, CardHeader } from "@/ui/card";
+import Button from "@/ui/button";
 import EditJobModal, { EditableJob } from "@/components/EditJobModal";
 import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
@@ -51,7 +53,7 @@ export default function DashboardPage() {
         const data = await fetchAuthedJson(API_URL_GET_ALL, { method: "GET", headers });
         setJobs(data.data || data || []);
       } catch (err) {
-        console.error("❌ Failed to fetch jobs:", err);
+        console.error("    Failed to fetch jobs:", err);
       } finally {
         setLoading(false);
       }
@@ -66,7 +68,7 @@ export default function DashboardPage() {
     try {
       const body = {
         description: job.details,
-        jobType: job.jobType, // ✅ จาก dropdown ใน form
+        jobType: job.jobType, //               dropdown        form
         position: job.title,
         available_position: job.positionsAvailable,
       };
@@ -85,7 +87,7 @@ export default function DashboardPage() {
       setJobs((prev) => [newJob, ...prev]);
       setShowForm(false);
     } catch (err) {
-      console.error("❌ Failed to add job:", err);
+      console.error("    Failed to add job:", err);
       alert("Failed to add job posting.");
     }
   };
@@ -99,7 +101,7 @@ export default function DashboardPage() {
     try {
       const body = {
         description: updated.details,
-        jobType: updated.jobType,
+        jobType: job.jobType, // preserve existing job type (modal edits position/description/count)
         position: updated.title,
         available_position: updated.positionsAvailable,
       };
@@ -118,7 +120,7 @@ export default function DashboardPage() {
       setJobs((prev) => prev.map((j, i) => (i === editIndex ? updatedJob : j)));
       closeEdit();
     } catch (err) {
-      console.error("❌ Failed to update job:", err);
+      console.error("    Failed to update job:", err);
       alert("Failed to update job posting.");
     }
   };
@@ -136,29 +138,30 @@ export default function DashboardPage() {
     editIndex !== null
       ? {
           title: jobs[editIndex]?.position ?? "",
-          jobType: jobs[editIndex]?.jobType ?? "",
+          position: jobs[editIndex]?.position ?? "",
           details: jobs[editIndex]?.description ?? "",
           positionsAvailable: Number(jobs[editIndex]?.available_position ?? 1),
         }
       : null;
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      <h1 className="mb-4 text-2xl font-bold">Job Openings</h1>
-
-      {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700"
-        >
-          + Post a Job
-        </button>
-      )}
+    <div className="mx-auto max-w-4xl p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Job Openings</h1>
+        {!showForm && (
+          <Button onClick={() => setShowForm(true)}>+ Post a Job</Button>
+        )}
+      </div>
 
       {showForm && (
-        <div className="mt-4">
-          <JobPostForm onSubmit={handleAddJob} />
-        </div>
+        <Card className="mt-4">
+          <CardHeader>
+            <div className="text-sm font-medium text-gray-600">Create new job posting</div>
+          </CardHeader>
+          <CardContent>
+            <JobPostForm onSubmit={handleAddJob} />
+          </CardContent>
+        </Card>
       )}
 
       <div className="mt-6 space-y-4">
@@ -168,25 +171,18 @@ export default function DashboardPage() {
           <p className="text-gray-500">No job postings yet.</p>
         ) : (
           jobs.map((job: any, i: number) => (
-            <div
-              key={job.id || i}
-              className="bg-white rounded-md border p-4 shadow-sm"
-            >
+            <Card key={job.id || i}>
+              <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold">
                     {job.position || "Untitled"}
                   </h2>
                   <p className="text-sm text-gray-600">
-                    {job.jobType || "—"}
+                    {job.jobType || ""}
                   </p>
                 </div>
-                <button
-                  onClick={() => openEdit(i)}
-                  className="rounded-full border px-3 py-1 text-sm font-medium hover:bg-gray-50"
-                >
-                  Edit
-                </button>
+                <Button variant="outline" size="sm" onClick={() => openEdit(i)}>Edit</Button>
               </div>
               <p className="mt-2 text-gray-800">
                 {job.description || "No description"}
@@ -194,7 +190,8 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-gray-600">
                 Positions Available: {job.available_position}
               </p>
-            </div>
+              </CardContent>
+            </Card>
           ))
         )}
       </div>

@@ -28,7 +28,7 @@ export default function ProfilePage() {
 
       // 3) Probe the server cookie/session once
       try {
-        console.log("[Profile] user is null after hydration; probing /api/auth/me…");
+        console.log("[Profile] user is null after hydration; probing /api/auth/me   ");
         const me = await fetchAuthMe(); // uses credentials: 'include' inside your helper
         console.log("[Profile] /api/auth/me raw:", me);
 
@@ -51,7 +51,7 @@ export default function ProfilePage() {
         if (alive) setChecking(false);
       } catch (err) {
         console.warn("[Profile] Not authenticated; redirecting to /login. Error:", err);
-        // 4) Truly unauthenticated → send to login
+        // 4) Truly unauthenticated     send to login
         router.replace("/login");
       }
     }
@@ -62,8 +62,8 @@ export default function ProfilePage() {
     };
   }, [user, isReady, login, router]);
 
-  // While we’re checking cookie/session, show a tiny skeleton
-  if (checking) return <div className="p-8 text-gray-600">Loading session…</div>;
+  // While we   re checking cookie/session, show a tiny skeleton
+  if (checking) return <div className="p-8 text-gray-600">Loading session   </div>;
 
   // At this point we must have a user (or we already redirected)
   if (!user) return null;

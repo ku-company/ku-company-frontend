@@ -15,12 +15,12 @@ const metrics = [
 const upcomingTasks = [
   {
     id: 1,
-    title: "Review 5 new candidates — Machine Learning Engineer",
-    due: "Today • 4:30 PM",
+    title: "Review 5 new candidates     Machine Learning Engineer",
+    due: "Today     4:30 PM",
   },
   {
     id: 2,
-    title: "Interview with Emily Chen — Tomorrow • 10:00 AM",
+    title: "Interview with Emily Chen     Tomorrow     10:00 AM",
     due: "",
   },
 ];
@@ -91,7 +91,7 @@ export default function CompanyDashboardPage() {
         {/* empty-state */}
         <div className="rounded-2xl border-2 border-midgreen-300 bg-white p-6 shadow-sm lg:col-span-4">
           <h3 className="text-xl font-semibold">
-            No active jobs yet — create your first job to start hiring.
+            No active jobs yet     create your first job to start hiring.
           </h3>
           <p className="mt-1 text-sm text-gray-500">
             Kickstart your pipeline and invite your team.
@@ -124,7 +124,7 @@ export default function CompanyDashboardPage() {
                 className="rounded-2xl border-2 border-midgreen-300 bg-white p-5 text-center shadow-sm"
               >
                 <div className="text-3xl font-bold text-gray-900">{value}</div>
-                <div className="mt-1 text-xs text-gray-500">— {label}</div>
+                <div className="mt-1 text-xs text-gray-500">    {label}</div>
               </div>
             ))}
           </div>

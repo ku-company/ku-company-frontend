@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { Card, CardContent, CardHeader } from "@/ui/card";
+import Button from "@/ui/button";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listResumes } from "@/api/resume";
 import { getMyStudentProfile } from "@/api/studentprofile";
@@ -20,7 +22,7 @@ export default function ApplyListPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
-  const [verified, setVerified] = useState<boolean | null>(null);
+  const [verified, setVerified] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -75,11 +77,16 @@ export default function ApplyListPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-6">
-      <h1 className="text-xl font-semibold">Apply List</h1>
-      <p className="text-sm text-gray-600">Select a resume, review jobs, then apply to all.</p>
+      <div className="mb-3">
+        <h1 className="text-2xl font-bold tracking-tight">Apply List</h1>
+        <p className="text-sm text-gray-600">Select a resume, review jobs, then apply to all.</p>
+      </div>
 
-      <section className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: GREEN }}>
-        <label className="text-sm font-medium">Resume</label>
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="text-sm font-medium">Resume</div>
+        </CardHeader>
+        <CardContent>
         {verified === false ? (
           <div className="mt-2 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
             You must be verified to use this function.
@@ -91,23 +98,27 @@ export default function ApplyListPage() {
             value={selectedResumeId}
             onChange={(e) => setSelectedResumeId(e.target.value)}
             className="mt-2 h-10 w-full rounded-lg border px-3 text-sm"
-            disabled={verified === false}
+            disabled={!verified}
           >
             {resumes.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
         )}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: GREEN }}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Selected Jobs ({items.length})</h2>
-          {items.length > 0 && (
-            <button onClick={clear} className="text-sm text-red-600 hover:underline">Clear all</button>
-          )}
-        </div>
-        <div className="mt-3 space-y-3">
+      <Card className="mt-4">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Selected Jobs ({items.length})</h2>
+            {items.length > 0 && (
+              <button onClick={clear} className="text-sm text-red-600 hover:underline">Clear all</button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+        <div className="space-y-3">
           {items.length === 0 ? (
             <div className="text-sm text-gray-600">No jobs selected. Go to Find Job and add some.</div>
           ) : (
@@ -116,7 +127,7 @@ export default function ApplyListPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-medium">{job.position}</div>
-                    <div className="text-xs text-gray-600">{job.company?.company_name} • {job.company?.location}</div>
+                    <div className="text-xs text-gray-600">{job.company?.company_name}     {job.company?.location}</div>
                     <div className="mt-1 text-xs text-gray-500">{job.jobType}</div>
                   </div>
                   <button onClick={() => remove(job.id)} className="text-xs rounded-full border px-2 py-1 hover:bg-gray-50">Remove</button>
@@ -125,17 +136,13 @@ export default function ApplyListPage() {
             ))
           )}
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
       <div className="mt-6 flex justify-end">
-        <button
-          disabled={submitting || items.length === 0 || !selectedResumeId || verified === false}
-          className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
-          style={{ backgroundColor: GREEN }}
-          onClick={handleApplyAll}
-        >
-          {submitting ? "Applying..." : "Apply All"}
-        </button>
+        <Button disabled={submitting || items.length === 0 || !selectedResumeId || !verified} onClick={handleApplyAll} loading={submitting}>
+          Apply All
+        </Button>
       </div>
     </main>
   );

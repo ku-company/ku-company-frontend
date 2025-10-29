@@ -41,6 +41,8 @@ export default function RegisterCompanyPage() {
     try {
       // Register company account
       const payload = {
+        first_name: "",
+        last_name: "",
         company_name: form.company_name,
         email: form.email,
         user_name: form.user_name,
@@ -86,7 +88,7 @@ export default function RegisterCompanyPage() {
             console.log("Default company profile created successfully");
           }
         } else {
-          console.warn("No token found — skipping company profile creation");
+          console.warn("No token found     skipping company profile creation");
         }
       } catch (profileErr) {
         console.error("Company profile creation error:", profileErr);

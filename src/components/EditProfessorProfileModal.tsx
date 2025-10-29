@@ -184,7 +184,7 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
           <div className="max-h-[85vh] overflow-y-auto rounded-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-white border-b">
               <h2 className="text-lg font-semibold">Edit Professor Profile</h2>
-              <button onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Close">✕</button>
+              <button onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Close">   </button>
             </div>
 
             <div className="space-y-4 px-5 py-5">
@@ -297,7 +297,7 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
 
             <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 bg-gray-50 px-5 py-3 border-t rounded-b-2xl">
               <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm hover:bg-gray-100" disabled={saving}>Cancel</button>
-              <button onClick={handleSave} disabled={!canSave || saving} className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: brandColor }}>{saving ? "Saving…" : "Save changes"}</button>
+              <button onClick={handleSave} disabled={!canSave || saving} className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: brandColor }}>{saving ? "Saving   " : "Save changes"}</button>
             </div>
           </div>
         </div>

@@ -22,13 +22,13 @@ export default function AppliedCompanyStatusPage() {
     const fetchApplications = async () => {
       if (!isReady) return; // wait until auth has loaded
       if (!user) {
-        console.warn("⚠️ No user context. Please log in first.");
+        console.warn("       No user context. Please log in first.");
         setLoading(false);
         return;
       }
 
-      console.log("🚀 Starting fetchApplications...");
-      console.log("👤 Authenticated user present; fetching applications...");
+      console.log("     Starting fetchApplications...");
+      console.log("     Authenticated user present; fetching applications...");
 
       try {
         const res = await fetch(
@@ -36,20 +36,20 @@ export default function AppliedCompanyStatusPage() {
           buildInit({ method: "GET", credentials: "include" })
         );
 
-        console.log("📨 Response received. Status:", res.status);
+        console.log("     Response received. Status:", res.status);
 
         if (!res.ok) {
           const text = await res.text();
 
-          // ✅ Handle case: "No applications found"
+          //     Handle case: "No applications found"
           if (res.status === 400 && text.includes("No applications found")) {
-            console.warn("ℹ️ No applications found for this user.");
+            console.warn("       No applications found for this user.");
             setApplications([]); // safe fallback
             setLoading(false);
             return;
           }
 
-          console.error("❌ Request failed:", res.status, text);
+          console.error("    Request failed:", res.status, text);
           setLoading(false);
           return;
         }
@@ -68,30 +68,30 @@ export default function AppliedCompanyStatusPage() {
           else if (comp === "Confirmed") status = "Offered";
           return {
             id: Number(a?.id ?? 0),
-            company_name: companyName || "—",
-            position: position || "—",
-            applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "—",
+            company_name: companyName || "   ",
+            position: position || "   ",
+            applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "   ",
             status,
           };
         });
-        console.log("✅ Application data mapped:", mapped);
+        console.log("    Application data mapped:", mapped);
         setApplications(mapped);
       } catch (err) {
-        console.error("🔥 Error while fetching applications:", err);
+        console.error("     Error while fetching applications:", err);
       } finally {
         setLoading(false);
-        console.log("✅ Fetch complete.");
+        console.log("    Fetch complete.");
       }
     };
 
     fetchApplications();
   }, [user, isReady]);
 
-  // ──────────────────────── Confirm handler ────────────────────────
+  //                                                                          Confirm handler                                                                         
   const handleConfirm = async (id: number) => {
     if (!user) return;
 
-    console.log("🟢 Confirming job application:", id);
+    console.log("     Confirming job application:", id);
     try {
       // As a student, confirmation should hit the employee endpoint
       const res = await fetch(
@@ -109,17 +109,17 @@ export default function AppliedCompanyStatusPage() {
       setApplications((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: "Confirmed" } : a))
       );
-      console.log("✅ Confirmed successfully.");
+      console.log("    Confirmed successfully.");
     } catch (err) {
       console.error("Confirm error:", err);
     }
   };
 
-  // ──────────────────────── Cancel handler ────────────────────────
+  //                                                                          Cancel handler                                                                         
   const handleCancel = async (id: number) => {
     if (!user) return;
 
-    console.log("🔴 Cancelling job application:", id);
+    console.log("     Cancelling job application:", id);
     try {
       const res = await fetch(
         `${API_URL}/employee/cancel-application/${id}`,
@@ -135,13 +135,13 @@ export default function AppliedCompanyStatusPage() {
 
       // Backend deletes the application; remove it from the list
       setApplications((prev) => prev.filter((a) => a.id !== id));
-      console.log("✅ Application cancelled and removed.");
+      console.log("    Application cancelled and removed.");
     } catch (err) {
       console.error("Cancel error:", err);
     }
   };
 
-  // ──────────────────────── Status badge ────────────────────────
+  //                                                                          Status badge                                                                         
   const StatusBadge = ({ status }: { status: Application["status"] }) => {
     const base = "px-3 py-1 rounded-md text-sm font-semibold";
     if (status === "Offered")
@@ -169,7 +169,7 @@ export default function AppliedCompanyStatusPage() {
     );
   };
 
-  // ──────────────────────── Loading State ────────────────────────
+  //                                                                          Loading State                                                                         
   if (loading || !isReady)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
@@ -180,7 +180,7 @@ export default function AppliedCompanyStatusPage() {
       </div>
     );
 
-  // ──────────────────────── Not Logged In ────────────────────────
+  //                                                                          Not Logged In                                                                         
   if (!user)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
@@ -188,7 +188,7 @@ export default function AppliedCompanyStatusPage() {
       </div>
     );
 
-  // ──────────────────────── Main UI ────────────────────────
+  //                                                                          Main UI                                                                         
   return (
     <main className="min-h-screen bg-gray-50 py-10 font-sans">
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-10 border border-gray-100">

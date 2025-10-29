@@ -39,7 +39,7 @@ export default function MarkdownModal({ isOpen, onClose, title = "", content = "
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
                 aria-label="Close"
               >
-                ✕
+                   
               </button>
             </div>
 

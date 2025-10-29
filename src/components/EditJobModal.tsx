@@ -59,14 +59,14 @@ export default function EditJobModal({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in-0"
       onMouseDown={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl transition-all">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl transition-all animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="text-lg font-semibold">Edit Job Posting</h2>
@@ -75,7 +75,7 @@ export default function EditJobModal({
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
             aria-label="Close"
           >
-            ✕
+               
           </button>
         </div>
 
@@ -115,7 +115,7 @@ export default function EditJobModal({
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             className="h-32 w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-green-300"
-            placeholder="Enter job description…"
+            placeholder="Enter job description   "
           />
 
           {/* Available positions */}

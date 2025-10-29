@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -283,7 +283,7 @@ export default function StudentProfileView() {
     return () => window.removeEventListener('resize', check);
   }, [eduEl, skillsEl, licEl, langEl, education, skills, licenses, languages, isMd]);
 
-  if (loading) return <div className="p-8 text-gray-600">Loading student profileโ€ฆ</div>;
+  if (loading) return <div className="p-8 text-gray-600">Loading student profile   </div>;
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
@@ -424,7 +424,7 @@ export default function StudentProfileView() {
                           <span>{w.company || "Company"}</span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {(w.start || "").toString()} – {(w.end && w.end.trim()) ? w.end : "Present"}
+                          {(w.start || "").toString()}   {(w.end && w.end.trim()) ? w.end : "Present"}
                         </div>
                         {w.description && (
                           <div className="mt-2 text-gray-700">
@@ -461,7 +461,7 @@ export default function StudentProfileView() {
                                     <span>{w.company || 'Company'}</span>
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    {(w.start || '').toString()} – {(w.end && w.end.trim()) ? w.end : 'Present'}
+                                    {(w.start || '').toString()}   {(w.end && w.end.trim()) ? w.end : 'Present'}
                                   </div>
                                   {w.description && (
                                     <div className="mt-2 text-gray-700">
@@ -535,7 +535,7 @@ export default function StudentProfileView() {
                       {ed.school || 'School'}
                     </div>
                     {(ed.start || ed.end) && (
-                      <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                      <div className="text-xs text-gray-500">{(ed.start || '')}   {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
                     )}
                     {ed.description && (
                       <div className="mt-1 text-gray-700">
@@ -573,7 +573,7 @@ export default function StudentProfileView() {
                                   {ed.school || 'School'}
                                 </div>
                                 {(ed.start || ed.end) && (
-                                  <div className="text-xs text-gray-500">{(ed.start || '')} – {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
+                                  <div className="text-xs text-gray-500">{(ed.start || '')}   {(ed.end && ed.end.trim()) ? ed.end : (ed.end === '' ? '' : (ed.start ? 'Present' : ''))}</div>
                                 )}
                                 {ed.description && (
                                   <div className="mt-1 text-gray-700">

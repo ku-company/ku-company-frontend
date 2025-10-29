@@ -88,11 +88,11 @@ export default function CompanyProfile() {
   }, [isReady, user]);
 
   if (!isReady) {
-    // Auth is still hydrating — keep things calm to avoid flashes
-    return <div className="p-8 text-gray-600">Preparing your session…</div>;
+    // Auth is still hydrating     keep things calm to avoid flashes
+    return <div className="p-8 text-gray-600">Preparing your session   </div>;
   }
 
-  if (loading) return <div className="p-8 text-gray-600">Loading company profile…</div>;
+  if (loading) return <div className="p-8 text-gray-600">Loading company profile   </div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!company) return <div className="p-8 text-gray-500">No profile found. Please create one.</div>;
 

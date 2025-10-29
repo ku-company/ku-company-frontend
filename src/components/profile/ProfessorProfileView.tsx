@@ -84,7 +84,7 @@ export default function ProfessorProfileView() {
         const list = await listProfessorDegrees(controller.signal);
         if (!cancelled) setDegrees(list || []);
       } catch (e) {
-        // non-fatal — show empty list
+        // non-fatal     show empty list
         if (!cancelled) setDegrees([]);
       } finally {
         if (!cancelled) setDegLoading(false);
@@ -96,8 +96,8 @@ export default function ProfessorProfileView() {
     };
   }, [isReady, user]);
 
-  if (!isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
-  if (loading) return <div className="p-8 text-gray-600">Loading professor profile…</div>;
+  if (!isReady) return <div className="p-8 text-gray-600">Preparing your session   </div>;
+  if (loading) return <div className="p-8 text-gray-600">Loading professor profile   </div>;
   if (error) return <div className="p-8 text-red-500">{error}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found. Please create or edit your profile.</div>;
 
@@ -132,9 +132,9 @@ export default function ProfessorProfileView() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <InfoRow icon={<span className="text-xs">🏫</span>} label="Department" value={profile.department} />
-            <InfoRow icon={<span className="text-xs">🎓</span>} label="Faculty" value={profile.faculty} />
-            <InfoRow icon={<span className="text-xs">☎️</span>} label="Contact Info" value={profile.contactInfo} />
+            <InfoRow icon={<span className="text-xs">    </span>} label="Department" value={profile.department} />
+            <InfoRow icon={<span className="text-xs">    </span>} label="Faculty" value={profile.faculty} />
+            <InfoRow icon={<span className="text-xs">      </span>} label="Contact Info" value={profile.contactInfo} />
           </div>
         </aside>
 
@@ -151,7 +151,7 @@ export default function ProfessorProfileView() {
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Degrees</PillHeading>
             <div className="mt-4 space-y-3">
-              {degLoading && <div className="text-gray-500">Loading degrees…</div>}
+              {degLoading && <div className="text-gray-500">Loading degrees   </div>}
               {!degLoading && degrees.length === 0 && (
                 <div className="text-gray-500">No degrees added yet.</div>
               )}
