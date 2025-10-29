@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import ApplyModal from "@/components/ApplyModal";
+import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
 import { buildInit } from "@/api/base";
@@ -354,8 +355,8 @@ export default function FindJobPage() {
                     <span className="text-xs font-semibold">{(job.company_name || "?").slice(0,1).toUpperCase()}</span>
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5 break-words line-clamp-3">{job.job_title || job.position}</div>
-                    <div className="mt-1 text-xs text-gray-600 break-words">
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
+                    <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
                         <Link className="hover:underline" href={`/profile/${job.company_user_id}`}>
                           {job.company_name}
@@ -364,7 +365,7 @@ export default function FindJobPage() {
                         job.company_name
                       )}
                     </div>
-                    <div className="text-[11px] text-gray-500 break-words">{job.company_location}</div>
+                    <div className="text-xs text-gray-500 break-words">{job.company_location}</div>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 line-clamp-3 break-words">
                     {job.description}
@@ -391,8 +392,8 @@ export default function FindJobPage() {
             <>
               
               <div className="pr-20 space-y-2">
-                <div className="text-lg font-semibold">{selected.job_title || selected.position}</div>
-                <div className="text-sm text-gray-600 break-words flex items-center gap-1">
+                <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                <div className="text-base text-gray-600 break-words flex items-center gap-1">
                   <BuildingOfficeIcon className="h-4 w-4" />
                   {selected.company_user_id ? (
                     <Link className="hover:underline" href={`/profile/${selected.company_user_id}`}>
@@ -402,12 +403,12 @@ export default function FindJobPage() {
                     selected.company_name
                   )}
                 </div>
-                <div className="text-xs text-gray-500 break-words flex items-center gap-1">
+                <div className="text-sm text-gray-500 break-words flex items-center gap-1">
                   <MapPinIcon className="h-4 w-4" />
                   {selected.company_location}
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-700">
+              <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-700">
                 <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5">
                   <span className="font-medium">{selected.jobType || '-'}</span>
                 </span>
@@ -415,7 +416,7 @@ export default function FindJobPage() {
                   <span className="font-medium">{selected.work_place || '-'}</span>
                 </span>
               </div>
-              <div className="mt-2 grid gap-1 text-xs text-gray-600">
+              <div className="mt-2 grid gap-1 text-sm text-gray-600">
                 <div>Available Positions: {selected.available_position}</div>
                 <div>
                   Expected Salary: {
@@ -425,7 +426,7 @@ export default function FindJobPage() {
                   }
                 </div>
               </div>
-              <div className="mt-4 text-sm text-gray-700 whitespace-pre-wrap break-words">{selected.description}</div>
+              <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {canApply && (
                 <div className="mt-6 flex justify-end">
