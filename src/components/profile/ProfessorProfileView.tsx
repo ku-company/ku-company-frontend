@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { getMyProfessorProfile, type ProfessorProfile } from "@/api/professorprofile";
 import { listProfessorDegrees, type ProfessorDegree } from "@/api/professordegrees";
 import EditProfessorProfileModal from "@/components/EditProfessorProfileModal";
+import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
@@ -39,6 +40,7 @@ export default function ProfessorProfileView() {
   const [openEdit, setOpenEdit] = useState(false);
   const [degrees, setDegrees] = useState<ProfessorDegree[]>([]);
   const [degLoading, setDegLoading] = useState(false);
+  const [modal, setModal] = useState<null | { title: string; content?: string; children?: React.ReactNode }>(null);
 
   useEffect(() => {
     if (!isReady) return;
@@ -155,7 +157,7 @@ export default function ProfessorProfileView() {
               {!degLoading && degrees.length === 0 && (
                 <div className="text-gray-500">No degrees added yet.</div>
               )}
-              {!degLoading && degrees.map((d) => (
+              {!degLoading && degrees.slice(0, Math.min(2, degrees.length)).map((d) => (
                 <div key={d.id} className="rounded-md border p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -171,7 +173,39 @@ export default function ProfessorProfileView() {
                 </div>
               ))}
             </div>
-          </div>
+            {(!degLoading && degrees.length > 2) && (
+              <div className="mt-3">
+                <button
+                  className="text-xs hover:underline"
+                  style={{ color: GREEN }}
+                  onClick={() =>
+                    setModal({
+                      title: 'Degrees',
+                      children: (
+                        <div className="space-y-3">
+                          {degrees.map((d) => (
+                            <div key={d.id} className="rounded-md border p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <div className="text-sm text-gray-500">{d.institution || 'Institution'}</div>
+                                  <div className="text-base font-semibold text-gray-800">{d.title}</div>
+                                  <div className="text-xs text-gray-500">{d.graduation_date || ''}</div>
+                                </div>
+                              </div>
+                              {d.description && (
+                                <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{d.description}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ),
+                    })
+                  }
+                >
+                  See More...
+                </button>
+              </div>
+            )}          </div>
         </section>
       </div>
 
@@ -184,7 +218,16 @@ export default function ProfessorProfileView() {
         onSaved={(updated) => setProfile(updated)}
         brandColor={GREEN}
       />
-    </main>
+    
+      <MarkdownModal
+        isOpen={!!modal}
+        title={modal?.title || ''}
+        content={modal?.content || ''}
+        onClose={() => setModal(null)}
+        brandColor={GREEN}
+      >
+        {modal?.children}
+      </MarkdownModal>    </main>
   );
 }
 

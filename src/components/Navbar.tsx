@@ -150,9 +150,6 @@ export default function Navbar() {
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                {/* Role badge */}
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
-
                 {/* Apply list icon (students only) */}
                 {user?.role?.toLowerCase().includes("student") && (
                   <Link
@@ -168,6 +165,9 @@ export default function Navbar() {
                     )}
                   </Link>
                 )}
+
+                {/* Role badge */}
+                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"
