@@ -213,7 +213,7 @@ export default function ResumeManagerModal({
           {/* Upload slot (single) */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-gray-700">
-              Upload (PDF, ≤ 10MB)
+              Upload (PDF, ≤ 5MB)
             </h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
