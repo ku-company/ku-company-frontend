@@ -8,6 +8,7 @@ import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
+import { BuildingOfficeIcon, BuildingLibraryIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -132,9 +133,9 @@ export default function ProfessorProfileView() {
           </div>
 
           <div className="mt-6 space-y-4">
-            <InfoRow icon={<span className="text-xs">🏫</span>} label="Department" value={profile.department} />
-            <InfoRow icon={<span className="text-xs">🎓</span>} label="Faculty" value={profile.faculty} />
-            <InfoRow icon={<span className="text-xs">☎️</span>} label="Contact Info" value={profile.contactInfo} />
+            <InfoRow icon={<BuildingOfficeIcon className="h-4 w-4" />} label="Department" value={profile.department} />
+            <InfoRow icon={<BuildingLibraryIcon className="h-4 w-4" />} label="Faculty" value={profile.faculty} />
+            <InfoRow icon={<EnvelopeIcon className="h-4 w-4" />} label="Contact Info" value={profile.contactInfo} />
           </div>
         </aside>
 
@@ -247,4 +248,5 @@ export default function ProfessorProfileView() {
       </MarkdownModal>    </main>
   );
 }
+
 
