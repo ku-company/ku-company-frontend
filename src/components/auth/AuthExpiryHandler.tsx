@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { shouldDeferAutoLogout } from "@/utils/httpError";
 
 // Custom event name used to broadcast auth expiry across app
 export const AUTH_EXPIRED_EVENT = "auth:expired";
@@ -59,6 +60,7 @@ export default function AuthExpiryHandler() {
           const status = res.status;
           const hasToken = !!localStorage.getItem("access_token");
           if (hasToken && (status === 401 || status === 403)) {
+            if (shouldDeferAutoLogout()) return res;
             // Try to sniff message from body without consuming caller's stream
             const text = await res.clone().text().catch(() => "");
             const msg = (text || "").toLowerCase();

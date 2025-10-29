@@ -1,5 +1,6 @@
 // src/api/user.ts
 import { API_BASE } from "./base";
+import { extractErrorMessage } from "@/utils/httpError";
 
 export type AuthMe = {
   id?: number;
@@ -29,12 +30,11 @@ export async function getAuthMe(token?: string): Promise<AuthMe> {
     credentials: "include",
   });
 
-  const raw = await res.text();
-
   if (!res.ok) {
-    throw new Error(raw || `Failed /api/auth/me: ${res.status} ${res.statusText}`);
+    throw new Error(await extractErrorMessage(res));
   }
 
+  const raw = await res.text();
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
   return json?.data || json;

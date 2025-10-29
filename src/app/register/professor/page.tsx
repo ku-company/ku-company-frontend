@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
@@ -49,6 +51,15 @@ export default function RegisterPage() {
 
       // Show onboarding to collect faculty/department and create profile
       setShowOnboarding(true);
+      // Auto login immediately after successful registration
+      const res = await loginUser({
+        user_name: form.user_name,
+        password: form.password,
+      });
+      login(res.data);
+
+      // Redirect to home
+      router.push("/");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
