@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
+    stdId: "",
     email: "",
     user_name: "",
     password: "",
@@ -82,6 +83,16 @@ export default function RegisterPage() {
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>
+
+            {/* Student ID */}
+            <input
+              type="text"
+              name="stdId"
+              placeholder="Student ID"
+              value={form.stdId}
+              onChange={handleChange}
+              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+            />
 
             {/* Email */}
             <input

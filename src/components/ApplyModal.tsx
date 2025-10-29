@@ -91,7 +91,7 @@ export default function ApplyModal({
               ref={initialFocusRef}
               className={`rounded-full px-4 py-1 text-sm font-medium bg-gray-900 text-white`}
             >
-              Use uploaded résumé
+              Choose your resume
             </button>
           </div>
         </div>

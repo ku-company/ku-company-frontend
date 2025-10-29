@@ -75,11 +75,19 @@ export default function DashboardPage() {
   const handleAddJob = async (job: any) => {
     try {
       const body = {
+        job_title: (job.title || "").trim() || (job.position || "").trim(),
         description: job.details,
+        location: job.location || "",
+        work_place: job.workType || undefined,
+        minimum_expected_salary: job.minimum_expected_salary ?? undefined,
+        maximum_expected_salary: job.maximum_expected_salary ?? undefined,
+        expired_at: job.expired_at || undefined,
         jobType: toBackendJobType(job.jobType),
-        position: job.title,
+        position: job.position,
         available_position: job.positionsAvailable,
       };
+
+      console.log("[JobPostings] Creating job with payload:", body);
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -108,11 +116,19 @@ export default function DashboardPage() {
     const job = jobs[editIndex];
     try {
       const body = {
+        job_title: (updated.title || "").trim() || (updated.position || "").trim(),
         description: updated.details,
+        location: updated.location || job.location,
+        work_place: updated.workType || job.work_place,
+        minimum_expected_salary: updated.minimum_expected_salary ?? job.minimum_expected_salary,
+        maximum_expected_salary: updated.maximum_expected_salary ?? job.maximum_expected_salary,
+        expired_at: updated.expired_at || job.expired_at,
         jobType: toBackendJobType(updated.jobType),
-        position: updated.title,
+        position: updated.position,
         available_position: updated.positionsAvailable,
       };
+
+      console.log("[JobPostings] Updating job id=", job?.id, "payload:", body);
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -145,10 +161,16 @@ export default function DashboardPage() {
   const editInitial: EditableJob | null =
     editIndex !== null
       ? {
-          title: jobs[editIndex]?.position ?? "",
+          title: jobs[editIndex]?.job_title ?? jobs[editIndex]?.position ?? "",
+          position: jobs[editIndex]?.position ?? "",
           jobType: jobs[editIndex]?.jobType ?? "",
           details: jobs[editIndex]?.description ?? "",
           positionsAvailable: Number(jobs[editIndex]?.available_position ?? 1),
+          location: jobs[editIndex]?.location ?? "",
+          minimum_expected_salary: jobs[editIndex]?.minimum_expected_salary,
+          maximum_expected_salary: jobs[editIndex]?.maximum_expected_salary,
+          workType: jobs[editIndex]?.work_place ?? "",
+          expired_at: jobs[editIndex]?.expired_at ? String(jobs[editIndex].expired_at).slice(0,10) : "",
         }
       : null;
 
@@ -174,7 +196,10 @@ export default function DashboardPage() {
               <div className="flex w-full items-center justify-between">
                 <div>
                   <div className="mt-1 text-xl font-extrabold">
-                    {job.position || "Untitled"}
+                    {job.job_title || job.position || "Untitled"}
+                  </div>
+                  <div className="mt-0.5 text-sm text-gray-700">
+                    {job.position || "-"}
                   </div>
                   <div className="mt-1 text-xs font-semibold tracking-wide text-gray-700">
                     {(job.jobType || "").toString().toUpperCase() || "FULL TIME"}
@@ -207,7 +232,7 @@ export default function DashboardPage() {
       <EditJobModal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
-        initial={{ title: "", position: "", details: "", positionsAvailable: 1, jobType: "Full Time" }}
+        initial={{ title: "", position: "", details: "", positionsAvailable: 1, jobType: "Full Time", location: "", minimum_expected_salary: undefined, maximum_expected_salary: undefined, workType: "", expired_at: "" }}
         onSave={handleAddJob}
         brandColor="#5D9252"
         mode="create"

@@ -8,11 +8,12 @@ export type EditableJob = {
   details: string;
   positionsAvailable: number;
   jobType?: string;
-  // Optional placeholders for upcoming backend fields
-  requirements?: string;
+  // Backend-connected fields
   location?: string;
-  expectedSalary?: string;
-  workType?: string; // e.g., Remote/On-site/Hybrid
+  minimum_expected_salary?: number;
+  maximum_expected_salary?: number;
+  expired_at?: string | null; // YYYY-MM-DD
+  workType?: string; // Values: OnSite | Online | Hybrid
 };
 
 type EditJobModalProps = {
@@ -40,9 +41,10 @@ export default function EditJobModal({
   const [jobType, setJobType] = useState("");
   const [requirements, setRequirements] = useState("");
   const [location, setLocation] = useState("");
-  const [expectedSalaryMin, setExpectedSalaryMin] = useState("");
-  const [expectedSalaryMax, setExpectedSalaryMax] = useState("");
-  const [workType, setWorkType] = useState("");
+  const [expectedSalaryMin, setExpectedSalaryMin] = useState<string>("");
+  const [expectedSalaryMax, setExpectedSalaryMax] = useState<string>("");
+  const [workType, setWorkType] = useState<string>("");
+  const [expiredAt, setExpiredAt] = useState<string>("");
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -57,21 +59,35 @@ export default function EditJobModal({
     setDetails(src.details ?? "");
     setPositionsAvailable(src.positionsAvailable ?? "");
     setJobType(src.jobType ?? (mode === "create" ? "Full Time" : ""));
-    setRequirements(src.requirements ?? "");
     setLocation(src.location ?? "");
-    // Attempt to split existing salary string into two parts "min - max"
-    const sal = src.expectedSalary ?? "";
-    const m = typeof sal === 'string' ? sal.split('-').map(s => s.trim()) : [];
-    setExpectedSalaryMin(m[0] || "");
-    setExpectedSalaryMax(m[1] || "");
+    setExpectedSalaryMin(
+      src.minimum_expected_salary != null ? String(src.minimum_expected_salary) : ""
+    );
+    setExpectedSalaryMax(
+      src.maximum_expected_salary != null ? String(src.maximum_expected_salary) : ""
+    );
     setWorkType(src.workType ?? "");
+    setExpiredAt(src.expired_at ? String(src.expired_at).slice(0,10) : "");
     setTimeout(() => firstFieldRef.current?.focus(), 0);
   }, [isOpen, initial, mode]);
 
   if (!isOpen || (!initial && mode !== "create")) return null;
 
   // === Validation ===
-  const canSave = Boolean(position && details && positionsAvailable && jobType);
+  const canSave = Boolean(
+    title &&
+    position &&
+    details &&
+    positionsAvailable &&
+    jobType &&
+    location &&
+    workType &&
+    expectedSalaryMin !== "" &&
+    expectedSalaryMax !== "" &&
+    Number(expectedSalaryMin) > 0 &&
+    Number(expectedSalaryMax) > 0 &&
+    Number(expectedSalaryMin) <= Number(expectedSalaryMax)
+  );
 
   // === Prisma-compatible position enums ===
   const positionOptions = [
@@ -112,7 +128,6 @@ export default function EditJobModal({
               onChange={(e) => {
                 const v = e.target.value;
                 setPosition(v);
-                if (v && !title) setTitle(v);
               }}
               className="w-1/2 rounded-md border px-3 py-2 text-sm focus:ring-2"
               style={{ outlineColor: brandColor }}
@@ -174,43 +189,40 @@ export default function EditJobModal({
               <option value="">Select type</option>
               <option>Full Time</option>
               <option>Part Time</option>
+              <option>Internship</option>
               <option>Contract</option>
             </select>
           </div>
 
           {/* More fields (visual only until backend is ready) */}
-          <div className="grid gap-3">
-            <label className="text-sm font-medium text-gray-700">Requirements (e.g., TOEIC, specific skills)</label>
-            <textarea
-              className="h-20 w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-green-300"
-              style={{ outlineColor: brandColor }}
-              placeholder="e.g., TOEIC 700+, React, Node.js"
-              value={requirements}
-              onChange={(e) => setRequirements(e.target.value)}
-            />
-          </div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="grid gap-1">
               <label className="text-sm font-medium text-gray-700">Location</label>
               <input className="rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City / Remote" />
             </div>
             <div className="grid gap-1">
-              <label className="text-sm font-medium text-gray-700">Expected Salary</label>
+              <label className="text-sm font-medium text-gray-700">Expected Salary (Min - Max)</label>
               <div className="flex items-center gap-2">
-                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMin} onChange={(e) => setExpectedSalaryMin(e.target.value)} placeholder="$40,000" />
+                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMin} onChange={(e) => setExpectedSalaryMin(e.target.value)} placeholder="18000" />
                 <span>-</span>
-                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMax} onChange={(e) => setExpectedSalaryMax(e.target.value)} placeholder="$60,000" />
+                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMax} onChange={(e) => setExpectedSalaryMax(e.target.value)} placeholder="30000" />
               </div>
             </div>
           </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium text-gray-700">Work Type</label>
-            <select className="rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={workType} onChange={(e) => setWorkType(e.target.value)}>
-              <option value="">Select</option>
-              <option>Remote</option>
-              <option>On-site</option>
-              <option>Hybrid</option>
-            </select>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-gray-700">Work Place</label>
+              <select className="rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={workType} onChange={(e) => setWorkType(e.target.value)}>
+                <option value="">Select</option>
+                <option value="OnSite">On-site</option>
+                <option value="Online">Online</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-gray-700">Expiration Date</label>
+              <input type="date" className="rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expiredAt} onChange={(e) => setExpiredAt(e.target.value)} />
+            </div>
           </div>
         </div>
 
@@ -233,9 +245,10 @@ export default function EditJobModal({
                 details,
                 positionsAvailable: Number(positionsAvailable),
                 jobType,
-                requirements,
                 location,
-                expectedSalary: [expectedSalaryMin, expectedSalaryMax].filter(Boolean).join(' - '),
+                minimum_expected_salary: expectedSalaryMin ? Number(expectedSalaryMin) : undefined,
+                maximum_expected_salary: expectedSalaryMax ? Number(expectedSalaryMax) : undefined,
+                expired_at: expiredAt || null,
                 workType,
               })
             }
