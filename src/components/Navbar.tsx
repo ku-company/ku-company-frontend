@@ -24,12 +24,11 @@ function NavItem({ href, label }: { href: string; label: string }) {
     // Match exact or nested paths under the same section
     return pathname === href || pathname.startsWith(href + "/");
   })();
+  const base = "px-3 py-1 rounded-full text-sm transition";
+  const className = isActive ? "text-white" : "text-gray-700 hover:bg-gray-100";
+  const style = isActive ? { backgroundColor: "#5D9252" } as React.CSSProperties : undefined; // midgreen
   return (
-    <Link
-      href={href}
-      className={`px-3 py-1 rounded-full text-sm transition
-        ${isActive ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
-    >
+    <Link href={href} className={`${base} ${className}`} style={style}>
       {label}
     </Link>
   );
@@ -152,7 +151,7 @@ export default function Navbar() {
                 <NavItem href="/view-resume" label="VIEW RESUME" />
               </>
             )}
-            <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
             {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
               <NavItem href="/status" label="STATUS" />
             ) : null}
@@ -161,9 +160,6 @@ export default function Navbar() {
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                {/* Role badge */}
-                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
-
                 {/* Apply list icon (students only) */}
                 {user?.role?.toLowerCase().includes("student") && (
                   <Link
@@ -179,6 +175,9 @@ export default function Navbar() {
                     )}
                   </Link>
                 )}
+
+                {/* Role badge */}
+                <span className="hidden sm:inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-gray-700">{displayRole}</span>
 
                 <button
                   className="w-9 h-9 rounded-full bg-gray-300 overflow-hidden"

@@ -1,6 +1,7 @@
 export interface RegisterPayload {
   first_name: string
   last_name: string
+  stdId?: string
   company_name?: string
   email: string
   role: string

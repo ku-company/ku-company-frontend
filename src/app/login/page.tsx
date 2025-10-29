@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import RoleSelectModal from "@/components/roleselector";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
+import { normalizeRole } from "@/api/session";
+import { createProfessorProfile } from "@/api/professorprofile";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +29,16 @@ export default function LoginPage() {
     try {
       const res = await loginUser(form);
       login(res.data);
+
+      // If professor, ensure profile exists (workaround for backend bug)
+      try {
+        const roleNorm = normalizeRole(res?.data?.roles);
+        if (roleNorm === "professor") {
+          await createProfessorProfile({ department: "computer", faculty: "engineering" });
+        }
+      } catch (e) {
+        console.warn("Professor profile auto-create skipped:", e);
+      }
       router.push("/"); // main page will now bootstrap the session
     } catch (err: any) {
       setError(err.message || "Invalid credentials");

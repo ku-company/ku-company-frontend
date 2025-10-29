@@ -5,6 +5,7 @@ import RoleSelectModal from "@/components/roleselector";
 import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
+import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 
 function normalizeRole(r?: string | null) {
@@ -97,6 +98,15 @@ export default function RoleBootstrap() {
         email: me2.email ?? patchData.email ?? "",
         roles: finalRole,
       });
+
+      if (finalRole === "Professor") {
+        try {
+          await createProfessorProfile({ department: "computer", faculty: "engineering" });
+        } catch (e) {
+          // Ignore if already exists or backend glitches
+          console.warn("Professor profile auto-create skipped:", e);
+        }
+      }
 
       if (finalRole !== "Unknown") {
         setShowRoleModal(false);

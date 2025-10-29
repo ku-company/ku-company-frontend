@@ -1,7 +1,10 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import ApplyModal from "@/components/ApplyModal";
+import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
 import { buildInit } from "@/api/base";
@@ -11,16 +14,22 @@ import { listMyApplications } from "@/api/applications";
 
 type Job = {
   id: number;
+  job_title: string;
   description: string;
   jobType: string;
   position: string;
   available_position: number;
-  created_at: string;
-  company: {
-    id: number;
-    company_name: string;
-    location: string;
-  };
+  created_at: string | Date;
+  company_id?: number;
+  company_name: string | null;
+  company_location: string | null;
+  location?: string | null;
+  company_profile_image?: string | null;
+  work_place?: string | null;
+  minimum_expected_salary?: number | null;
+  maximum_expected_salary?: number | null;
+  expired_at?: string | Date | null;
+  company_user_id?: number;
 };
 
 type Resume = {
@@ -42,13 +51,30 @@ export default function FindJobPage() {
   const [jobType, setJobType] = useState<string>("All");
   const [categories, setCategories] = useState<any[]>(["All"]);
   const [jobTypes, setJobTypes] = useState<any[]>(["All"]);
+  const [sortBy, setSortBy] = useState<string>("Newest");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
+  const [resumes, setResumes] = useState<Resume[]>([]); //  resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+
+  // Re-sort when sort option changes without re-fetching
+  useEffect(() => {
+    if (!jobs || jobs.length === 0) return;
+    const sortKey = (sortBy || "Newest").toLowerCase();
+    const sorted = [...jobs].sort((a, b) => {
+      if (sortKey.includes("newest")) {
+        return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
+      }
+      if (sortKey.includes("oldest")) {
+        return new Date(a.created_at as any).getTime() - new Date(b.created_at as any).getTime();
+      }
+      return 0;
+    });
+    setJobs(sorted);
+  }, [sortBy]);
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {
@@ -125,9 +151,26 @@ export default function FindJobPage() {
       }
 
       const data = await res.json();
-      const jobList = data.job_postings || data.data || data;
-      setJobs(jobList);
-      if (jobList.length > 0) setSelectedId(jobList[0].id);
+      let jobList = (data.job_postings || data.data || data) as Job[];
+      const now = Date.now();
+      let filtered = (jobList || []).filter((j) => {
+        if (!j?.expired_at) return true;
+        const exp = new Date(j.expired_at as any).getTime();
+        return isFinite(exp) ? exp >= now : true;
+      });
+      // Client-side sorting (backend defaults to updated_at desc)
+      const sortKey = (sortBy || "Newest").toLowerCase();
+      filtered = [...filtered].sort((a, b) => {
+        if (sortKey.includes("newest")) {
+          return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
+        }
+        if (sortKey.includes("oldest")) {
+          return new Date(a.created_at as any).getTime() - new Date(b.created_at as any).getTime();
+        }
+        return 0;
+      });
+      setJobs(filtered);
+      if (filtered.length > 0) setSelectedId(filtered[0].id);
     } catch (err) {
       console.error("Failed to fetch jobs", err);
       setJobs([]);
@@ -248,7 +291,7 @@ export default function FindJobPage() {
           />
 
           <select
-            value={category}
+            value={category} aria-label="Position"
             onChange={(e) => setCategory(e.target.value)}
             className="h-10 w-[180px] rounded-full border px-3 text-sm"
           >
@@ -270,7 +313,7 @@ export default function FindJobPage() {
           </select>
 
           <select
-            value={jobType}
+            value={jobType} aria-label="Job type"
             onChange={(e) => setJobType(e.target.value)}
             className="h-10 w-[180px] rounded-full border px-3 text-sm"
           >
@@ -292,6 +335,15 @@ export default function FindJobPage() {
           </select>
 
           <div className="ml-auto flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-10 rounded-full border px-3 text-sm"
+              aria-label="Sort"
+            >
+              <option>Newest</option>
+              <option>Oldest</option>
+            </select>
             <button
               className="rounded-full px-4 py-2 text-sm text-white"
               style={{ backgroundColor: GREEN }}
@@ -338,19 +390,38 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  <div className="absolute right-4 top-4 h-10 w-10 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
-                    <span className="text-xs font-semibold">{(job.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
+                  <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
+                    {job.company_profile_image ? (
+                      // Company profile image from backend
+                      <img
+                        src={job.company_profile_image}
+                        alt={(job.company_name || 'Company') + ' logo'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-emerald-50 text-emerald-700">
+                        <span className="text-sm font-semibold">{(job.company_name || "?").slice(0,1).toUpperCase()}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5">{job.position}</div>
-                    <div className="mt-1 text-xs text-gray-600 truncate">{job.company?.company_name}</div>
-                    <div className="text-[11px] text-gray-500 truncate">{job.company?.location}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
+                    <div className="mt-1 text-sm text-gray-600 break-words">
+                      {job.company_user_id ? (
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
+                          {job.company_name}
+                        </Link>
+                      ) : (
+                        job.company_name
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500 break-words">{job.location ?? job.company_location}</div>
                   </div>
-                  <p className="mt-2 text-sm text-gray-700 line-clamp-2">
+                  <p className="mt-2 text-sm text-gray-700 line-clamp-3 break-words">
                     {job.description}
                   </p>
                   <div className="mt-2 text-[11px] text-gray-500">
-                    {job.available_position} position(s) • {job.jobType}
+                    {job.available_position} position(s) | {job.jobType}
                   </div>
                 </button>
               );
@@ -360,7 +431,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm"
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
@@ -369,21 +440,54 @@ export default function FindJobPage() {
             </div>
           ) : (
             <>
-              <div className="absolute right-5 top-5 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
-                <span className="text-sm font-semibold">{(selected.company?.company_name || "?").slice(0,1).toUpperCase()}</span>
+              
+              <div className="pr-20 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                  {selected?.id && (
+                    <Link
+                      href={`/job/${selected.id}`}
+                      className="inline-flex items-center justify-center rounded-full border p-1 text-gray-600 hover:bg-gray-50"
+                      title="Open job details"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
+                <div className="text-base text-gray-600 break-words flex items-center gap-1">
+                  <BuildingOfficeIcon className="h-4 w-4" />
+                  {selected.company_user_id ? (
+                    <Link className="hover:underline cursor-pointer" href={`/profile/${selected.company_user_id}`} target="_blank" rel="noopener noreferrer">
+                      {selected.company_name}
+                    </Link>
+                  ) : (
+                    selected.company_name
+                  )}
+                </div>
+                <div className="text-sm text-gray-500 break-words flex items-center gap-1">
+                  <MapPinIcon className="h-4 w-4" />
+                  {selected.location ?? selected.company_location}
+                </div>
               </div>
-              <div className="pr-16">
-                <div className="text-lg font-semibold">{selected.position}</div>
-                <div className="text-sm text-gray-600">{selected.company?.company_name}</div>
-                <div className="text-xs text-gray-500">{selected.company?.location}</div>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-700">
+                <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5">
+                  <span className="font-medium">{selected.jobType || '-'}</span>
+                </span>
+                <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5">
+                  <span className="font-medium">{selected.work_place || '-'}</span>
+                </span>
               </div>
-              <p className="mt-4 text-sm text-gray-700">{selected.description}</p>
-              <p className="mt-2 text-xs text-gray-500">
-                Job Type: {selected.jobType}
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                Available Positions: {selected.available_position}
-              </p>
+              <div className="mt-2 grid gap-1 text-sm text-gray-600">
+                <div>Available Positions: {selected.available_position}</div>
+                <div>
+                  Expected Salary: {
+                    typeof selected.minimum_expected_salary === 'number' && typeof selected.maximum_expected_salary === 'number'
+                      ? `${selected.minimum_expected_salary.toLocaleString()} - ${selected.maximum_expected_salary.toLocaleString()}`
+                      : '-'
+                  }
+                </div>
+              </div>
+              <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {canApply && (
                 <div className="mt-6 flex justify-end">
@@ -424,13 +528,15 @@ export default function FindJobPage() {
           onClose={() => setIsApplyOpen(false)}
           onSubmit={handleApply}
           resumes={resumes}
-          jobTitle={selected?.position}
+          jobTitle={selected?.job_title || selected?.position}
           brandColor={GREEN}
         />
       )}
     </main>
   );
 }
+
+
 
 
 

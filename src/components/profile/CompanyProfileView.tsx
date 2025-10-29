@@ -49,6 +49,7 @@ export default function CompanyProfile() {
   const [error, setError] = useState<string | null>(null);
 
   const [openEdit, setOpenEdit] = useState(false);
+  const [editSection, setEditSection] = useState<"basics" | "description" | null>(null);
   const [verified, setVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -109,29 +110,21 @@ export default function CompanyProfile() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      {/* Top-right global Edit button (only for Company role) */}
-      {roleLower === "company" && (
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setOpenEdit(true)}
-            className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
-            style={{ borderColor: GREEN }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80">
-              <path
-                d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
-                fill="currentColor"
-              />
-            </svg>
-            <span style={{ color: GREEN }}>Edit</span>
-          </button>
-        </div>
-      )}
+      {/* removed global Edit button; per-block editors added */}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Company card */}
         <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
+          {roleLower === "company" && (
+            <button
+              type="button"
+              onClick={() => { setEditSection('basics'); setOpenEdit(true); }}
+              className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white text-gray-600 hover:bg-gray-50"
+              title="Edit company info"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
+          )}
           <div className="flex flex-col items-center">
             <div
               className="relative h-28 w-28 overflow-hidden rounded-full ring-4"
@@ -177,6 +170,16 @@ export default function CompanyProfile() {
         <section className="space-y-6 md:col-span-2">
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Company&apos;s Description</PillHeading>
+            {roleLower === "company" && (
+              <button
+                type="button"
+                onClick={() => { setEditSection('description'); setOpenEdit(true); }}
+                className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white text-gray-600 hover:bg-gray-50"
+                title="Edit description"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+              </button>
+            )}
             <div className="mt-3 prose prose-sm max-w-none text-gray-700">
               <ReactMarkdown>{company.description || "_No description yet._"}</ReactMarkdown>
             </div>
@@ -191,6 +194,7 @@ export default function CompanyProfile() {
         initial={company}
         onSaved={(updated) => setCompany(updated)}
         brandColor={GREEN}
+        section={editSection || undefined}
       />
     </main>
   );

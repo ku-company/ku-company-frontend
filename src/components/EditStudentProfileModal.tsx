@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import {
   patchMyStudentProfile,
   type StudentProfile,
@@ -13,6 +14,7 @@ type Props = {
   initial?: Partial<StudentProfile> | null;
   onSaved: (updated: StudentProfile) => void;
   brandColor?: string;
+  section?: "summary" | "contact" | "work" | "education" | "skills" | "languages";
 };
 
 /** Accepts string | string[] | null | unknown and returns a nice text */
@@ -67,6 +69,7 @@ export default function EditStudentProfileModal({
   initial,
   onSaved,
   brandColor = "#5B8F5B",
+  section,
 }: Props) {
   const [education, setEducation] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -172,15 +175,37 @@ export default function EditStudentProfileModal({
     // Backend expects strings for these fields
     const educationString = educationList.length ? JSON.stringify(educationList) : undefined;
 
-    const payload: StudentProfileEditPayload = {
-      education: educationString,
-      birthDate: birthDate.trim() || undefined,
-      summary: summary.trim() || undefined,
-      skills: skillsString,
-      experience: experienceString,
-      contactInfo: contactInfo.trim() || undefined,
-      languages: languagesString,
-    };
+    let payload: StudentProfileEditPayload = {};
+    switch (section) {
+      case "summary":
+        payload = { summary: summary.trim() || undefined };
+        break;
+      case "contact":
+        payload = { contactInfo: contactInfo.trim() || undefined, birthDate: birthDate.trim() || undefined };
+        break;
+      case "work":
+        payload = { experience: experienceString };
+        break;
+      case "education":
+        payload = { education: educationString };
+        break;
+      case "skills":
+        payload = { skills: skillsString };
+        break;
+      case "languages":
+        payload = { languages: languagesString };
+        break;
+      default:
+        payload = {
+          education: educationString,
+          birthDate: birthDate.trim() || undefined,
+          summary: summary.trim() || undefined,
+          skills: skillsString,
+          experience: experienceString,
+          contactInfo: contactInfo.trim() || undefined,
+          languages: languagesString,
+        };
+    }
 
     console.log("[EditStudentProfileModal] PATCH payload:", payload);
 
@@ -211,7 +236,15 @@ export default function EditStudentProfileModal({
           <div className="max-h-[85vh] overflow-y-auto rounded-2xl">
             {/* Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-white border-b">
-              <h2 className="text-lg font-semibold">Edit Student Profile</h2>
+              <h2 className="text-lg font-semibold">
+                {section === 'summary' && 'Edit Personal Summary'}
+                {section === 'contact' && 'Edit Contact'}
+                {section === 'work' && 'Edit Work History'}
+                {section === 'education' && 'Edit Education'}
+                {section === 'skills' && 'Edit Skills'}
+                {section === 'languages' && 'Edit Languages'}
+                {!section && 'Edit Student Profile'}
+              </h2>
               <button
                 onClick={onClose}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
@@ -224,6 +257,7 @@ export default function EditStudentProfileModal({
             {/* Body */}
             <div className="space-y-4 px-5 py-5">
               {/* Personal Summary */}
+              {(!section || section === 'summary') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Personal Summary</label>
                 <textarea
@@ -234,8 +268,10 @@ export default function EditStudentProfileModal({
                   onChange={(e) => setSummary(e.target.value)}
                 />
               </div>
+              )}
 
               {/* Contact */}
+              {(!section || section === 'contact') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Phone Number</label>
                 <input  
@@ -245,8 +281,10 @@ export default function EditStudentProfileModal({
                   onChange={(e) => setContactInfo(e.target.value)}
                 />
               </div>
+              )}
 
               {/* Work History timeline editor */}
+              {(!section || section === 'work') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Work History</label>
                 <div className="space-y-3">
@@ -305,10 +343,10 @@ export default function EditStudentProfileModal({
                       />
                       <div className="flex justify-end">
                         <button
-                          className="rounded-full px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700"
+                          className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm text-red-700 hover:bg-red-100"
                           onClick={() => setWorkItems((items) => items.filter((_, i) => i !== idx))}
                         >
-                          Remove
+                          <TrashIcon className="h-4 w-4" /> Remove
                         </button>
                       </div>
                     </div>
@@ -321,8 +359,10 @@ export default function EditStudentProfileModal({
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Education editor (structured) */}
+              {(!section || section === 'education') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Education</label>
                 <div className="space-y-3">
@@ -392,10 +432,10 @@ export default function EditStudentProfileModal({
                       />
                       <div className="flex justify-end">
                         <button
-                          className="rounded-full px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700"
+                          className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm text-red-700 hover:bg-red-100"
                           onClick={() => setEducationList((list) => list.filter((_, i) => i !== idx))}
                         >
-                          Remove
+                          <TrashIcon className="h-4 w-4" /> Remove
                         </button>
                       </div>
                     </div>
@@ -408,8 +448,10 @@ export default function EditStudentProfileModal({
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Skills editor (structured) */}
+              {(!section || section === 'skills') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Skills</label>
                 <div className="space-y-2">
@@ -437,10 +479,10 @@ export default function EditStudentProfileModal({
                         <option>Well</option>
                       </select>
                       <button
-                        className="rounded-full px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700"
+                        className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
                         onClick={() => setSkillList((list) => list.filter((_, i) => i !== idx))}
                       >
-                        Remove
+                        <TrashIcon className="h-4 w-4" /> Remove
                       </button>
                     </div>
                   ))}
@@ -454,8 +496,10 @@ export default function EditStudentProfileModal({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Languages editor (structured) */}
+              {(!section || section === 'languages') && (
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Languages</label>
                 <div className="space-y-2">
@@ -484,10 +528,10 @@ export default function EditStudentProfileModal({
                         <option>Native</option>
                       </select>
                       <button
-                        className="rounded-full px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700"
+                        className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
                         onClick={() => setLanguageList((list) => list.filter((_, i) => i !== idx))}
                       >
-                        Remove
+                        <TrashIcon className="h-4 w-4" /> Remove
                       </button>
                     </div>
                   ))}
@@ -501,6 +545,7 @@ export default function EditStudentProfileModal({
                   </div>
                 </div>
               </div>
+              )}
             </div>
               
 

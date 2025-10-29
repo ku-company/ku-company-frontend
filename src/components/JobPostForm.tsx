@@ -115,9 +115,9 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
   ];
 
   const positions = [
-    { label: "Backend Developer", value: "Backend_Developer" },
-    { label: "Frontend Developer", value: "Frontend_Developer" },
-    { label: "Fullstack Developer", value: "Fullstack_Developer" },
+    { label: "Backend Developer", value: "Backend Developer" },
+    { label: "Frontend Developer", value: "Frontend Developer" },
+    { label: "Fullstack Developer", value: "Fullstack Developer" },
   ];
 
   const [jobType, setJobType] = useState("Internship");

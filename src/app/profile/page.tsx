@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import StudentProfileView from "@/components/profile/StudentProfileView";
 import CompanyProfileView from "@/components/profile/CompanyProfileView";
+import ProfessorProfileView from "@/components/profile/ProfessorProfileView";
 import { fetchAuthMe, normalizeRole } from "@/api/session";
 
 export default function ProfilePage() {
@@ -68,5 +69,7 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const role = (user.role || "").toLowerCase();
-  return role === "company" ? <CompanyProfileView /> : <StudentProfileView />;
+  if (role === "company") return <CompanyProfileView />;
+  if (role === "professor") return <ProfessorProfileView />;
+  return <StudentProfileView />;
 }

@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { getAllApplications, updateApplicationStatus } from "@/api/companyapplications";
-
 
 type Application = {
   id: number;
@@ -15,6 +14,7 @@ type Application = {
 
 export default function ResumeInApplicationPage() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [filter, setFilter] = useState<"All Positions" | "Approved" | "Rejected" | "Pending">("All Positions");
 
   useEffect(() => {
     getAllApplications()
@@ -22,59 +22,31 @@ export default function ResumeInApplicationPage() {
       .catch((err) => console.error("Failed to fetch applications:", err));
   }, []);
 
-  // state for filter
-  const [filter, setFilter] = useState<"All Positions" | "Approved" | "Rejected" | "Pending">(
-    "All Positions"
-  );
-
-  const updateStatus = (id: number, newStatus: Application["status"]) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, status: newStatus } : app
-      )
-    );
-    try {
-      updateApplicationStatus(id, newStatus);
-    } catch (error) {
+  const updateStatusLocal = (id: number, newStatus: Application["status"]) => {
+    setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app)));
+    updateApplicationStatus(id, newStatus).catch((error) => {
       console.error("Failed to update application status:", error);
-
-      // revert UI change on error
-      setApplications((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, status: "Pending" } : app
-      )
-    );
-    }
+      setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: "Pending" } : app)));
+    });
   };
 
-  // filter logic
   const filteredApplications =
-    filter === "All Positions"
-      ? applications
-      : applications.filter((app) => app.status === filter);
+    filter === "All Positions" ? applications : applications.filter((app) => app.status === filter);
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 font-sans">
-      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md p-10 border border-gray-100">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-800">
-            Resume in the Application
-          </h1>
+      <div className="mx-auto max-w-6xl rounded-2xl border border-gray-100 bg-white p-10 shadow-md">
+        <header className="mb-8 flex items-center justify-between">
+          <h1 className="text-3xl font-extrabold text-gray-800">Resume in the Application</h1>
         </header>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-4 mb-6 flex-wrap">
+        <div className="mb-6 flex flex-wrap gap-4">
           {["All Positions", "Approved", "Rejected", "Pending"].map((tab) => (
             <button
               key={tab}
-              onClick={() =>
-                setFilter(tab as "All Positions" | "Approved" | "Rejected" | "Pending")
-              }
+              onClick={() => setFilter(tab as any)}
               className={`px-6 py-2 rounded-full font-medium transition ${
-                filter === tab
-                  ? "bg-[#558E46] text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                filter === tab ? "bg-[#558E46] text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`}
             >
               {tab}
@@ -82,92 +54,62 @@ export default function ResumeInApplicationPage() {
           ))}
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-lg border border-gray-100 shadow-sm">
-          <table className="w-full border-collapse text-gray-800">
-            <thead>
-              <tr className="bg-[#558E46] text-white text-left">
-                <th className="p-4 font-semibold">Name</th>
-                <th className="p-4 font-semibold">Email</th>
-                <th className="p-4 font-semibold">Position</th>
-                <th className="p-4 font-semibold">Applied Date</th>
-                <th className="p-4 font-semibold">Resume</th>
-                <th className="p-4 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApplications.map((app, i) => (
-                <tr
-                  key={app.id}
-                  className={`border-b hover:bg-gray-50 transition ${
-                    i % 2 === 0 ? "bg-white" : "bg-gray-50/70"
-                  }`}
-                >
-                  <td className="p-4 font-medium">{app.name}</td>
-                  <td className="p-4">{app.email}</td>
-                  <td className="p-4">{app.position}</td>
-                  <td className="p-4">
-                    <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">
-                      {app.appliedDate}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <a
-                      href={app.resumeLink}
-                      className="text-[#558E46] hover:underline font-medium"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Resume
-                    </a>
-                  </td>
-                  <td className="p-4">
-                    <select
-                      value={app.status}
-                      onChange={(e) =>
-                        updateStatus(
-                          app.id,
-                          e.target.value as Application["status"]
-                        )
-                      }
-                      className={`rounded-md px-3 py-1 text-sm font-medium border ${
-                        app.status === "Approved"
-                          ? "bg-green-100 text-green-700 border-green-300"
-                          : app.status === "Rejected"
-                          ? "bg-red-100 text-red-700 border-red-300"
-                          : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                      }`}
-                    >
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Pending">Pending</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-end items-center gap-3 mt-6 text-gray-600">
-          <button className="hover:underline">Previous</button>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <button
-                key={n}
-                className={`px-2 ${
-                  n === 1
-                    ? "font-bold text-[#558E46]"
-                    : "hover:text-[#558E46] hover:underline"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
+        {filteredApplications.length === 0 ? (
+          <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-gray-600 shadow-sm">
+            There are no applications.
           </div>
-          <button className="hover:underline">Next</button>
-        </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-gray-100 shadow-sm">
+            <table className="w-full border-collapse text-gray-800">
+              <thead>
+                <tr className="text-left text-white" style={{ backgroundColor: "#558E46" }}>
+                  <th className="p-4 font-semibold">Name</th>
+                  <th className="p-4 font-semibold">Email</th>
+                  <th className="p-4 font-semibold">Position</th>
+                  <th className="p-4 font-semibold">Applied Date</th>
+                  <th className="p-4 font-semibold">Resume</th>
+                  <th className="p-4 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredApplications.map((app) => (
+                  <tr key={app.id} className="border-b hover:bg-gray-50 transition">
+                    <td className="p-4 font-medium">{app.name}</td>
+                    <td className="p-4">{app.email}</td>
+                    <td className="p-4">{app.position}</td>
+                    <td className="p-4"><span className="rounded-md bg-gray-100 px-3 py-1 text-sm">{app.appliedDate}</span></td>
+                    <td className="p-4"><a href={app.resumeLink} className="font-medium text-[#558E46] hover:underline" target="_blank" rel="noopener noreferrer">Resume</a></td>
+                    <td className="p-4">
+                      <select
+                        value={app.status}
+                        onChange={(e) => updateStatusLocal(app.id, e.target.value as Application["status"])}
+                        className="rounded-md border px-3 py-1 text-sm font-medium"
+                      >
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Pending">Pending</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {filteredApplications.length > 0 && (
+          <div className="mt-6 flex items-center justify-end gap-3 text-gray-600">
+            <button className="hover:underline">Previous</button>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button key={n} className={`px-2 ${n === 1 ? "font-bold text-[#558E46]" : "hover:text-[#558E46] hover:underline"}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+            <button className="hover:underline">Next</button>
+          </div>
+        )}
       </div>
     </main>
   );

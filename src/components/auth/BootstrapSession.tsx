@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { fetchAuthMe } from "@/api/session";
+import { fetchAuthMe, normalizeRole } from "@/api/session";
 import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
+import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile, createDefaultCompanyProfile } from "@/api/companyprofile";
 
 export default function BootstrapSession() {
@@ -59,6 +60,15 @@ export default function BootstrapSession() {
           });
           console.log("✅ Logged in as:", me.role ?? me.roles);
 
+          // Auto-create professor profile to bypass backend bug
+          try {
+            const roleNorm = normalizeRole(me.role ?? me.roles);
+            if (roleNorm === "professor") {
+              await createProfessorProfile({ department: "computer", faculty: "engineering" });
+              console.log("🟢 Professor profile ensured");
+            }
+          } catch (e) {
+            console.warn("⚠️ Skipping professor profile auto-create:", e);
           // If OAuth signup was initiated from /register/company but no tokens were present in URL,
           // ensure we still set the one-time onboarding flag based on the pending marker.
           try {

@@ -18,6 +18,7 @@ type Props = {
   initial?: Partial<CompanyProfile> | null; // may be undefined/null while loading
   onSaved: (updated: CompanyProfile) => void;
   brandColor?: string;
+  section?: "basics" | "description";
 };
 
 export default function EditCompanyProfileModal({
@@ -26,6 +27,7 @@ export default function EditCompanyProfileModal({
   initial,
   onSaved,
   brandColor = "#5D9252",
+  section,
 }: Props) {
   // always keep a safe form shape
   const makeDefaults = (src?: Partial<CompanyProfile> | null): CompanyProfileForm => ({
@@ -96,7 +98,7 @@ export default function EditCompanyProfileModal({
       <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4">
-          <h2 className="text-lg font-semibold">Edit Company Profile</h2>
+          <h2 className="text-lg font-semibold">{section === 'description' ? 'Edit Description' : section === 'basics' ? 'Edit Company Info' : 'Edit Company Profile'}</h2>
           <button
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
@@ -108,6 +110,7 @@ export default function EditCompanyProfileModal({
 
         {/* Body */}
         <div className="space-y-4 px-5 pb-5">
+          {(!section || section === 'basics') && (
           <div className="grid gap-3">
             <label className="text-sm font-medium">Company Name</label>
             <input
@@ -118,7 +121,9 @@ export default function EditCompanyProfileModal({
               onChange={onChange("company_name")}
             />
           </div>
+          )}
 
+          {(!section || section === 'description') && (
           <div className="grid gap-3">
             <label className="text-sm font-medium">
             Description (supports **Markdown**)
@@ -129,7 +134,9 @@ export default function EditCompanyProfileModal({
               onChange={onChange("description")}
             />
           </div>
+          )}
 
+          {(!section || section === 'basics') && (
           <div className="grid gap-3">
             <label className="text-sm font-medium">Industry</label>
             <input
@@ -139,7 +146,9 @@ export default function EditCompanyProfileModal({
               onChange={onChange("industry")}
             />
           </div>
+          )}
 
+          {(!section || section === 'basics') && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-3">
               <label className="text-sm font-medium">Telephone</label>
@@ -160,6 +169,7 @@ export default function EditCompanyProfileModal({
               />
             </div>
           </div>
+          )}
 
           <div className="grid gap-3">
             <label className="text-sm font-medium">Country</label>
