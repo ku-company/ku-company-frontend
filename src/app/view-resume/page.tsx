@@ -85,7 +85,7 @@ export default function ResumeInApplicationPage() {
                         onChange={(e) => updateStatusLocal(app.id, e.target.value as Application["status"])}
                         className="rounded-md border px-3 py-1 text-sm font-medium"
                       >
-                        <option value="Approved">Approved</option>
+                        <option value="Confirmed">Approved</option>
                         <option value="Rejected">Rejected</option>
                         <option value="Pending">Pending</option>
                       </select>
