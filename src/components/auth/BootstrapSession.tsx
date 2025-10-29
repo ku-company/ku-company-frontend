@@ -69,6 +69,7 @@ export default function BootstrapSession() {
             }
           } catch (e) {
             console.warn("⚠️ Skipping professor profile auto-create:", e);
+          }
           // If OAuth signup was initiated from /register/company but no tokens were present in URL,
           // ensure we still set the one-time onboarding flag based on the pending marker.
           try {
