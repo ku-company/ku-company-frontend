@@ -140,7 +140,7 @@ export default function Navbar() {
                 <NavItem href="/view-resume" label="VIEW RESUME" />
               </>
             )}
-            <NavItem href="/announcement" label="ANNOUNCEMENT" />
+            <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
             {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
               <NavItem href="/status" label="STATUS" />
             ) : null}

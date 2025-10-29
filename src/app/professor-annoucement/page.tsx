@@ -1,267 +1,232 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import CompanyNavbar from "@/components/CompanyNavbar"; 
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  fetchProfessorAnnouncements,
+  createProfessorAnnouncement,
+  deleteProfessorAnnouncement,
+} from "@/api/professorannouncement";
 
-/* -------------------- Brand color -------------------- */
 const GREEN = "#5b8f5b";
 
-/* ----------------------- Types ----------------------- */
-type Comment = { id: string; user: string; text: string; time: string };
-type Post = {
-  id: string;
-  author: string;
-  time: string;
-  paragraphs: string[];
-  hashtag?: string;
-  likes: number;
-  comments: number;
-  saved: number;
-  listComments: Comment[];
+type Announcement = {
+  id: number;
+  author?: { id: number; username: string };
+  content: string;
+  created_at: string;
 };
 
-/* -------------------- Mock initial post -------------------- */
-const INITIAL_POST: Post = {
-  id: "p1",
-  author: "Professor J",
-  time: "8:27 PM - Dec 23, 2023",
-  paragraphs: [
-    "I'd like to highlight TechNova Solutions, a company I've collaborated with recently. They're doing impressive work in cloud computing and AI applications and often look for young talent with fresh ideas.",
-    "For students interested in real-world projects and internships, this could be a great place to learn and grow. Definitely worth keeping an eye on!",
-  ],
-  hashtag: "#CompanyRecommendation",
-  likes: 41,
-  comments: 3,
-  saved: 52,
-  listComments: [
-    { id: "c1", user: "jetaime_op", text: "Amazing", time: "7:44 PM - Dec 23, 2023" },
-    { id: "c2", user: "milliebobbybrown", text: "Interesting", time: "10:08 PM - Jan 02, 2024" },
-    { id: "c3", user: "junior_np", text: "good!", time: "11:37 PM - Jan 15, 2024" },
-  ],
-};
+export default function ProfessorAnnouncementPage() {
+  const { user } = useAuth();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [content, setContent] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-/* ---------------------- Small UI ---------------------- */
-const TitleBar = () => (
-  <div className="flex items-center gap-3">
-    <svg width="28" height="28" viewBox="0 0 24 24" style={{ color: GREEN }}>
-      <path
-        d="M5 11a5 5 0 0 1 10 0v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3z"
-        fill="currentColor"
-        opacity=".15"
-      />
-      <path
-        d="M5 11a5 5 0 0 1 10 0v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path
-        d="M17 13h1a3 3 0 1 1 0 6h-1"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        fill="none"
-      />
-    </svg>
-    <h1 className="text-2xl font-extrabold tracking-tight">ANNOUNCEMENT</h1>
-  </div>
-);
+  /* ---------------- Fetch announcements ---------------- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await fetchProfessorAnnouncements();
 
-/* ------------------ Composer + Feed ------------------ */
-export default function AnnouncementPage() {
-  const [posts, setPosts] = useState<Post[]>([INITIAL_POST]);
-  const [visibility, setVisibility] = useState<"Everyone" | "Friends" | "Only me">("Everyone");
-  const [text, setText] = useState("");
-  const [hash, setHash] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+        if (Array.isArray(data)) setAnnouncements(data);
+        else if (data?.results) setAnnouncements(data.results);
+        else if (data?.data) setAnnouncements(data.data);
+        else setAnnouncements([]);
 
-  const canPost = useMemo(
-    () => text.trim().length > 0 || hash.trim().length > 0,
-    [text, hash]
-  );
+        setErrorMessage(null);
+      } catch (err: any) {
+        console.error("⚠️ Announcement fetch failed:", err);
+        const errStr = String(err || "");
 
-  const submitPost = () => {
+        if (errStr.includes("verify your account") || errStr.includes("Please verify your account")) {
+          setErrorMessage("Please verify your account to view announcements.");
+        } else if (errStr.includes("401")) {
+          setErrorMessage("Unauthorized — please log in again.");
+        } else if (errStr.includes("403")) {
+          setErrorMessage("Access denied. You are not allowed to view announcements.");
+        } else if (errStr.includes("Failed to fetch")) {
+          setErrorMessage("Cannot connect to the server. Please check your network.");
+        } else {
+          setErrorMessage("Failed to load announcements. Please try again later.");
+        }
+
+        setAnnouncements([]);
+      }
+    })();
+  }, []);
+
+  const isProfessor = (user?.role || "").toLowerCase().includes("professor");
+  const canPost = useMemo(() => isProfessor && content.trim().length > 0, [isProfessor, content]);
+
+  /* ---------------- Create new announcement ---------------- */
+  const handlePost = async () => {
     if (!canPost) return;
-    const now = new Date();
-    const newPost: Post = {
-      id: crypto.randomUUID(),
-      author: "Professor M",
-      time:
-        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
-        " - " +
-        now.toLocaleDateString(),
-      paragraphs: text
-        .split("\n")
-        .map((p) => p.trim())
-        .filter(Boolean),
-      hashtag: hash
-        ? hash
-            .split(",")
-            .map((h) => h.trim())
-            .join(" ")
-        : undefined,
-      likes: 0,
-      comments: 0,
-      saved: 0,
-      listComments: [],
-    };
-    setPosts((p) => [newPost, ...p]);
-    setText("");
-    setHash("");
+    try {
+      const newPost = await createProfessorAnnouncement({
+        content,
+        is_connection: false,
+      });
+
+      if (newPost && (newPost.id || newPost?.data?.id)) {
+        const created = newPost.id !== undefined ? newPost : newPost.data || newPost.results?.[0];
+        setAnnouncements((prev) => [created, ...prev]);
+      }
+
+      setContent("");
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("⚠️ Failed to create announcement:", err);
+      const errStr = String(err);
+
+      if (errStr.includes("Profile not found"))
+        setErrorMessage("Cannot post yet — your Professor profile hasn’t been created.");
+      else if (errStr.includes("401"))
+        setErrorMessage("Unauthorized. Please login again.");
+      else setErrorMessage("Failed to create announcement. Try again.");
+    }
+  };
+
+  /* ---------------- Delete announcement ---------------- */
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteProfessorAnnouncement(id);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      setErrorMessage(null);
+    } catch (err) {
+      console.error("❌ Failed to delete:", err);
+      setErrorMessage("Failed to delete announcement. Try again.");
+    }
   };
 
   return (
-    <>
-      {/* ✅ Company Navbar */}
-      <CompanyNavbar />
+    <main className="mt-24 mx-auto max-w-2xl px-4 py-6">
+      <h1 className="text-2xl font-extrabold tracking-tight text-gray-800 text-center">
+        Professor Announcements
+      </h1>
 
-      {/* ✅ Main Content */}
-      <main className="mt-24 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6">
-        <TitleBar />
-        <div className="mt-6 border-t" />
+      {errorMessage && (
+        <div className="mt-4 rounded-lg bg-red-100 border border-red-300 text-red-700 p-3 text-sm text-center">
+          {errorMessage}
+        </div>
+      )}
 
-        {/* ---------------- Composer Box ---------------- */}
+      {/* Composer (professors only) */}
+      {isProfessor && (
         <section
-          className="mt-6 rounded-2xl border bg-white shadow-sm"
+          className="mt-6 rounded-xl border bg-white shadow-sm p-4 space-y-3"
           style={{ borderColor: GREEN }}
         >
-          <div className="p-3 sm:p-4">
-            {/* Top Row */}
-            <div className="flex items-center gap-3">
-              <span
-                className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold"
-                style={{ backgroundColor: `${GREEN}22`, color: GREEN }}
-              >
-                M
-              </span>
+          <textarea
+            placeholder="Share an announcement…"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full h-24 resize-none border rounded-md p-3 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
 
-              <div className="flex w-full items-center rounded-md border">
-                <select
-                  value={visibility}
-                  onChange={(e) => setVisibility(e.target.value as any)}
-                  className="h-10 w-40 rounded-l-md bg-gray-50 px-3 text-sm focus:outline-none"
-                >
-                  <option>Everyone</option>
-                  <option>Friends</option>
-                  <option>Only me</option>
-                </select>
-
-                <input
-                  placeholder="What is happening?!"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  className="h-10 w-full px-3 text-sm focus:outline-none"
-                />
-
-                <button
-                  type="button"
-                  title="Add image"
-                  onClick={() => fileRef.current?.click()}
-                  className="grid h-10 w-10 place-items-center rounded-r-md border-l text-gray-600 hover:bg-gray-50"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24">
-                    <path
-                      d="M21 19V5a2 2 0 0 0-2-2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2ZM8.5 12 6 15.5V18h12l-4-5.5-3 3.5-2.5-4Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-                <input ref={fileRef} type="file" hidden />
-              </div>
-            </div>
-
-            {/* Hashtag Input */}
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-xl font-bold" style={{ color: GREEN }}>
-                #
-              </span>
-              <input
-                placeholder="Add hashtags, comma-separated"
-                value={hash}
-                onChange={(e) => setHash(e.target.value)}
-                className="h-9 w-full rounded-md border px-3 text-sm"
-              />
-            </div>
-
-            {/* Text Area */}
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className="mt-3 h-40 w-full resize-y rounded-md border p-3 text-sm"
-            />
-
-            <div className="mt-3 flex justify-end">
-              <button
-                disabled={!canPost}
-                onClick={submitPost}
-                className="rounded-full px-5 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: GREEN }}
-              >
-                Post
-              </button>
-            </div>
+          <div className="flex justify-end">
+            <button
+              disabled={!canPost}
+              onClick={handlePost}
+              className="rounded-md px-5 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: GREEN }}
+            >
+              Post
+            </button>
           </div>
         </section>
+      )}
 
-        {/* ---------------- Feed Section ---------------- */}
-        <div className="mt-6 space-y-5">
-          {posts.map((p) => (
+      {/* Feed */}
+      <div className="mt-8 space-y-6">
+        {announcements.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center mt-10">
+            No announcements yet.
+          </p>
+        ) : (
+          announcements.map((a) => (
             <article
-              key={p.id}
-              className="relative rounded-2xl border bg-white shadow-sm"
+              key={a.id}
+              className="rounded-2xl border bg-white shadow-sm p-5 relative"
               style={{ borderColor: GREEN }}
             >
-              {/* delete icon */}
-              <button
-                title="Delete"
-                className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-lg border bg-white text-gray-600 hover:bg-gray-50"
-                onClick={() =>
-                  setPosts((arr) => arr.filter((x) => x.id !== p.id))
-                }
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4">
-                  <path
-                    d="M7 6h10l1 14H6L7 6zm3-3h4l1 2H9l1-2z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </button>
+              {/* Delete button (professors only) */}
+              {isProfessor && (
+                <button
+                  onClick={() => handleDelete(a.id)}
+                  className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-md border bg-white text-gray-600 hover:bg-gray-100"
+                  title="Delete"
+                >
+                  ✕
+                </button>
+              )}
 
-              <div className="p-4 sm:p-5">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="grid h-6 w-6 place-items-center rounded-full"
-                    style={{ backgroundColor: `${GREEN}22`, color: GREEN }}
-                  >
-                    •
-                  </span>
-                  <div className="text-sm">
-                    <span className="font-semibold">{p.author}</span>
-                    <span className="ml-2 text-xs text-gray-500">{p.time}</span>
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-8 rounded-full bg-emerald-700 text-white grid place-items-center font-semibold">
+                  {(a.author?.username?.[0] || "P").toUpperCase()}
+                </div>
+                <div>
+                  <div className="font-semibold text-sm text-gray-800">
+                    {a.author?.username || "Professor"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {new Date(a.created_at).toLocaleString()}
                   </div>
                 </div>
+              </div>
 
-                {/* body */}
-                <div className="mt-3 text-sm leading-6 text-gray-800">
-                  {p.paragraphs.map((par, i) => (
-                    <p key={i} className={i ? "mt-3" : ""}>
-                      {par}
-                    </p>
-                  ))}
-                  {p.hashtag && (
-                    <div
-                      className="mt-3 text-[13px] font-medium"
-                      style={{ color: GREEN }}
-                    >
-                      {p.hashtag}
-                    </div>
-                  )}
+              {/* Content */}
+              <p className="mt-2 text-gray-700 text-sm leading-6 whitespace-pre-line">
+                {a.content}
+              </p>
+
+              {/* Reaction Bar */}
+              <div className="mt-4 flex items-center gap-6 text-sm text-gray-600">
+                <span className="flex items-center gap-1 cursor-pointer">
+                  💚 <span>41</span>
+                </span>
+                <span className="flex items-center gap-1 cursor-pointer">
+                  💬 <span>3</span>
+                </span>
+                <span className="flex items-center gap-1 cursor-pointer">
+                  🔄 <span>52</span>
+                </span>
+              </div>
+
+              {/* Comments */}
+              <div className="mt-3 border-t pt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-gray-200" />
+                  <input
+                    placeholder="Add a comment..."
+                    className="flex-1 border rounded-full px-3 py-1 text-sm focus:outline-none"
+                  />
+                </div>
+
+                {/* Example mock comments */}
+                <div className="space-y-2 text-sm text-gray-800 mt-2">
+                  <div>
+                    <b>Jetaime_op</b>{" "}
+                    <span className="text-gray-500 text-xs">· Dec 23, 2023</span>
+                    <div>Amazing</div>
+                  </div>
+                  <div>
+                    <b>milliebobbybrown</b>{" "}
+                    <span className="text-gray-500 text-xs">· Jan 02, 2024</span>
+                    <div>Interesting</div>
+                  </div>
+                  <div>
+                    <b>junior.np</b>{" "}
+                    <span className="text-gray-500 text-xs">· Jan 15, 2024</span>
+                    <div>good</div>
+                  </div>
                 </div>
               </div>
             </article>
-          ))}
-        </div>
-      </main>
-    </>
+          ))
+        )}
+      </div>
+    </main>
   );
 }
