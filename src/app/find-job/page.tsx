@@ -45,7 +45,7 @@ export default function FindJobPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState<Resume[]>([]); // โ… resume state
+  const [resumes, setResumes] = useState<Resume[]>([]); //  resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);

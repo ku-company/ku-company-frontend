@@ -38,6 +38,7 @@ export default function ProfessorProfileView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openEdit, setOpenEdit] = useState(false);
+  const [editSection, setEditSection] = useState<"basics" | "summary" | "degrees" | null>(null);
   const [degrees, setDegrees] = useState<ProfessorDegree[]>([]);
   const [degLoading, setDegLoading] = useState(false);
   const [modal, setModal] = useState<null | { title: string; content?: string; children?: React.ReactNode }>(null);
@@ -108,23 +109,20 @@ export default function ProfessorProfileView() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => isVerified && setOpenEdit(true)}
-          className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          style={{ borderColor: GREEN }}
-          disabled={!isVerified}
-          title={isVerified ? "Edit your profile" : "Account not verified"}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
-          <span style={{ color: GREEN }}>Edit</span>
-        </button>
-      </div>
+      {/* removed global edit in favor of per-block editors */}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left card */}
         <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={() => { if (isVerified) { setEditSection('basics'); setOpenEdit(true); }}}
+            disabled={!isVerified}
+            title={isVerified ? "Edit basics" : "Account not verified"}
+            className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+          </button>
           <div className="flex flex-col items-center">
             <div className="relative h-28 w-28 overflow-hidden rounded-full ring-4" style={{ outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}>
               <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} />
@@ -144,6 +142,15 @@ export default function ProfessorProfileView() {
         <section className="space-y-6 md:col-span-2">
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Summary</PillHeading>
+            <button
+              type="button"
+              onClick={() => { if (isVerified) { setEditSection('summary'); setOpenEdit(true); }}}
+              disabled={!isVerified}
+              title={isVerified ? "Edit summary" : "Account not verified"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             <div className="mt-3 prose prose-sm max-w-none text-gray-700">
               <ReactMarkdown>{profile.summary || "_No summary yet._"}</ReactMarkdown>
             </div>
@@ -152,6 +159,15 @@ export default function ProfessorProfileView() {
           {/* Degrees (read-only here; manage inside Edit modal) */}
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Degrees</PillHeading>
+            <button
+              type="button"
+              onClick={() => { if (isVerified) { setEditSection('degrees'); setOpenEdit(true); }}}
+              disabled={!isVerified}
+              title={isVerified ? "Edit degrees" : "Account not verified"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             <div className="mt-4 space-y-3">
               {degLoading && <div className="text-gray-500">Loading degrees…</div>}
               {!degLoading && degrees.length === 0 && (
@@ -217,6 +233,7 @@ export default function ProfessorProfileView() {
         onDegreesSaved={(newList) => setDegrees(newList)}
         onSaved={(updated) => setProfile(updated)}
         brandColor={GREEN}
+        section={editSection || undefined}
       />
     
       <MarkdownModal

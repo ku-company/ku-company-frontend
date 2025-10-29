@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import { patchProfessorProfile, type ProfessorProfile } from "@/api/professorprofile";
 import type { ProfessorDegree } from "@/api/professordegrees";
 import { createProfessorDegree, updateProfessorDegree, deleteProfessorDegree } from "@/api/professordegrees";
@@ -23,6 +24,7 @@ type Props = {
   brandColor?: string;
   initialDegrees?: ProfessorDegree[];
   onDegreesSaved?: (list: ProfessorDegree[]) => void;
+  section?: "basics" | "summary" | "degrees";
 };
 
 type DegreeForm = {
@@ -33,7 +35,7 @@ type DegreeForm = {
   description?: string | null;
 };
 
-export default function EditProfessorProfileModal({ isOpen, onClose, initial, onSaved, brandColor = "#4F7E4F", initialDegrees = [], onDegreesSaved }: Props) {
+export default function EditProfessorProfileModal({ isOpen, onClose, initial, onSaved, brandColor = "#4F7E4F", initialDegrees = [], onDegreesSaved, section }: Props) {
   const makeDefaults = (src?: ProfessorProfile | null): Form => ({
     first_name: src?.user?.first_name ?? "",
     last_name: src?.user?.last_name ?? "",
@@ -183,11 +185,17 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
         <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
           <div className="max-h-[85vh] overflow-y-auto rounded-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-white border-b">
-              <h2 className="text-lg font-semibold">Edit Professor Profile</h2>
+              <h2 className="text-lg font-semibold">
+                {section === 'basics' && 'Edit Basics'}
+                {section === 'summary' && 'Edit Summary'}
+                {section === 'degrees' && 'Edit Degrees'}
+                {!section && 'Edit Professor Profile'}
+              </h2>
               <button onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100" aria-label="Close">✕</button>
             </div>
 
             <div className="space-y-4 px-5 py-5">
+          {(!section || section === 'basics') && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
               <label className="text-sm font-medium">First Name {mustRequireFirst && <span className="text-red-500">*</span>}</label>
@@ -198,7 +206,9 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
               <input type="text" className="rounded-md border px-3 py-2 text-sm" value={form.last_name} onChange={onChange("last_name")} />
             </div>
           </div>
+          )}
 
+          {(!section || section === 'basics') && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
               <label className="text-sm font-medium">Department *</label>
@@ -209,7 +219,9 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
               <input type="text" className="rounded-md border px-3 py-2 text-sm" value={form.faculty} onChange={onChange("faculty")} />
             </div>
           </div>
+          )}
 
+          {(!section || section === 'basics') && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2">
               <label className="text-sm font-medium">Position</label>
@@ -220,13 +232,17 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
               <input type="text" className="rounded-md border px-3 py-2 text-sm" value={form.contactInfo} onChange={onChange("contactInfo")} />
             </div>
           </div>
+          )}
 
+          {(!section || section === 'summary') && (
           <div className="grid gap-2">
             <label className="text-sm font-medium">Summary</label>
             <textarea className="h-28 rounded-md border px-3 py-2 text-sm" value={form.summary} onChange={onChange("summary")} />
           </div>
+          )}
 
           {/* Degrees editor (structured) */}
+          {(!section || section === 'degrees') && (
           <div className="grid gap-2">
             <label className="text-sm font-medium">Degrees</label>
             <div className="space-y-3">
@@ -275,10 +291,10 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
                   />
                   <div className="flex justify-end">
                     <button
-                      className="rounded-full px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm text-red-700 hover:bg-red-100"
                       onClick={() => setDegrees((list) => list.filter((_, i) => i !== idx))}
                     >
-                      Remove
+                      <TrashIcon className="h-4 w-4" /> Remove
                     </button>
                   </div>
                 </div>
@@ -291,6 +307,7 @@ export default function EditProfessorProfileModal({ isOpen, onClose, initial, on
               </button>
             </div>
           </div>
+          )}
 
               {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
             </div>

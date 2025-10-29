@@ -24,12 +24,11 @@ function NavItem({ href, label }: { href: string; label: string }) {
     // Match exact or nested paths under the same section
     return pathname === href || pathname.startsWith(href + "/");
   })();
+  const base = "px-3 py-1 rounded-full text-sm transition";
+  const className = isActive ? "text-white" : "text-gray-700 hover:bg-gray-100";
+  const style = isActive ? { backgroundColor: "#5D9252" } as React.CSSProperties : undefined; // midgreen
   return (
-    <Link
-      href={href}
-      className={`px-3 py-1 rounded-full text-sm transition
-        ${isActive ? "bg-emerald-700 text-white" : "text-gray-700 hover:bg-gray-100"}`}
-    >
+    <Link href={href} className={`${base} ${className}`} style={style}>
       {label}
     </Link>
   );

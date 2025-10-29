@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import JobPostForm from "@/components/JobPostForm";
 import EditJobModal, { EditableJob } from "@/components/EditJobModal";
 import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
@@ -25,11 +24,22 @@ export default function DashboardPage() {
   const { user, isReady } = useAuth();
   const isCompany = useMemo(() => (user?.role || "").toLowerCase().includes("company"), [user]);
 
-  const [showForm, setShowForm] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  function toBackendJobType(label?: string): string | undefined {
+    if (!label) return undefined;
+    const t = label.replace(/\s+/g, '').toLowerCase();
+    if (t.includes('fulltime')) return 'FullTime';
+    if (t.includes('parttime')) return 'PartTime';
+    if (t.includes('intern')) return 'Internship';
+    if (t.includes('contract')) return 'Contract';
+    if (['FullTime','PartTime','Internship','Contract'].includes(label)) return label;
+    return undefined;
+  }
 
   // ---------------------------
   // GET: load jobs
@@ -51,7 +61,7 @@ export default function DashboardPage() {
         const data = await fetchAuthedJson(API_URL_GET_ALL, { method: "GET", headers });
         setJobs(data.data || data || []);
       } catch (err) {
-        console.error("❌ Failed to fetch jobs:", err);
+        console.error("Failed to fetch jobs:", err);
       } finally {
         setLoading(false);
       }
@@ -66,7 +76,7 @@ export default function DashboardPage() {
     try {
       const body = {
         description: job.details,
-        jobType: job.jobType, // ✅ จาก dropdown ใน form
+        jobType: toBackendJobType(job.jobType),
         position: job.title,
         available_position: job.positionsAvailable,
       };
@@ -83,9 +93,9 @@ export default function DashboardPage() {
 
       const newJob = data.data || data;
       setJobs((prev) => [newJob, ...prev]);
-      setShowForm(false);
+      setCreateOpen(false);
     } catch (err) {
-      console.error("❌ Failed to add job:", err);
+      console.error("Failed to add job:", err);
       alert("Failed to add job posting.");
     }
   };
@@ -99,7 +109,7 @@ export default function DashboardPage() {
     try {
       const body = {
         description: updated.details,
-        jobType: updated.jobType,
+        jobType: toBackendJobType(updated.jobType),
         position: updated.title,
         available_position: updated.positionsAvailable,
       };
@@ -118,7 +128,7 @@ export default function DashboardPage() {
       setJobs((prev) => prev.map((j, i) => (i === editIndex ? updatedJob : j)));
       closeEdit();
     } catch (err) {
-      console.error("❌ Failed to update job:", err);
+      console.error("Failed to update job:", err);
       alert("Failed to update job posting.");
     }
   };
@@ -143,23 +153,15 @@ export default function DashboardPage() {
       : null;
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="mx-auto max-w-5xl p-6">
       <h1 className="mb-4 text-2xl font-bold">Job Openings</h1>
 
-      {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700"
-        >
-          + Post a Job
-        </button>
-      )}
-
-      {showForm && (
-        <div className="mt-4">
-          <JobPostForm onSubmit={handleAddJob} />
-        </div>
-      )}
+      <button
+        onClick={() => setCreateOpen(true)}
+        className="rounded-[30] px-4 py-2 font-semibold text-white" style={{ backgroundColor: '#5D9252' }}
+      >
+        + Post a Job
+      </button>
 
       <div className="mt-6 space-y-4">
         {loading ? (
@@ -168,36 +170,48 @@ export default function DashboardPage() {
           <p className="text-gray-500">No job postings yet.</p>
         ) : (
           jobs.map((job: any, i: number) => (
-            <div
-              key={job.id || i}
-              className="bg-white rounded-md border p-4 shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
+            <div key={job.id || i} className="rounded-2xl border justify-center items-center bg-gray-50 p-5 shadow-sm min-h-28 md:min-h-30">
+              <div className="flex w-full items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">
+                  <div className="mt-1 text-xl font-extrabold">
                     {job.position || "Untitled"}
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    {job.jobType || "—"}
-                  </p>
+                  </div>
+                  <div className="mt-1 text-xs font-semibold tracking-wide text-gray-700">
+                    {(job.jobType || "").toString().toUpperCase() || "FULL TIME"}
+                    <span className="mx-2 text-gray-300">|</span>
+                    Positions: {job.available_position ?? 1}
+                  </div>
                 </div>
-                <button
-                  onClick={() => openEdit(i)}
-                  className="rounded-full border px-3 py-1 text-sm font-medium hover:bg-gray-50"
-                >
-                  Edit
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* Example right-side meta; placeholders until backend fields exist */}
+                  <div className="text-sm text-gray-800">
+                    {job.location || "REMOTE"}
+                    <span className="mx-2 text-gray-300">|</span>
+                    {job.country || "THAILAND"}
+                  </div>
+                  <button
+                    onClick={() => openEdit(i)}
+                    className="rounded-full border px-3 py-1 text-sm font-medium hover:bg-gray-100"
+                    style={{ borderColor: "#5D9252", color: "#2c4d2a" }}
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
-              <p className="mt-2 text-gray-800">
-                {job.description || "No description"}
-              </p>
-              <p className="mt-1 text-sm text-gray-600">
-                Positions Available: {job.available_position}
-              </p>
             </div>
           ))
         )}
       </div>
+
+      {/* Create Job Modal */}
+      <EditJobModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        initial={{ title: "", position: "", details: "", positionsAvailable: 1, jobType: "Full Time" }}
+        onSave={handleAddJob}
+        brandColor="#5D9252"
+        mode="create"
+      />
 
       <EditJobModal
         isOpen={editOpen}
@@ -209,3 +223,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+

@@ -96,6 +96,15 @@ export default function StudentProfileView() {
 
   const [resumeOpen, setResumeOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [editSection, setEditSection] = useState<
+    | "summary"
+    | "contact"
+    | "work"
+    | "education"
+    | "skills"
+    | "languages"
+    | null
+  >(null);
   const [mainResumeUrl, setMainResumeUrl] = useState<string | null>(null);
 
   const { isReady } = useAuth();
@@ -283,7 +292,7 @@ export default function StudentProfileView() {
     return () => window.removeEventListener('resize', check);
   }, [eduEl, skillsEl, licEl, langEl, education, skills, licenses, languages, isMd]);
 
-  if (loading) return <div className="p-8 text-gray-600">Loading student profileโ€ฆ</div>;
+  if (loading) return <div className="p-8 text-gray-600">Loading student profile...</div>;
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
@@ -300,31 +309,20 @@ export default function StudentProfileView() {
   return (
     <>
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        {/* Top-right global Edit button */}
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => canEdit && setEditOpen(true)}
-            disabled={!canEdit}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm ${
-              canEdit ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"
-            }`}
-            style={{ borderColor: GREEN }}
-            title={canEdit ? "Edit student profile" : "Awaiting verification"}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80">
-              <path
-                d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"
-                fill="currentColor"
-              />
-            </svg>
-            <span style={{ color: GREEN, opacity: canEdit ? 1 : 0.5 }}>Edit</span>
-          </button>
-        </div>
+        {/* removed global Edit button in favor of per-block editors */}
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* LEFT: Profile card */}
           <aside className="relative self-start rounded-2xl border bg-white p-6 shadow-sm border-midgreen-500" style={asideMinH ? { minHeight: asideMinH } : undefined}>
+            <button
+              type="button"
+              onClick={() => { if (canEdit) { setEditSection('contact'); setEditOpen(true); }}}
+              disabled={!canEdit}
+              title={canEdit ? "Edit contact" : "Awaiting verification"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             <div className="flex flex-col items-center">
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
@@ -376,6 +374,15 @@ export default function StudentProfileView() {
               style={{ borderColor: GREEN }}
             >
               <PillHeading>Personal Summary</PillHeading>
+              <button
+                type="button"
+                onClick={() => { if (canEdit) { setEditSection('summary'); setEditOpen(true); }}}
+                disabled={!canEdit}
+                title={canEdit ? "Edit summary" : "Awaiting verification"}
+                className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+              </button>
               {profile.bio && profile.bio.trim() ? (
                 <div
                   ref={el => setSummaryContentEl(el)}
@@ -407,6 +414,15 @@ export default function StudentProfileView() {
               style={{ borderColor: GREEN }}
             >
               <PillHeading>Work History</PillHeading>
+              <button
+                type="button"
+                onClick={() => { if (canEdit) { setEditSection('work'); setEditOpen(true); }}}
+                disabled={!canEdit}
+                title={canEdit ? "Edit work history" : "Awaiting verification"}
+                className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+              </button>
 
               <div
                 ref={(el) => setWorkContentEl(el)}
@@ -525,6 +541,15 @@ export default function StudentProfileView() {
         <div className="mt-6 grid md:grid-cols-2 gap-6">
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Education</PillHeading>
+            <button
+              type="button"
+              onClick={() => { if (canEdit) { setEditSection('education'); setEditOpen(true); }}}
+              disabled={!canEdit}
+              title={canEdit ? "Edit education" : "Awaiting verification"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             {educationListArr.length > 0 ? (
               <div ref={el => setEduEl(el)} className="mt-3 text-sm text-gray-800 space-y-3" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 {(educationListArr.length > 3 ? educationListArr.slice(0, 3) : educationListArr).map((ed, idx) => (
@@ -598,6 +623,15 @@ export default function StudentProfileView() {
 
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Skills</PillHeading>
+            <button
+              type="button"
+              onClick={() => { if (canEdit) { setEditSection('skills'); setEditOpen(true); }}}
+              disabled={!canEdit}
+              title={canEdit ? "Edit skills" : "Awaiting verification"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             {skillListArr.length > 0 ? (
               <div ref={el => setSkillsEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 {(skillListArr.length > 5 ? skillListArr.slice(0, 5) : skillListArr).map((s, idx) => (
@@ -669,6 +703,15 @@ export default function StudentProfileView() {
 
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Languages</PillHeading>
+            <button
+              type="button"
+              onClick={() => { if (canEdit) { setEditSection('languages'); setEditOpen(true); }}}
+              disabled={!canEdit}
+              title={canEdit ? "Edit languages" : "Awaiting verification"}
+              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${canEdit ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
+            </button>
             {languageListArr.length > 0 ? (
               <div ref={el => setLangEl(el)} className="mt-3 text-base text-gray-800 space-y-2" style={isMd ? { maxHeight: '12em', overflow: 'hidden' } : undefined}>
                 {(languageListArr.length > 5 ? languageListArr.slice(0, 5) : languageListArr).map((l, idx) => (
@@ -728,6 +771,7 @@ export default function StudentProfileView() {
         initial={profile}
         onSaved={(updated) => setProfile(updated)}
         brandColor={GREEN}
+        section={editSection || undefined}
       />
       <MarkdownModal
         isOpen={!!modal}
