@@ -92,6 +92,11 @@ export default function RegisterCompanyPage() {
         console.error("Company profile creation error:", profileErr);
       }
 
+      // Mark that onboarding should be shown immediately after redirect
+      try {
+        localStorage.setItem("needs_company_onboarding", "1");
+      } catch {}
+
       // Redirect home after everything succeeds
       router.push("/");
     } catch (err: any) {
@@ -177,8 +182,11 @@ export default function RegisterCompanyPage() {
             <button
               type="button"
               onClick={() => {
-                // Kick off Google signup for Company
-                window.location.href = buildGoogleSignupUrl("Company");
+                // Kick off Google signup for Company (mark as signup)
+                try {
+                  localStorage.setItem("pending_oauth_signup_company", "1");
+                } catch {}
+                window.location.href = buildGoogleSignupUrl("Company") + "&signup=1";
               }}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >

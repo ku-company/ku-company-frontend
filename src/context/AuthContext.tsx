@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { logoutServerSession } from "@/api/logout";
 
 type AuthUser = {
@@ -39,6 +39,7 @@ function normalizeRole(r?: string | null): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const expTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -52,6 +53,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsReady(true);
   }, []);
+
+  // Auto-logout on JWT expiry or 15 minutes after login (hard cap)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    function decodeExp(t?: string | null): number | null {
+      if (!t) return null;
+      try {
+        const base64 = t.split('.')[1];
+        if (!base64) return null;
+        const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(json);
+        return typeof payload?.exp === 'number' ? payload.exp : null;
+      } catch { return null; }
+    }
+
+    // Clear any previous timer
+    if (expTimerRef.current) {
+      window.clearTimeout(expTimerRef.current);
+      expTimerRef.current = null;
+    }
+
+    const token = localStorage.getItem('access_token');
+    const expSec = decodeExp(token);
+    const now = Date.now();
+    const fifteenMinMs = 15 * 60 * 1000;
+    const expMs = expSec ? expSec * 1000 : now + fifteenMinMs;
+
+    // If exp appears later than 15 minutes, still enforce 15 minutes cap
+    const fireAt = Math.min(expMs, now + fifteenMinMs);
+    const delay = Math.max(0, fireAt - now);
+
+    expTimerRef.current = window.setTimeout(async () => {
+      try {
+        const { autoLogout, shouldDeferAutoLogout } = await import("@/utils/httpError");
+        if (!shouldDeferAutoLogout()) autoLogout();
+      } catch {}
+    }, delay) as unknown as number;
+
+    return () => {
+      if (expTimerRef.current) {
+        window.clearTimeout(expTimerRef.current);
+        expTimerRef.current = null;
+      }
+    };
+  }, [user?.access_token]);
 
   function login(data: LoginData) {
     const role = normalizeRole(data.roles ?? data.role ?? "");
@@ -73,6 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutServerSession();
     localStorage.clear();
     setUser(null);
+    if (typeof window !== 'undefined') {
+      const path = window.location?.pathname || '';
+      if (!path.startsWith('/login')) window.location.href = '/login';
+    }
   }
 
   return (
