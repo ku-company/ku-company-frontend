@@ -62,6 +62,14 @@ export default function PublicProfilePage() {
             <div className="text-gray-700">Telephone: {profile.tel || "-"}</div>
             <div className="text-gray-700">Location: {profile.location || "-"}</div>
             <div className="text-gray-700">Country: {profile.country || "-"}</div>
+            <div className="pt-3">
+              <Link
+                href={`/find-job?keyword=${encodeURIComponent(profile.company_name || profile.user?.company_name || "")}`}
+                className="inline-flex items-center rounded-full border px-4 py-1 text-sm text-emerald-700 hover:bg-gray-50"
+              >
+                View this company's jobs
+              </Link>
+            </div>
           </div>
         )}
 
@@ -89,4 +97,3 @@ export default function PublicProfilePage() {
     </main>
   );
 }
-

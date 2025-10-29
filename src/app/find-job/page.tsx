@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import ApplyModal from "@/components/ApplyModal";
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
@@ -23,6 +23,7 @@ type Job = {
   company_id?: number;
   company_name: string | null;
   company_location: string | null;
+  location?: string | null;
   company_profile_image?: string | null;
   work_place?: string | null;
   minimum_expected_salary?: number | null;
@@ -50,6 +51,7 @@ export default function FindJobPage() {
   const [jobType, setJobType] = useState<string>("All");
   const [categories, setCategories] = useState<any[]>(["All"]);
   const [jobTypes, setJobTypes] = useState<any[]>(["All"]);
+  const [sortBy, setSortBy] = useState<string>("Newest");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,6 +59,22 @@ export default function FindJobPage() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+
+  // Re-sort when sort option changes without re-fetching
+  useEffect(() => {
+    if (!jobs || jobs.length === 0) return;
+    const sortKey = (sortBy || "Newest").toLowerCase();
+    const sorted = [...jobs].sort((a, b) => {
+      if (sortKey.includes("newest")) {
+        return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
+      }
+      if (sortKey.includes("oldest")) {
+        return new Date(a.created_at as any).getTime() - new Date(b.created_at as any).getTime();
+      }
+      return 0;
+    });
+    setJobs(sorted);
+  }, [sortBy]);
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {
@@ -133,12 +151,23 @@ export default function FindJobPage() {
       }
 
       const data = await res.json();
-      const jobList = (data.job_postings || data.data || data) as Job[];
+      let jobList = (data.job_postings || data.data || data) as Job[];
       const now = Date.now();
-      const filtered = (jobList || []).filter((j) => {
+      let filtered = (jobList || []).filter((j) => {
         if (!j?.expired_at) return true;
         const exp = new Date(j.expired_at as any).getTime();
         return isFinite(exp) ? exp >= now : true;
+      });
+      // Client-side sorting (backend defaults to updated_at desc)
+      const sortKey = (sortBy || "Newest").toLowerCase();
+      filtered = [...filtered].sort((a, b) => {
+        if (sortKey.includes("newest")) {
+          return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
+        }
+        if (sortKey.includes("oldest")) {
+          return new Date(a.created_at as any).getTime() - new Date(b.created_at as any).getTime();
+        }
+        return 0;
       });
       setJobs(filtered);
       if (filtered.length > 0) setSelectedId(filtered[0].id);
@@ -306,6 +335,15 @@ export default function FindJobPage() {
           </select>
 
           <div className="ml-auto flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-10 rounded-full border px-3 text-sm"
+              aria-label="Sort"
+            >
+              <option>Newest</option>
+              <option>Oldest</option>
+            </select>
             <button
               className="rounded-full px-4 py-2 text-sm text-white"
               style={{ backgroundColor: GREEN }}
@@ -370,14 +408,14 @@ export default function FindJobPage() {
                     <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
                     <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
-                        <Link className="hover:underline" href={`/profile/${job.company_user_id}`}>
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
                           {job.company_name}
                         </Link>
                       ) : (
                         job.company_name
                       )}
                     </div>
-                    <div className="text-xs text-gray-500 break-words">{job.company_location}</div>
+                    <div className="text-xs text-gray-500 break-words">{job.location ?? job.company_location}</div>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 line-clamp-3 break-words">
                     {job.description}
@@ -404,11 +442,22 @@ export default function FindJobPage() {
             <>
               
               <div className="pr-20 space-y-2">
-                <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                  {selected?.id && (
+                    <Link
+                      href={`/job/${selected.id}`}
+                      className="inline-flex items-center justify-center rounded-full border p-1 text-gray-600 hover:bg-gray-50"
+                      title="Open job details"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                    </Link>
+                  )}
+                </div>
                 <div className="text-base text-gray-600 break-words flex items-center gap-1">
                   <BuildingOfficeIcon className="h-4 w-4" />
                   {selected.company_user_id ? (
-                    <Link className="hover:underline" href={`/profile/${selected.company_user_id}`}>
+                    <Link className="hover:underline cursor-pointer" href={`/profile/${selected.company_user_id}`} target="_blank" rel="noopener noreferrer">
                       {selected.company_name}
                     </Link>
                   ) : (
@@ -417,7 +466,7 @@ export default function FindJobPage() {
                 </div>
                 <div className="text-sm text-gray-500 break-words flex items-center gap-1">
                   <MapPinIcon className="h-4 w-4" />
-                  {selected.company_location}
+                  {selected.location ?? selected.company_location}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-700">
