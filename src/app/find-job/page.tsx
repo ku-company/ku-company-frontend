@@ -23,6 +23,7 @@ type Job = {
   company_id?: number;
   company_name: string | null;
   company_location: string | null;
+  company_profile_image?: string | null;
   work_place?: string | null;
   minimum_expected_salary?: number | null;
   maximum_expected_salary?: number | null;
@@ -351,8 +352,19 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  <div className="absolute right-4 -top-3 h-12 w-12 overflow-hidden rounded-full bg-emerald-50 grid place-items-center text-emerald-700 border">
-                    <span className="text-xs font-semibold">{(job.company_name || "?").slice(0,1).toUpperCase()}</span>
+                  <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
+                    {job.company_profile_image ? (
+                      // Company profile image from backend
+                      <img
+                        src={job.company_profile_image}
+                        alt={(job.company_name || 'Company') + ' logo'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-emerald-50 text-emerald-700">
+                        <span className="text-sm font-semibold">{(job.company_name || "?").slice(0,1).toUpperCase()}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 pr-14">
                     <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
