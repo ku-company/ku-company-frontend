@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import { MapPinIcon, PhoneIcon, GlobeAltIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { getAuthMe } from "@/api/user";
+import { refreshAccessToken } from "@/api/token";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -52,6 +53,16 @@ export default function CompanyProfile() {
   const [editSection, setEditSection] = useState<"basics" | "description" | null>(null);
   const [verified, setVerified] = useState<boolean | null>(null);
 
+  async function refreshVerifiedFlag() {
+    try {
+      await refreshAccessToken();
+      const me = await getAuthMe();
+      setVerified(!!me?.verified);
+    } catch {
+      setVerified(null);
+    }
+  }
+
   useEffect(() => {
     // Wait until auth is hydrated to avoid hydration/CORS/cookie races
     if (!isReady) return;
@@ -74,10 +85,10 @@ export default function CompanyProfile() {
           setCompany(data);
           setError(null);
         }
-        // Fetch verification flag from auth/me
+        // Fetch verification flag from auth/me (after token refresh in mount hook below too)
         try {
           const me = await getAuthMe();
-          if (!cancelled) setVerified(!!me?.verify);
+          if (!cancelled) setVerified(!!me?.verified);
         } catch {
           if (!cancelled) setVerified(null);
         }
@@ -96,6 +107,14 @@ export default function CompanyProfile() {
       controller.abort();
     };
   }, [isReady, user]);
+
+  // Refresh token + verified flag on mount and whenever the tab regains focus
+  useEffect(() => {
+    refreshVerifiedFlag();
+    const onFocus = () => refreshVerifiedFlag();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   if (!isReady) {
     // Auth is still hydrating — keep things calm to avoid flashes

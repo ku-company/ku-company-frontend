@@ -7,8 +7,6 @@ import { registerUser } from "@/api/register";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
-import { loginUser } from "@/api/login";
-import { useAuth } from "@/context/AuthContext";
 import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
 
 export default function RegisterPage() {
@@ -51,12 +49,6 @@ export default function RegisterPage() {
 
       // Show onboarding to collect faculty/department and create profile
       setShowOnboarding(true);
-      // Auto login immediately after successful registration
-      const res = await loginUser({
-        user_name: form.user_name,
-        password: form.password,
-      });
-      login(res.data);
 
       // Redirect to home
       router.push("/");
