@@ -168,12 +168,13 @@ export default function EditStudentProfileModal({
     setError(null);
 
     // Backend expects strings. Convert rich data to JSON strings.
-    const skillsString = skillList.length ? JSON.stringify(skillList) : undefined;
-    const languagesString = languageList.length ? JSON.stringify(languageList) : undefined;
-    const experienceString = workItems.length ? JSON.stringify(workItems) : undefined;
+    // Important: when lists are emptied, send empty strings to clear on backend
+    const skillsString = skillList.length ? JSON.stringify(skillList) : "";
+    const languagesString = languageList.length ? JSON.stringify(languageList) : "";
+    const experienceString = workItems.length ? JSON.stringify(workItems) : "";
 
     // Backend expects strings for these fields
-    const educationString = educationList.length ? JSON.stringify(educationList) : undefined;
+    const educationString = educationList.length ? JSON.stringify(educationList) : "";
 
     let payload: StudentProfileEditPayload = {};
     switch (section) {
