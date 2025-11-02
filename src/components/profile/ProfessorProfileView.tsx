@@ -6,7 +6,9 @@ import { listProfessorDegrees, type ProfessorDegree } from "@/api/professordegre
 import EditProfessorProfileModal from "@/components/EditProfessorProfileModal";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { getEmployeeProfileImage } from "@/api/profileimage";
 import ReactMarkdown from "react-markdown";
+import { getAuthMe } from "@/api/user";
 import { useAuth } from "@/context/AuthContext";
 import { BuildingOfficeIcon, BuildingLibraryIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 
@@ -102,6 +104,46 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
       controller.abort();
     };
   }, [isReady, user]);
+
+  // Ensure profile image visible if API doesn't embed URL yet
+  useEffect(() => {
+    (async () => {
+      if (!profile || readOnly) return;
+      const has = !!(profile.profile_image_url && String(profile.profile_image_url).trim());
+      if (has) return;
+      try {
+        let u = await getEmployeeProfileImage();
+        if (!u) {
+          try {
+            const me = await getAuthMe();
+            u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (u) setProfile({ ...profile, profile_image_url: u });
+      } catch {}
+    })();
+  }, [profile?.profile_image_url, readOnly]);
+
+  // Always refresh avatar URL from image endpoint after auth hydration
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (readOnly || !isReady) return;
+      try {
+        let u = await getEmployeeProfileImage();
+        if (!u) {
+          try {
+            const me = await getAuthMe();
+            u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (!cancelled && u) {
+          setProfile((prev) => (prev ? (prev.profile_image_url === u ? prev : { ...prev, profile_image_url: u }) : prev));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isReady, readOnly]);
 
   if (!profileData && !isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
   if (loading) return <div className="p-8 text-gray-600">Loading professor profile…</div>;

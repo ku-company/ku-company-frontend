@@ -6,6 +6,7 @@ import { buildInit, API_BASE } from "@/api/base";
 import StudentProfileView from "@/components/profile/StudentProfileView";
 import CompanyProfileView from "@/components/profile/CompanyProfileView";
 import ProfessorProfileView from "@/components/profile/ProfessorProfileView";
+import CompanyComments from "@/components/CompanyComments";
 
 type AnyProfile = any;
 
@@ -58,7 +59,16 @@ export default function PublicProfilePage() {
       location: profile.location || profile.company_location || "",
       country: profile.country || "",
     } as any;
-    return <CompanyProfileView readOnly profileData={companyData} />;
+    const companyProfileId = Number(profile?.id || 0) || undefined;
+    const companyUserId = Number(id);
+    return (
+      <>
+        <CompanyProfileView readOnly profileData={companyData} />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+          <CompanyComments companyUserId={companyUserId} companyProfileId={companyProfileId} />
+        </div>
+      </>
+    );
   }
 
   if (role.includes("professor")) {

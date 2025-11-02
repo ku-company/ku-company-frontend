@@ -12,7 +12,9 @@ import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { getEmployeeProfileImage } from "@/api/profileimage";
 import { getMainResume, listResumes, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { getAuthMe } from "@/api/user";
 import { useAuth } from "@/context/AuthContext";
 import { UserIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, DocumentTextIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
@@ -131,6 +133,46 @@ export default function StudentProfileView({ readOnly = false, profileData }: St
       }
     })();
   }, [profileData]);
+
+  // Ensure avatar appears even if backend doesn't embed it in my-profile yet
+  useEffect(() => {
+    (async () => {
+      if (!profile || readOnly) return;
+      const hasAvatar = !!(profile.avatar_url && String(profile.avatar_url).trim());
+      if (hasAvatar) return;
+      try {
+        let url = await getEmployeeProfileImage();
+        if (!url) {
+          try {
+            const me = await getAuthMe();
+            url = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (url) setProfile({ ...profile, avatar_url: url });
+      } catch {}
+    })();
+  }, [profile?.avatar_url, readOnly]);
+
+  // Always refresh avatar URL from the image endpoint after auth hydration
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (readOnly || !isReady) return;
+      try {
+        let url = await getEmployeeProfileImage();
+        if (!url) {
+          try {
+            const me = await getAuthMe();
+            url = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (!cancelled && url) {
+          setProfile((prev) => (prev ? (prev.avatar_url === url ? prev : { ...prev, avatar_url: url }) : prev));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isReady, readOnly]);
 
   // Load main resume after auth is ready and when the modal closes (skip in read-only mode)
   useEffect(() => {
@@ -338,6 +380,7 @@ export default function StudentProfileView({ readOnly = false, profileData }: St
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
                   kind="employee"
+                  initialUrl={profile.avatar_url || null}
                   disabled={!canEdit}
                   onUpdated={(u) => setProfile({ ...profile, avatar_url: u })}
                 />
