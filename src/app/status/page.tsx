@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE, buildInit } from "@/api/base";
 
@@ -9,6 +10,7 @@ type UIStatus = "Approved" | "Confirmed" | "Declined" | "Pending";
 type Application = {
   id: number;
   company_name: string;
+  company_user_id?: number;
   position: string;
   applied_date: string;
   status: UIStatus;     // สถานะที่แสดงในตาราง
@@ -49,7 +51,19 @@ export default function AppliedCompanyStatusPage() {
           buildInit({ method: "GET", credentials: "include" })
         );
         if (!res.ok) {
-          console.error("❌ Request failed:", res.status, await res.text());
+          const raw = await res.text().catch(() => "");
+          let message = "";
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.message || "";
+          } catch {}
+          // Gracefully handle "No applications found" without noisy console errors
+          if (res.status === 400 && /no applications found/i.test(message || raw)) {
+            setApplications([]);
+            setLoading(false);
+            return;
+          }
+          console.warn("Request for my-applications failed:", res.status, message || raw);
           setLoading(false);
           return;
         }
@@ -69,6 +83,8 @@ export default function AppliedCompanyStatusPage() {
             a?.job_post?.company_name ??
             `Company #${a?.job_post?.company_id ?? "-"}`;
 
+          const companyUserId = a?.job_post?.company?.user_id ?? a?.job_post?.company_user_id ?? null;
+
           const appliedAt = a?.applied_at ?? a?.created_at ?? null;
 
           const emp = (a?.employee_send_status ?? "").toString().toLowerCase();
@@ -86,6 +102,7 @@ export default function AppliedCompanyStatusPage() {
           return {
             id: Number(a?.id ?? 0),
             company_name: companyName,
+            company_user_id: companyUserId || undefined,
             position,
             applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "—",
             status,
@@ -195,7 +212,15 @@ export default function AppliedCompanyStatusPage() {
               <tbody>
                 {applications.map((app) => (
                   <tr key={app.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 font-medium">{app.company_name}</td>
+                    <td className="p-4 font-medium">
+                      {app.company_user_id ? (
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${app.company_user_id}`} target="_blank" rel="noopener noreferrer">
+                          {app.company_name}
+                        </Link>
+                      ) : (
+                        app.company_name
+                      )}
+                    </td>
                     <td className="p-4">{app.position}</td>
                     <td className="p-4">
                       <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">{app.applied_date}</span>

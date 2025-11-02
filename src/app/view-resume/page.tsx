@@ -1,6 +1,7 @@
 ﻿﻿"use client";
 import { useEffect, useState } from "react";
 import { getAllApplications, updateApplicationStatus } from "@/api/companyapplications";
+import Link from "next/link";
 
 type Application = {
   id: number;
@@ -10,6 +11,7 @@ type Application = {
   appliedDate: string;
   resumeLink: string;
   status: "Approved" | "Rejected" | "Pending";
+  applicant_user_id?: number;
 };
 
 export default function ResumeInApplicationPage() {
@@ -74,7 +76,15 @@ export default function ResumeInApplicationPage() {
               <tbody>
                 {filteredApplications.map((app) => (
                   <tr key={app.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 font-medium">{app.name}</td>
+                    <td className="p-4 font-medium">
+                      {app.applicant_user_id ? (
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${app.applicant_user_id}`} target="_blank" rel="noopener noreferrer">
+                          {app.name}
+                        </Link>
+                      ) : (
+                        app.name
+                      )}
+                    </td>
                     <td className="p-4">{app.email}</td>
                     <td className="p-4">{app.position}</td>
                     <td className="p-4"><span className="rounded-md bg-gray-100 px-3 py-1 text-sm">{app.appliedDate}</span></td>

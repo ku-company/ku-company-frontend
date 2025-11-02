@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { buildInit, API_BASE } from "@/api/base";
+import StudentProfileView from "@/components/profile/StudentProfileView";
+import CompanyProfileView from "@/components/profile/CompanyProfileView";
+import ProfessorProfileView from "@/components/profile/ProfessorProfileView";
 
 type AnyProfile = any;
 
@@ -22,9 +24,11 @@ export default function PublicProfilePage() {
       try {
         setLoading(true);
         const res = await fetch(`${API_BASE}/api/user/profile/${id}`, buildInit({ method: "GET", credentials: "include" }));
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
-        if (alive) setProfile(json?.data ?? json);
+        const json = await res.text();
+        let data: any = {};
+        try { data = JSON.parse(json); } catch {}
+        if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+        if (alive) setProfile(data?.data ?? data);
         if (alive) setError(null);
       } catch (e: any) {
         if (alive) setError(e?.message || "Failed to load profile");
@@ -42,58 +46,57 @@ export default function PublicProfilePage() {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
   if (!profile) return <div className="p-6 text-gray-600">Profile not found.</div>;
 
-  const role = (profile?.user?.role || "").toString();
+  const role = (profile?.user?.role || "").toString().toLowerCase();
 
-  return (
-    <main className="mx-auto max-w-3xl p-6">
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Public Profile</h1>
-          <Link href="/profile" className="text-sm text-emerald-700 hover:underline">My Profile</Link>
-        </div>
+  // Map generic payloads to specific component shapes
+  if (role.includes("company")) {
+    const companyData = {
+      company_name: profile.company_name || profile.user?.company_name || "",
+      description: profile.description || "",
+      industry: profile.industry || "",
+      tel: profile.tel || "",
+      location: profile.location || profile.company_location || "",
+      country: profile.country || "",
+    } as any;
+    return <CompanyProfileView readOnly profileData={companyData} />;
+  }
 
-        <div className="mt-4 text-sm text-gray-600">Role: <span className="font-medium">{role}</span></div>
+  if (role.includes("professor")) {
+    const professorData = {
+      department: profile.department || "",
+      faculty: profile.faculty || "",
+      position: profile.position || null,
+      contactInfo: profile.contactInfo || null,
+      summary: profile.summary || null,
+      profile_image_url: profile.user?.profile_image || null,
+      user: {
+        first_name: profile.user?.first_name || "",
+        last_name: profile.user?.last_name || "",
+        email: profile.user?.email || "",
+        verified: !!profile.user?.verified,
+      },
+    } as any;
+    return <ProfessorProfileView readOnly profileData={professorData} />;
+  }
 
-        {role === "Company" && (
-          <div className="mt-4 space-y-1 text-sm">
-            <div className="text-lg font-semibold">{profile.company_name || profile.user?.company_name || "Company"}</div>
-            <div className="text-gray-700 whitespace-pre-wrap">{profile.description || "-"}</div>
-            <div className="text-gray-700">Industry: {profile.industry || "-"}</div>
-            <div className="text-gray-700">Telephone: {profile.tel || "-"}</div>
-            <div className="text-gray-700">Location: {profile.location || "-"}</div>
-            <div className="text-gray-700">Country: {profile.country || "-"}</div>
-            <div className="pt-3">
-              <Link
-                href={`/find-job?keyword=${encodeURIComponent(profile.company_name || profile.user?.company_name || "")}`}
-                className="inline-flex items-center rounded-full border px-4 py-1 text-sm text-emerald-700 hover:bg-gray-50"
-              >
-                View this company's jobs
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {(role === "Student" || role === "Alumni") && (
-          <div className="mt-4 space-y-1 text-sm">
-            <div className="text-lg font-semibold">{`${profile.user?.first_name || ""} ${profile.user?.last_name || ""}`.trim() || "Student"}</div>
-            <div className="text-gray-700">Summary: {profile.summary || "-"}</div>
-            <div className="text-gray-700">Skills: {profile.skills || "-"}</div>
-            <div className="text-gray-700">Languages: {profile.languages || "-"}</div>
-            <div className="text-gray-700">Education: {profile.education || "-"}</div>
-          </div>
-        )}
-
-        {role === "Professor" && (
-          <div className="mt-4 space-y-1 text-sm">
-            <div className="text-lg font-semibold">{`${profile.user?.first_name || ""} ${profile.user?.last_name || ""}`.trim() || "Professor"}</div>
-            <div className="text-gray-700">Department: {profile.department || "-"}</div>
-            <div className="text-gray-700">Faculty: {profile.faculty || "-"}</div>
-            <div className="text-gray-700">Contact: {profile.contactInfo || "-"}</div>
-          </div>
-        )}
-
-        <div className="mt-6 text-xs text-gray-500">Read-only view</div>
-      </div>
-    </main>
-  );
+  // default to student/alumni
+  const studentData = {
+    id: profile?.id || profile?.user?.id,
+    user_name: profile?.user?.user_name || "",
+    email: profile?.user?.email || "",
+    verified: !!profile?.user?.verified,
+    first_name: profile?.user?.first_name || "",
+    last_name: profile?.user?.last_name || "",
+    full_name: [profile?.user?.first_name || "", profile?.user?.last_name || ""].filter(Boolean).join(" ").trim(),
+    avatar_url: profile?.user?.profile_image || "",
+    bio: profile?.summary || profile?.bio || null,
+    birthday: profile?.birthDate || profile?.birthday || null,
+    education: profile?.education ?? null,
+    skills: profile?.skills ?? null,
+    licenses: profile?.licenses ?? null,
+    languages: profile?.languages ?? null,
+    experience: profile?.experience ?? null,
+    contactInfo: profile?.contactInfo ?? null,
+  } as any;
+  return <StudentProfileView readOnly profileData={studentData} />;
 }
