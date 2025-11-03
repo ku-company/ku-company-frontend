@@ -157,6 +157,21 @@ export default function CompanyComments({ companyUserId, companyProfileId }: Pro
   return (
     <section className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold">Comments</h2>
+      {canComment && (
+        <div className="mt-3 mb-4">
+          <label className="block text-sm text-gray-700 mb-1">Add a comment</label>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Share your thoughts about this company…"
+          />
+          <div className="mt-2 flex justify-end">
+            <button onClick={handlePost} className="rounded-full bg-emerald-700 text-white text-sm px-4 py-1.5 disabled:opacity-50" disabled={!text.trim() || loading}>Post</button>
+          </div>
+        </div>
+      )}
       {loading ? (
         <div className="mt-2 text-sm text-gray-600">Loading comments…</div>
       ) : (
@@ -224,27 +239,7 @@ export default function CompanyComments({ companyUserId, companyProfileId }: Pro
         </div>
       )}
 
-      {canComment && (
-        <div className="mt-4">
-          <label className="block text-sm text-gray-700 mb-1">Add a comment</label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={3}
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Share your thoughts about this company…"
-          />
-          <div className="mt-2 flex justify-end">
-            <button
-              onClick={handlePost}
-              className="rounded-full bg-emerald-700 text-white text-sm px-4 py-1.5 disabled:opacity-50"
-              disabled={!text.trim() || loading}
-            >
-              Post
-            </button>
-          </div>
-        </div>
-      )}
+      
 
       {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
     </section>
