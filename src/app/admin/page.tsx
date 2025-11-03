@@ -19,15 +19,23 @@ type Row = {
 };
 
 function mapUser(u: AdminUser): Row {
-  const statusRaw = (u.status || "Pending").toString();
-  const status: Status = statusRaw.toLowerCase() as Status;
-  const roleRaw = (u.role || "Student").toString();
-  const created = u.created_at ? new Date(u.created_at) : null;
+  const raw: any = u as any;
+  const idCandidate = raw.id ?? raw.user_id ?? raw.uid ?? raw.userId ?? null;
+  const id = typeof idCandidate === 'string' ? Number(idCandidate) : (typeof idCandidate === 'number' ? idCandidate : undefined);
+  const statusRaw = (u.status || raw.verified_status || "Pending").toString();
+  const statusLc = statusRaw.toLowerCase();
+  const status: Status = (statusLc.includes('approved') ? 'approved' : statusLc.includes('rejected') ? 'rejected' : 'pending') as Status;
+  const roleRaw = (u.role || raw.roles || "Student").toString();
+  const roleCap = (roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1)) as any;
+  const createdAt = (u.created_at || raw.createdAt || raw.created_at || "") as string;
+  const created = createdAt ? new Date(createdAt) : null;
+  const userName = (u.user_name || raw.username || raw.user || "") as string;
+  const email = (u.email || raw.mail || "") as string;
   return {
-    id: (u as any).id, // backend may not include id; handle undefined
-    username: u.user_name || "",
-    role: (roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1)) as any,
-    email: u.email || "",
+    id,
+    username: userName,
+    role: roleCap,
+    email,
     dateRegistered: created ? created.toLocaleDateString() : "",
     status,
   };
@@ -40,12 +48,16 @@ const GREEN = "#5b8f5b";
 function StatusDropdown({
   value,
   onChange,
+  disabled,
+  title,
 }: {
   value: Status;
   onChange: (v: Status) => void;
+  disabled?: boolean;
+  title?: string;
 }) {
   const base =
-    "rounded-md border px-2 py-1 text-xs font-medium focus:outline-none focus:ring";
+    "rounded-md border px-2 py-1 text-xs font-medium focus:outline-none focus:ring disabled:opacity-50";
   const colorClass =
     value === "approved"
       ? "bg-green-100 text-green-800 border-green-300"
@@ -58,6 +70,8 @@ function StatusDropdown({
       value={value}
       onChange={(e) => onChange(e.target.value as Status)}
       className={`${base} ${colorClass}`}
+      disabled={disabled}
+      title={title}
     >
       <option value="approved">Approved</option>
       <option value="rejected">Rejected</option>
@@ -131,12 +145,30 @@ export default function AdminDashboard() {
   // handlers
   const resetPage = () => setPage(1);
   const handleChangeStatus = async (id: number | undefined, status: Status) => {
-    if (typeof id !== 'number') return; // do not alter UI if we cannot persist
+    if (typeof id !== 'number') {
+      setErr("Cannot update status: backend list endpoint did not include user ID for this row.");
+      return;
+    }
+    setErr(null);
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
     try {
       if (status === 'approved') await adminVerifyUser(id);
       else if (status === 'rejected') await adminRejectUser(id);
       // 'pending' has no dedicated endpoint; leaving as-is
+      // Refresh current tab to reflect backend truth and move rows across tabs
+      if (tab === 'all') {
+        const list = await adminListAllUsers();
+        setRows(list.map(mapUser));
+      } else if (tab === 'approved') {
+        const list = await adminFilterUsersByStatus('Approved');
+        setRows(list.map(mapUser));
+      } else if (tab === 'rejected') {
+        const list = await adminFilterUsersByStatus('Rejected');
+        setRows(list.map(mapUser));
+      } else if (tab === 'pending') {
+        const list = await adminFilterUsersByStatus('Pending');
+        setRows(list.map(mapUser));
+      }
     } catch (e) {
       // on error, we could reload to sync
     }
@@ -271,9 +303,6 @@ export default function AdminDashboard() {
                       value={r.status}
                       onChange={(s) => handleChangeStatus(r.id, s)}
                     />
-                    {typeof r.id !== 'number' && (
-                      <span className="text-[11px] text-gray-400">(id unavailable)</span>
-                    )}
                   </div>
                 </td>
               </tr>
