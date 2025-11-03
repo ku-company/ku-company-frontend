@@ -7,6 +7,7 @@ import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_
 import { getMyStudentProfile } from "@/api/studentprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import { getAuthMe } from "@/api/user";
+import { getMyProfessorProfile } from "@/api/professorprofile";
 import RoleSelector from "@/components/roleselector";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
@@ -90,9 +91,14 @@ export default function Navbar() {
         const role = (user.role || "").toLowerCase();
         let raw: string | null = null;
         try {
-          raw = role.includes("company")
-            ? await getCompanyProfileImage()
-            : await getEmployeeProfileImage();
+          if (role.includes("company")) {
+            raw = await getCompanyProfileImage();
+          } else if (role.includes("professor")) {
+            const prof = await getMyProfessorProfile().catch(() => null as any);
+            raw = (prof as any)?.profile_image_url || null;
+          } else {
+            raw = await getEmployeeProfileImage();
+          }
         } catch {}
         // Fallbacks when no uploaded image yet: use OAuth/user profile image if present
         if (!raw) {
@@ -121,6 +127,15 @@ export default function Navbar() {
         if (role.includes("company")) {
           const company = await getCompanyProfile(controller.signal);
           if (!cancelled && company?.company_name) setDisplayName(company.company_name);
+        } else if (role.includes("professor")) {
+          const prof = await getMyProfessorProfile(controller.signal).catch(() => null as any);
+          const name = prof && prof.user ? `${prof.user.first_name || ""} ${prof.user.last_name || ""}`.trim() : "";
+          if (!cancelled && name) setDisplayName(name);
+          if (!cancelled && !avatarRef.current && (prof as any)?.profile_image_url) {
+            const u = safeUrl((prof as any).profile_image_url);
+            avatarRef.current = u;
+            setAvatarUrl(u);
+          }
         } else {
           const student = await getMyStudentProfile();
           const name = student.full_name || student.user_name || "";
