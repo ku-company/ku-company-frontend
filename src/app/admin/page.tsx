@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, type AdminUser } from "@/api/admin";
+import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
 import { useAuth } from "@/context/AuthContext";
 
 // ---- Types ----
@@ -284,6 +284,7 @@ export default function AdminDashboard() {
               <th className="w-[26rem]">Email</th>
               <th className="w-40">Date Registered</th>
               <th className="w-48">Status</th>
+              <th className="w-32">Actions</th>
             </tr>
           </thead>
           <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
@@ -304,6 +305,30 @@ export default function AdminDashboard() {
                       onChange={(s) => handleChangeStatus(r.id, s)}
                     />
                   </div>
+                </td>
+                <td>
+                  <button
+                    className="rounded-md border px-3 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    disabled={typeof r.id !== 'number'}
+                    title={typeof r.id !== 'number' ? 'Cannot delete: user id missing in backend list response' : undefined}
+                    onClick={async () => {
+                      if (typeof r.id !== 'number') { setErr('Cannot delete: backend list did not include user ID.'); return; }
+                      const ok = typeof window !== 'undefined' ? window.confirm(`Delete user ${r.username || r.email}?`) : true;
+                      if (!ok) return;
+                      try {
+                        await adminDeleteUser(r.id);
+                        // Refresh current tab after deletion
+                        if (tab === 'all') setRows((await adminListAllUsers()).map(mapUser));
+                        else if (tab === 'approved') setRows((await adminFilterUsersByStatus('Approved')).map(mapUser));
+                        else if (tab === 'rejected') setRows((await adminFilterUsersByStatus('Rejected')).map(mapUser));
+                        else if (tab === 'pending') setRows((await adminFilterUsersByStatus('Pending')).map(mapUser));
+                      } catch (e: any) {
+                        setErr(e?.message || 'Failed to delete user');
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

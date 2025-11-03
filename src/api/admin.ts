@@ -52,3 +52,11 @@ export async function adminRejectUser(id: number) {
   return json?.data ?? json;
 }
 
+export async function adminDeleteUser(id: number) {
+  await ensureAccessToken();
+  const res = await fetch(`${API_BASE}/api/admin/delete-user/${id}`, buildInit({ method: "DELETE" }));
+  const { json, text } = await parseJson(res);
+  if (!res.ok) throw new Error(json?.message || text || `HTTP ${res.status}`);
+  return json?.data ?? json;
+}
+
