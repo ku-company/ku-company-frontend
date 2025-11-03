@@ -1,32 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, type AdminUser } from "@/api/admin";
+import { useAuth } from "@/context/AuthContext";
 
 // ---- Types ----
 type Status = "approved" | "rejected" | "pending";
 type Role = "Student" | "Company" | "Professor";
 
 type Row = {
-  id: string;
+  id?: number;
   username: string;
-  role: Role;
+  role: Role | "Admin";
   email: string;
   dateRegistered: string; // display string
   status: Status;
 };
 
-// ---- Mock data (replace with API later) ----
-const INITIAL_ROWS: Row[] = [
-  { id: "1", username: "JohnSmith", role: "Student", email: "johndoe@ku.th", dateRegistered: "24 Aug 2025", status: "approved" },
-  { id: "2", username: "Jenny127", role: "Student", email: "jennita@gmail.com", dateRegistered: "29 Aug 2025", status: "rejected" },
-  { id: "3", username: "Samantha", role: "Student", email: "samantaa@ku.th", dateRegistered: "29 Aug 2025", status: "approved" },
-  { id: "4", username: "Jennifer", role: "Student", email: "jenista@ku.th", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "5", username: "Alexis1234", role: "Student", email: "alexiswang@ku.th", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "6", username: "SophiaW", role: "Company", email: "sophia.work@gmail.com", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "7", username: "Daniel99", role: "Professor", email: "daniel_lee99@ku.th", dateRegistered: "31 Aug 2025", status: "pending" },
-  { id: "8", username: "Mint", role: "Student", email: "mint@ku.th", dateRegistered: "31 Aug 2025", status: "approved" },
-  { id: "9", username: "Beam", role: "Company", email: "beam@company.com", dateRegistered: "31 Aug 2025", status: "rejected" },
-];
+function mapUser(u: AdminUser): Row {
+  const statusRaw = (u.status || "Pending").toString();
+  const status: Status = statusRaw.toLowerCase() as Status;
+  const roleRaw = (u.role || "Student").toString();
+  const created = u.created_at ? new Date(u.created_at) : null;
+  return {
+    id: (u as any).id, // backend may not include id; handle undefined
+    username: u.user_name || "",
+    role: (roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1)) as any,
+    email: u.email || "",
+    dateRegistered: created ? created.toLocaleDateString() : "",
+    status,
+  };
+}
 
 // ---- Brand color ----
 const GREEN = "#5b8f5b";
@@ -64,8 +69,12 @@ function StatusDropdown({
 type Tab = "all" | "approved" | "rejected" | "pending";
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const { user, isReady } = useAuth();
   // main data state (so dropdown updates persist)
-  const [rows, setRows] = useState<Row[]>(INITIAL_ROWS);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("all");
   const [role, setRole] = useState<"All" | Role>("All");
@@ -99,12 +108,67 @@ export default function AdminDashboard() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  // bootstrap: auth guard and initial load
+  useEffect(() => {
+    (async () => {
+      if (!isReady) return;
+      if (!user || (user.role || "").toLowerCase() !== "admin") {
+        router.replace("/admin/login");
+        return;
+      }
+      try {
+        setLoading(true);
+        const list = await adminListAllUsers();
+        setRows(list.map(mapUser));
+      } catch (e: any) {
+        setErr(e?.message || "Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isReady, user, router]);
+
   // handlers
   const resetPage = () => setPage(1);
-  const handleChangeStatus = (id: string, status: Status) => {
+  const handleChangeStatus = async (id: number | undefined, status: Status) => {
+    if (typeof id !== 'number') return; // do not alter UI if we cannot persist
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    // TODO: call API 
+    try {
+      if (status === 'approved') await adminVerifyUser(id);
+      else if (status === 'rejected') await adminRejectUser(id);
+      // 'pending' has no dedicated endpoint; leaving as-is
+    } catch (e) {
+      // on error, we could reload to sync
+    }
   };
+
+  // server-side filter by status when switching tabs
+  useEffect(() => {
+    (async () => {
+      if (!isReady) return;
+      if (!user || (user.role || "").toLowerCase() !== "admin") return;
+      try {
+        if (tab === 'all') {
+          const list = await adminListAllUsers();
+          setRows(list.map(mapUser));
+        } else if (tab === 'approved') {
+          const list = await adminFilterUsersByStatus('Approved');
+          setRows(list.map(mapUser));
+        } else if (tab === 'rejected') {
+          const list = await adminFilterUsersByStatus('Rejected');
+          setRows(list.map(mapUser));
+        } else if (tab === 'pending') {
+          const list = await adminFilterUsersByStatus('Pending');
+          setRows(list.map(mapUser));
+        }
+      } catch (e) {
+        // ignore; keep current view
+      }
+    })();
+  }, [tab, isReady, user]);
+
+  if (loading || !isReady) return <div className="p-6">Loading…</div>;
+  if (err) return <div className="p-6 text-red-600">{err}</div>;
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -192,7 +256,7 @@ export default function AdminDashboard() {
           </thead>
           <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
             {current.map((r) => (
-              <tr key={r.id} className="[&>td]:px-3 [&>td]:py-3">
+              <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
                 <td className="font-medium">{r.username}</td>
                 <td>{r.role}</td>
                 <td className="text-gray-700">{r.email}</td>
@@ -202,10 +266,15 @@ export default function AdminDashboard() {
                   </span>
                 </td>
                 <td>
-                  <StatusDropdown
-                    value={r.status}
-                    onChange={(s) => handleChangeStatus(r.id, s)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <StatusDropdown
+                      value={r.status}
+                      onChange={(s) => handleChangeStatus(r.id, s)}
+                    />
+                    {typeof r.id !== 'number' && (
+                      <span className="text-[11px] text-gray-400">(id unavailable)</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
