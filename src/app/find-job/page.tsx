@@ -57,6 +57,7 @@ export default function FindJobPage() {
   const [loading, setLoading] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]); //  resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
+  const [verifyRequired, setVerifyRequired] = useState(false);
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
 
@@ -146,6 +147,13 @@ export default function FindJobPage() {
 
       if (!res.ok) {
         const text = await res.text();
+        // If backend requires verification, show friendly message instead of list
+        if (/please\s+verify\s+your\s+account/i.test(text)) {
+          setVerifyRequired(true);
+          setJobs([]);
+          setSelectedId(null);
+          return;
+        }
         console.error("Server error detail:", text);
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
@@ -170,6 +178,7 @@ export default function FindJobPage() {
         return 0;
       });
       setJobs(filtered);
+      setVerifyRequired(false);
       if (filtered.length > 0) setSelectedId(filtered[0].id);
     } catch (err) {
       console.error("Failed to fetch jobs", err);
@@ -367,6 +376,9 @@ export default function FindJobPage() {
       </section>
 
       {/* Job list + detail panel */}
+      {verifyRequired ? (
+        <div className="py-24 text-center text-lg text-gray-700">You have to verify to use this</div>
+      ) : (
       <div className="mt-6 grid gap-6 lg:grid-cols-[420px,1fr]">
         <aside className="space-y-3">
           {loading ? (
@@ -520,6 +532,7 @@ export default function FindJobPage() {
           )}
         </section>
       </div>
+      )}
 
       {/* Apply Modal */}
       {canApply && (
