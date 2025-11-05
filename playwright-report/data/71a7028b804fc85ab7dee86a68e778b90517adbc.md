@@ -1,0 +1,42 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "KU-COMPANY" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - textbox "SEARCH" [ref=e6]
+      - navigation [ref=e7]:
+        - link "HOME" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "FIND JOB" [ref=e9] [cursor=pointer]:
+          - /url: /find-job
+        - link "ANNOUNCEMENT" [ref=e10] [cursor=pointer]:
+          - /url: /professor-annoucement
+      - generic [ref=e11]:
+        - link "LOGIN" [ref=e12] [cursor=pointer]:
+          - /url: /login
+        - button "SIGNUP" [ref=e13] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e19] [cursor=pointer]:
+    - img [ref=e20]
+  - alert [ref=e23]
+  - main [ref=e24]:
+    - generic [ref=e26]:
+      - img "Logo" [ref=e29]
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - heading "WELCOME BACK TO" [level=2] [ref=e32]
+          - heading "KU-COMPANY" [level=1] [ref=e33]
+        - generic [ref=e34]:
+          - textbox "Username" [ref=e35]: yes1
+          - textbox "Password" [ref=e36]: yes1
+          - button "Logging in..." [disabled] [ref=e37]
+          - button "Google Logo Continue with Google" [ref=e38] [cursor=pointer]:
+            - img "Google Logo" [ref=e39]
+            - generic [ref=e40]: Continue with Google
+        - generic [ref=e41]:
+          - link "Forgot Password?" [ref=e42] [cursor=pointer]:
+            - /url: "#"
+          - button "Sign Up" [ref=e43] [cursor=pointer]
+```

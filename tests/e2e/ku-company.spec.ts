@@ -58,11 +58,11 @@ test.describe('UN-001 Registration', () => {
     await page.getByPlaceholder('Student ID').fill('660000001');
     await page.getByPlaceholder('Email').fill('student1@example.com');
     await page.getByPlaceholder('Username').fill('student1');
-    await page.getByPlaceholder('Password').fill('P@ssw0rd!');
+    await page.getByPlaceholder('Password', { exact: true }).fill('P@ssw0rd!');
     await page.getByPlaceholder('Confirm password').fill('P@ssw0rd!');
     await page.getByRole('button', { name: 'Sign up' }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/homepage$/);
     // Navbar has STATUS for student
     await expect(page.getByRole('link', { name: 'STATUS' })).toBeVisible();
   });
@@ -89,11 +89,11 @@ test.describe('UN-001 Registration', () => {
     await page.getByPlaceholder('Lastname').fill('Lovelace');
     await page.getByPlaceholder('Email').fill('prof1@example.com');
     await page.getByPlaceholder('Username').fill('prof1');
-    await page.getByPlaceholder('Password').fill('P@ssw0rd!');
+    await page.getByPlaceholder('Password', { exact: true }).fill('P@ssw0rd!');
     await page.getByPlaceholder('Confirm password').fill('P@ssw0rd!');
     await page.getByRole('button', { name: 'Sign up' }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/homepage$/);
 
     await page.goto('/professor-annoucement');
     const textarea = page.getByPlaceholder('Share an announcement…');
@@ -122,11 +122,11 @@ test.describe('UN-001 Registration', () => {
     await page.getByPlaceholder('Company name').fill('ACME');
     await page.getByPlaceholder('Email').fill('hr@acme.example.com');
     await page.getByPlaceholder('Username').fill('acme');
-    await page.getByPlaceholder('Password').fill('P@ssw0rd!');
+    await page.getByPlaceholder('Password', { exact: true }).fill('P@ssw0rd!');
     await page.getByPlaceholder('Confirm password').fill('P@ssw0rd!');
     await page.getByRole('button', { name: 'Sign up' }).click();
 
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/homepage$/);
 
     // Navigate to job postings and create one
     await page.goto('/company/jobpostings');
@@ -167,9 +167,9 @@ test.describe('ST-001 Job Application', () => {
 
     await page.goto('/login');
     await page.getByPlaceholder('Username').fill('student2');
-    await page.getByPlaceholder('Password').fill('P@ssw0rd!');
+    await page.getByPlaceholder('Password', { exact: true }).fill('P@ssw0rd!');
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/homepage$/);
 
     // Job filtering endpoints
     page.route(`${API}/job-postings/category`, r => r.fulfill({ status: 200, body: JSON.stringify({ data: ['All','Software'] }) }));
@@ -189,6 +189,7 @@ test.describe('ST-001 Job Application', () => {
     // Select the listed job in left panel (button with title text)
     await page.getByRole('button', { name: /Frontend Developer/ }).click();
     await page.getByRole('button', { name: 'APPLY' }).click();
+    page.once('dialog', d => d.accept());
     await page.getByRole('button', { name: 'Submit application' }).click();
     // After applying, button should reflect applied state in UI sometimes; minimum: no error, modal closed
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -207,9 +208,9 @@ test.describe('ST-002 Status tracking and accepting offer', () => {
 
     await page.goto('/login');
     await page.getByPlaceholder('Username').fill('student3');
-    await page.getByPlaceholder('Password').fill('pw');
+    await page.getByPlaceholder('Password', { exact: true }).fill('pw');
     await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/homepage$/);
 
     // Applications list
     page.route(`${API}/employee/my-applications`, r => r.fulfill({ status: 200, body: JSON.stringify({ data: [
@@ -229,5 +230,81 @@ test.describe('ST-002 Status tracking and accepting offer', () => {
 test.describe('PF-002 Quote Job Posting', () => {
   test.fixme('Professor can quote a job posting in announcement (UI not present yet)', async ({ page }) => {
     // Marked as fixme: current UI does not surface a quote button from job posting page.
+  });
+});
+
+// LIVE flow against a running backend
+test.describe('LIVE-001 Student can apply (username yes1/yes1)', () => {
+  test('logs in and applies to first listed job', async ({ page }) => {
+    // No route mocking here: requires backend at http://localhost:8000
+    await page.goto('/login');
+    await page.getByPlaceholder('Username').fill('yes1');
+    await page.getByPlaceholder('Password', { exact: true }).fill('yes1');
+    await page.getByRole('button', { name: 'Log in' }).click();
+    await expect(page).toHaveURL(/\/homepage$/);
+
+    // Go to Find Job and select first result
+    await page.goto('/find-job');
+    await page.getByRole('button', { name: 'Search' }).click();
+    const firstCard = page.locator('aside button').first();
+    await firstCard.waitFor();
+    await firstCard.click();
+
+    // Apply with default-selected resume
+    await page.getByRole('button', { name: 'APPLY' }).click();
+    page.once('dialog', d => d.accept()); // accept success alert
+    await page.getByRole('button', { name: 'Submit application' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+});
+
+test.describe('COMP-001 Company updates application status', () => {
+  test('changes Pending to Approved in /view-resume', async ({ page }) => {
+    // Mock login as company
+    page.route(`${API}/user/login`, async r => {
+      await r.fulfill({ status: 200, body: JSON.stringify({
+        message: 'ok',
+        data: {
+          access_token: 'eyJ.company.token',
+          refresh_token: 'ref',
+          user_name: 'company1',
+          roles: 'company',
+          email: 'company1@example.com'
+        }
+      })});
+    });
+    mockAuthImageAndProfiles(page, 'company');
+
+    // Provide applications list and capture status update
+    page.route(`${API}/company/job-applications`, async r => {
+      await r.fulfill({ status: 200, body: JSON.stringify({ data: [
+        { id: 501, name: 'Student A', email: 'a@example.com', position: 'Backend_Developer', applied_at: new Date().toISOString(), resume_url: '#', company_send_status: 'Pending' }
+      ] }) });
+    });
+    let patched: any = null;
+    page.route(`${API}/company/job-applications/501/status`, async r => {
+      if (r.request().method() === 'PATCH') {
+        patched = r.request().postDataJSON?.() ?? {};
+        await r.fulfill({ status: 200, body: JSON.stringify({ ok: true }) });
+      } else {
+        await r.continue();
+      }
+    });
+
+    // Login
+    await page.goto('/login');
+    await page.getByPlaceholder('Username').fill('company1');
+    await page.getByPlaceholder('Password', { exact: true }).fill('irrelevant');
+    await page.getByRole('button', { name: 'Log in' }).click();
+    await expect(page).toHaveURL(/\/homepage$/);
+
+    // Visit company applications view and change status
+    await page.goto('/view-resume');
+    const combobox = page.getByRole('combobox').first();
+    await combobox.waitFor();
+    await combobox.selectOption({ label: 'Approved' });
+
+    // Assert PATCH payload
+    await expect.poll(() => patched?.status).toBe('Approved');
   });
 });
