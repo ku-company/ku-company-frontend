@@ -41,9 +41,9 @@ function InfoRow({
   );
 }
 
-type CompanyProfileViewProps = { readOnly?: boolean; profileData?: CompanyProfile | null };
+type CompanyProfileViewProps = { readOnly?: boolean; profileData?: CompanyProfile | null; verifiedOverride?: boolean | null };
 
-export default function CompanyProfile({ readOnly = false, profileData }: CompanyProfileViewProps) {
+export default function CompanyProfile({ readOnly = false, profileData, verifiedOverride }: CompanyProfileViewProps) {
   const GREEN = "#5D9252";
   const { isReady, user } = useAuth();
 
@@ -53,7 +53,7 @@ export default function CompanyProfile({ readOnly = false, profileData }: Compan
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editSection, setEditSection] = useState<"basics" | "description" | null>(null);
-  const [verified, setVerified] = useState<boolean | null>(null);
+  const [verified, setVerified] = useState<boolean | null>(typeof verifiedOverride !== 'undefined' ? (verifiedOverride as any) : null);
 
   async function refreshVerifiedFlag() {
     try {
@@ -64,6 +64,13 @@ export default function CompanyProfile({ readOnly = false, profileData }: Compan
       setVerified(null);
     }
   }
+
+  // Keep verified state in sync with override from parent (e.g., public view)
+  useEffect(() => {
+    if (typeof verifiedOverride !== 'undefined') {
+      setVerified(verifiedOverride as any);
+    }
+  }, [verifiedOverride]);
 
   useEffect(() => {
     if (profileData) {
@@ -116,13 +123,15 @@ export default function CompanyProfile({ readOnly = false, profileData }: Compan
     };
   }, [isReady, user, profileData]);
 
-  // Refresh token + verified flag on mount and whenever the tab regains focus
+  // Refresh token + verified flag only for own-company view (no override, not readOnly)
   useEffect(() => {
+    if (readOnly) return;
+    if (typeof verifiedOverride !== 'undefined') return; // parent controls flag
     refreshVerifiedFlag();
     const onFocus = () => refreshVerifiedFlag();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, []);
+  }, [readOnly, verifiedOverride]);
 
   if (!profileData && !isReady) {
     // Auth is still hydrating — keep things calm to avoid flashes

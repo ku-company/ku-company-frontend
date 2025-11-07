@@ -24,10 +24,41 @@ export default function PublicProfilePage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/api/user/profile/${id}`, buildInit({ method: "GET", credentials: "include" }));
-        const json = await res.text();
+        const url = `${API_BASE}/api/user/profile/${id}`;
+        const init = buildInit({ method: "GET", credentials: "include" });
+
+        // --- Debug log: outbound request ---
+        try {
+          const headersAny: any = (init as any).headers || {};
+          const sanitizedHeaders: Record<string, any> = { ...headersAny };
+          const authKey = Object.keys(sanitizedHeaders).find(k => k.toLowerCase() === 'authorization');
+          if (authKey) sanitizedHeaders[authKey] = '(redacted)';
+          console.groupCollapsed(`[PublicProfile] GET ${url}`);
+          console.log('request', {
+            method: init.method || 'GET',
+            credentials: (init as any).credentials,
+            headers: sanitizedHeaders,
+          });
+          console.groupEnd();
+        } catch {}
+
+        const res = await fetch(url, init);
+        const text = await res.text();
+        // --- Debug log: inbound response ---
+        try {
+          console.groupCollapsed(`[PublicProfile] Response ${url}`);
+          console.log('response', { status: res.status, ok: res.ok, preview: text.slice(0, 600) });
+          console.groupEnd();
+        } catch {}
+
         let data: any = {};
-        try { data = JSON.parse(json); } catch {}
+        try { data = JSON.parse(text); } catch {}
+        // Log the parsed JSON that backend sent
+        try {
+          console.groupCollapsed(`[PublicProfile] Response JSON ${url}`);
+          console.log('json', data);
+          console.groupEnd();
+        } catch {}
         if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
         if (alive) setProfile(data?.data ?? data);
         if (alive) setError(null);
@@ -61,9 +92,10 @@ export default function PublicProfilePage() {
     } as any;
     const companyProfileId = Number(profile?.id || 0) || undefined;
     const companyUserId = Number(id);
+    const verified = !!(profile?.user?.verified);
     return (
       <>
-        <CompanyProfileView readOnly profileData={companyData} />
+        <CompanyProfileView readOnly profileData={companyData} verifiedOverride={verified} />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <CompanyComments companyUserId={companyUserId} companyProfileId={companyProfileId} />
         </div>
@@ -108,5 +140,5 @@ export default function PublicProfilePage() {
     experience: profile?.experience ?? null,
     contactInfo: profile?.contactInfo ?? null,
   } as any;
-  return <StudentProfileView readOnly profileData={studentData} />;
+  return <StudentProfileView readOnly profileData={studentData} verifiedOverride={!!profile?.user?.verified} />;
 }
