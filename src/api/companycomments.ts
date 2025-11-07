@@ -1,6 +1,14 @@
 import { API_BASE, buildInit } from "./base";
 import { ensureAccessToken } from "./token";
 
+export type CompanyCommentUser = {
+  id?: number;
+  first_name?: string | null;
+  last_name?: string | null;
+  user_name?: string | null;
+  role?: string | null;
+};
+
 export type CompanyComment = {
   id: number;
   company_id: number;
@@ -8,6 +16,7 @@ export type CompanyComment = {
   content: string;
   created_at?: string;
   updated_at?: string;
+  user?: CompanyCommentUser; // backend now provides commenter details
 };
 
 export async function fetchCompanyProfileWithCommentsByUserId(userId: number | string) {
