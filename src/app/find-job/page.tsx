@@ -470,7 +470,7 @@ export default function FindJobPage() {
                       type="button"
                       title="Repost this job"
                       onClick={(e) => openQuote(job, e)}
-                      className="absolute left-2 top-2 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
+                      className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
                     >
                       <MegaphoneIcon className="h-4 w-4" />
                     </button>
@@ -538,17 +538,6 @@ export default function FindJobPage() {
                       <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                     </Link>
                   )}
-                  {isProfessor && isProfVerified && selected?.id && (
-                    <button
-                      type="button"
-                      onClick={(e) => openQuote(selected, e)}
-                      className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-50"
-                      title="Repost this job"
-                    >
-                      <MegaphoneIcon className="h-4 w-4" />
-                      Repost
-                    </button>
-                  )}
                 </div>
                 <div className="text-base text-gray-600 break-words flex items-center gap-1">
                   <BuildingOfficeIcon className="h-4 w-4" />
@@ -583,6 +572,18 @@ export default function FindJobPage() {
                   }
                 </div>
               </div>
+              {isProfessor && isProfVerified && selected?.id && (
+                <button
+                  type="button"
+                  onClick={(e) => openQuote(selected, e)}
+                  className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-50"
+                  title="Repost this job"
+                >
+                  <MegaphoneIcon className="h-4 w-4" />
+                  Repost
+                </button>
+              )}
+
               <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {canApply && (
