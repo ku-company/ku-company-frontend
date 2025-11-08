@@ -1,32 +1,45 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
+import { useAuth } from "@/context/AuthContext";
 
 // ---- Types ----
 type Status = "approved" | "rejected" | "pending";
 type Role = "Student" | "Company" | "Professor";
 
 type Row = {
-  id: string;
+  id?: number;
   username: string;
-  role: Role;
+  role: Role | "Admin";
   email: string;
   dateRegistered: string; // display string
   status: Status;
 };
 
-// ---- Mock data (replace with API later) ----
-const INITIAL_ROWS: Row[] = [
-  { id: "1", username: "JohnSmith", role: "Student", email: "johndoe@ku.th", dateRegistered: "24 Aug 2025", status: "approved" },
-  { id: "2", username: "Jenny127", role: "Student", email: "jennita@gmail.com", dateRegistered: "29 Aug 2025", status: "rejected" },
-  { id: "3", username: "Samantha", role: "Student", email: "samantaa@ku.th", dateRegistered: "29 Aug 2025", status: "approved" },
-  { id: "4", username: "Jennifer", role: "Student", email: "jenista@ku.th", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "5", username: "Alexis1234", role: "Student", email: "alexiswang@ku.th", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "6", username: "SophiaW", role: "Company", email: "sophia.work@gmail.com", dateRegistered: "30 Aug 2025", status: "pending" },
-  { id: "7", username: "Daniel99", role: "Professor", email: "daniel_lee99@ku.th", dateRegistered: "31 Aug 2025", status: "pending" },
-  { id: "8", username: "Mint", role: "Student", email: "mint@ku.th", dateRegistered: "31 Aug 2025", status: "approved" },
-  { id: "9", username: "Beam", role: "Company", email: "beam@company.com", dateRegistered: "31 Aug 2025", status: "rejected" },
-];
+function mapUser(u: AdminUser): Row {
+  const raw: any = u as any;
+  const idCandidate = raw.id ?? raw.user_id ?? raw.uid ?? raw.userId ?? null;
+  const id = typeof idCandidate === 'string' ? Number(idCandidate) : (typeof idCandidate === 'number' ? idCandidate : undefined);
+  const statusRaw = (u.status || raw.verified_status || "Pending").toString();
+  const statusLc = statusRaw.toLowerCase();
+  const status: Status = (statusLc.includes('approved') ? 'approved' : statusLc.includes('rejected') ? 'rejected' : 'pending') as Status;
+  const roleRaw = (u.role || raw.roles || "Student").toString();
+  const roleCap = (roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1)) as any;
+  const createdAt = (u.created_at || raw.createdAt || raw.created_at || "") as string;
+  const created = createdAt ? new Date(createdAt) : null;
+  const userName = (u.user_name || raw.username || raw.user || "") as string;
+  const email = (u.email || raw.mail || "") as string;
+  return {
+    id,
+    username: userName,
+    role: roleCap,
+    email,
+    dateRegistered: created ? created.toLocaleDateString() : "",
+    status,
+  };
+}
 
 // ---- Brand color ----
 const GREEN = "#5b8f5b";
@@ -35,12 +48,16 @@ const GREEN = "#5b8f5b";
 function StatusDropdown({
   value,
   onChange,
+  disabled,
+  title,
 }: {
   value: Status;
   onChange: (v: Status) => void;
+  disabled?: boolean;
+  title?: string;
 }) {
   const base =
-    "rounded-md border px-2 py-1 text-xs font-medium focus:outline-none focus:ring";
+    "rounded-md border px-2 py-1 text-xs font-medium focus:outline-none focus:ring disabled:opacity-50";
   const colorClass =
     value === "approved"
       ? "bg-green-100 text-green-800 border-green-300"
@@ -53,6 +70,8 @@ function StatusDropdown({
       value={value}
       onChange={(e) => onChange(e.target.value as Status)}
       className={`${base} ${colorClass}`}
+      disabled={disabled}
+      title={title}
     >
       <option value="approved">Approved</option>
       <option value="rejected">Rejected</option>
@@ -64,8 +83,12 @@ function StatusDropdown({
 type Tab = "all" | "approved" | "rejected" | "pending";
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const { user, isReady } = useAuth();
   // main data state (so dropdown updates persist)
-  const [rows, setRows] = useState<Row[]>(INITIAL_ROWS);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("all");
   const [role, setRole] = useState<"All" | Role>("All");
@@ -99,12 +122,85 @@ export default function AdminDashboard() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  // bootstrap: auth guard and initial load
+  useEffect(() => {
+    (async () => {
+      if (!isReady) return;
+      if (!user || (user.role || "").toLowerCase() !== "admin") {
+        router.replace("/admin/login");
+        return;
+      }
+      try {
+        setLoading(true);
+        const list = await adminListAllUsers();
+        setRows(list.map(mapUser));
+      } catch (e: any) {
+        setErr(e?.message || "Failed to load users");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isReady, user, router]);
+
   // handlers
   const resetPage = () => setPage(1);
-  const handleChangeStatus = (id: string, status: Status) => {
+  const handleChangeStatus = async (id: number | undefined, status: Status) => {
+    if (typeof id !== 'number') {
+      setErr("Cannot update status: backend list endpoint did not include user ID for this row.");
+      return;
+    }
+    setErr(null);
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    // TODO: call API 
+    try {
+      if (status === 'approved') await adminVerifyUser(id);
+      else if (status === 'rejected') await adminRejectUser(id);
+      // 'pending' has no dedicated endpoint; leaving as-is
+      // Refresh current tab to reflect backend truth and move rows across tabs
+      if (tab === 'all') {
+        const list = await adminListAllUsers();
+        setRows(list.map(mapUser));
+      } else if (tab === 'approved') {
+        const list = await adminFilterUsersByStatus('Approved');
+        setRows(list.map(mapUser));
+      } else if (tab === 'rejected') {
+        const list = await adminFilterUsersByStatus('Rejected');
+        setRows(list.map(mapUser));
+      } else if (tab === 'pending') {
+        const list = await adminFilterUsersByStatus('Pending');
+        setRows(list.map(mapUser));
+      }
+    } catch (e) {
+      // on error, we could reload to sync
+    }
   };
+
+  // server-side filter by status when switching tabs
+  useEffect(() => {
+    (async () => {
+      if (!isReady) return;
+      if (!user || (user.role || "").toLowerCase() !== "admin") return;
+      try {
+        if (tab === 'all') {
+          const list = await adminListAllUsers();
+          setRows(list.map(mapUser));
+        } else if (tab === 'approved') {
+          const list = await adminFilterUsersByStatus('Approved');
+          setRows(list.map(mapUser));
+        } else if (tab === 'rejected') {
+          const list = await adminFilterUsersByStatus('Rejected');
+          setRows(list.map(mapUser));
+        } else if (tab === 'pending') {
+          const list = await adminFilterUsersByStatus('Pending');
+          setRows(list.map(mapUser));
+        }
+      } catch (e) {
+        // ignore; keep current view
+      }
+    })();
+  }, [tab, isReady, user]);
+
+  if (loading || !isReady) return <div className="p-6">Loading…</div>;
+  if (err) return <div className="p-6 text-red-600">{err}</div>;
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -188,11 +284,12 @@ export default function AdminDashboard() {
               <th className="w-[26rem]">Email</th>
               <th className="w-40">Date Registered</th>
               <th className="w-48">Status</th>
+              <th className="w-32">Actions</th>
             </tr>
           </thead>
           <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
             {current.map((r) => (
-              <tr key={r.id} className="[&>td]:px-3 [&>td]:py-3">
+              <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
                 <td className="font-medium">{r.username}</td>
                 <td>{r.role}</td>
                 <td className="text-gray-700">{r.email}</td>
@@ -202,10 +299,36 @@ export default function AdminDashboard() {
                   </span>
                 </td>
                 <td>
-                  <StatusDropdown
-                    value={r.status}
-                    onChange={(s) => handleChangeStatus(r.id, s)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <StatusDropdown
+                      value={r.status}
+                      onChange={(s) => handleChangeStatus(r.id, s)}
+                    />
+                  </div>
+                </td>
+                <td>
+                  <button
+                    className="rounded-md border px-3 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                    disabled={typeof r.id !== 'number'}
+                    title={typeof r.id !== 'number' ? 'Cannot delete: user id missing in backend list response' : undefined}
+                    onClick={async () => {
+                      if (typeof r.id !== 'number') { setErr('Cannot delete: backend list did not include user ID.'); return; }
+                      const ok = typeof window !== 'undefined' ? window.confirm(`Delete user ${r.username || r.email}?`) : true;
+                      if (!ok) return;
+                      try {
+                        await adminDeleteUser(r.id);
+                        // Refresh current tab after deletion
+                        if (tab === 'all') setRows((await adminListAllUsers()).map(mapUser));
+                        else if (tab === 'approved') setRows((await adminFilterUsersByStatus('Approved')).map(mapUser));
+                        else if (tab === 'rejected') setRows((await adminFilterUsersByStatus('Rejected')).map(mapUser));
+                        else if (tab === 'pending') setRows((await adminFilterUsersByStatus('Pending')).map(mapUser));
+                      } catch (e: any) {
+                        setErr(e?.message || 'Failed to delete user');
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
