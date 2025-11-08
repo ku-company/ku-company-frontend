@@ -33,6 +33,7 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
     let cancelled = false;
     (async () => {
       if (initialUrl) return;
+      if (disabled) return; // do not auto-fetch when disabled (e.g., roles without access)
       try {
         const u = kind === "employee" ? await getEmployeeProfileImage() : await getCompanyProfileImage();
         if (!cancelled) setUrl(u);
@@ -41,7 +42,7 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
       }
     })();
     return () => { cancelled = true; };
-  }, [kind, initialUrl]);
+  }, [kind, initialUrl, disabled]);
 
   useEffect(() => { setUrl(initialUrl ?? null); }, [initialUrl]);
 

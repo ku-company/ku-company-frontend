@@ -6,9 +6,8 @@ import { listProfessorDegrees, type ProfessorDegree } from "@/api/professordegre
 import EditProfessorProfileModal from "@/components/EditProfessorProfileModal";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
-import { getEmployeeProfileImage } from "@/api/profileimage";
-import ReactMarkdown from "react-markdown";
 import { getAuthMe } from "@/api/user";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
 import { BuildingOfficeIcon, BuildingLibraryIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 
@@ -105,38 +104,34 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
     };
   }, [isReady, user]);
 
-  // Ensure profile image visible if API doesn't embed URL yet
+  // Ensure profile image visible if API doesn't embed URL yet (avoid employee endpoints)
   useEffect(() => {
     (async () => {
       if (!profile || readOnly) return;
       const has = !!(profile.profile_image_url && String(profile.profile_image_url).trim());
       if (has) return;
       try {
-        let u = await getEmployeeProfileImage();
-        if (!u) {
-          try {
-            const me = await getAuthMe();
-            u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
-          } catch {}
-        }
+        let u: string | null = null;
+        try {
+          const me = await getAuthMe();
+          u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+        } catch {}
         if (u) setProfile({ ...profile, profile_image_url: u });
       } catch {}
     })();
   }, [profile?.profile_image_url, readOnly]);
 
-  // Always refresh avatar URL from image endpoint after auth hydration
+  // Always refresh avatar URL after auth hydration (avoid employee endpoints)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (readOnly || !isReady) return;
       try {
-        let u = await getEmployeeProfileImage();
-        if (!u) {
-          try {
-            const me = await getAuthMe();
-            u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
-          } catch {}
-        }
+        let u: string | null = null;
+        try {
+          const me = await getAuthMe();
+          u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+        } catch {}
         if (!cancelled && u) {
           setProfile((prev) => (prev ? (prev.profile_image_url === u ? prev : { ...prev, profile_image_url: u }) : prev));
         }
@@ -171,7 +166,7 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
           </button>
           <div className="flex flex-col items-center">
             <div className="relative h-28 w-28 overflow-hidden rounded-full ring-4" style={{ outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}>
-          <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} disabled={readOnly} />
+          <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} disabled={true} />
             </div>
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>{fullName || "Professor"}</h2>
             <p className="text-sm text-gray-600">{profile.position || "-"}</p>

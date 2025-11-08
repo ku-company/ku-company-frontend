@@ -92,9 +92,10 @@ function InfoRow({
 type StudentProfileViewProps = {
   readOnly?: boolean;
   profileData?: StudentProfile | null;
+  verifiedOverride?: boolean | null;
 };
 
-export default function StudentProfileView({ readOnly = false, profileData }: StudentProfileViewProps) {
+export default function StudentProfileView({ readOnly = false, profileData, verifiedOverride }: StudentProfileViewProps) {
   const GREEN = "#5b8f5b";
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -349,7 +350,10 @@ export default function StudentProfileView({ readOnly = false, profileData }: St
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
-  const canEdit = !readOnly && profile.verified === true;
+  const isVerified = typeof verifiedOverride !== 'undefined' && verifiedOverride !== null
+    ? Boolean(verifiedOverride)
+    : profile.verified === true;
+  const canEdit = !readOnly && isVerified;
 
   const fullName =
     profile.full_name ||
@@ -391,7 +395,7 @@ export default function StudentProfileView({ readOnly = false, profileData }: St
               </h2>
               <div className="mt-1 flex items-center gap-2">
                 <span className="text-sm text-gray-600">Student</span>
-                {canEdit ? (
+                {isVerified ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-200">
                     <CheckBadgeIcon className="h-4 w-4" /> Verified
                   </span>
