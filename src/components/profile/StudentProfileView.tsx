@@ -12,7 +12,9 @@ import EditStudentProfileModal from "@/components/EditStudentProfileModal";
 import Markdown from "@/components/Markdown";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { getEmployeeProfileImage } from "@/api/profileimage";
 import { getMainResume, listResumes, MAIN_RESUME_UPDATED_EVENT } from "@/api/resume";
+import { getAuthMe } from "@/api/user";
 import { useAuth } from "@/context/AuthContext";
 import { UserIcon, EnvelopeIcon, PhoneIcon, CalendarIcon, DocumentTextIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
@@ -87,7 +89,12 @@ function InfoRow({
   );
 }
 
-export default function StudentProfileView() {
+type StudentProfileViewProps = {
+  readOnly?: boolean;
+  profileData?: StudentProfile | null;
+};
+
+export default function StudentProfileView({ readOnly = false, profileData }: StudentProfileViewProps) {
   const GREEN = "#5b8f5b";
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -111,6 +118,11 @@ export default function StudentProfileView() {
 
   useEffect(() => {
     (async () => {
+      if (profileData) {
+        setProfile(profileData);
+        setLoading(false);
+        return;
+      }
       try {
         const data = await getMyStudentProfile();
         setProfile(data);
@@ -120,11 +132,52 @@ export default function StudentProfileView() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [profileData]);
 
-  // Load main resume after auth is ready and when the modal closes
+  // Ensure avatar appears even if backend doesn't embed it in my-profile yet
   useEffect(() => {
     (async () => {
+      if (!profile || readOnly) return;
+      const hasAvatar = !!(profile.avatar_url && String(profile.avatar_url).trim());
+      if (hasAvatar) return;
+      try {
+        let url = await getEmployeeProfileImage();
+        if (!url) {
+          try {
+            const me = await getAuthMe();
+            url = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (url) setProfile({ ...profile, avatar_url: url });
+      } catch {}
+    })();
+  }, [profile?.avatar_url, readOnly]);
+
+  // Always refresh avatar URL from the image endpoint after auth hydration
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (readOnly || !isReady) return;
+      try {
+        let url = await getEmployeeProfileImage();
+        if (!url) {
+          try {
+            const me = await getAuthMe();
+            url = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+          } catch {}
+        }
+        if (!cancelled && url) {
+          setProfile((prev) => (prev ? (prev.avatar_url === url ? prev : { ...prev, avatar_url: url }) : prev));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isReady, readOnly]);
+
+  // Load main resume after auth is ready and when the modal closes (skip in read-only mode)
+  useEffect(() => {
+    (async () => {
+      if (readOnly) return;
       console.log("[Profile] main-resume probe: isReady=", isReady, "resumeOpen=", resumeOpen);
       if (!isReady || resumeOpen) return;
       try {
@@ -135,7 +188,7 @@ export default function StudentProfileView() {
         console.warn("[Profile] getMainResume() failed:", e);
       }
     })();
-  }, [isReady, resumeOpen]);
+  }, [isReady, resumeOpen, readOnly]);
 
   // Live update of main resume while modal is open
   useEffect(() => {
@@ -296,7 +349,7 @@ export default function StudentProfileView() {
   if (err) return <div className="p-8 text-red-500">{err}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found.</div>;
 
-  const canEdit = profile.verified === true;
+  const canEdit = !readOnly && profile.verified === true;
 
   const fullName =
     profile.full_name ||
@@ -327,6 +380,7 @@ export default function StudentProfileView() {
               <div className={`relative h-28 w-28 overflow-hidden rounded-full ring-4 ring-[${GREEN}]\/15`}>
                 <ProfileImageUploader
                   kind="employee"
+                  initialUrl={profile.avatar_url || null}
                   disabled={!canEdit}
                   onUpdated={(u) => setProfile({ ...profile, avatar_url: u })}
                 />

@@ -6,9 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_EVENT } from "@/api/profileimage";
 import { getMyStudentProfile } from "@/api/studentprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
+import { getAuthMe } from "@/api/user";
 import RoleSelector from "@/components/roleselector";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import NotificationsBell from "@/components/NotificationsBell";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname() || "/";
@@ -42,6 +44,7 @@ export default function Navbar() {
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarRef = useRef<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
 
@@ -58,6 +61,7 @@ export default function Navbar() {
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
+    avatarRef.current = avatarUrl;
     const safeUrl = (u?: string | null) => {
       if (!u) return null;
       try {
@@ -85,10 +89,29 @@ export default function Navbar() {
       }
       try {
         const role = (user.role || "").toLowerCase();
-        const raw = role.includes("company")
-          ? await getCompanyProfileImage()
-          : await getEmployeeProfileImage();
-        if (!cancelled) setAvatarUrl(safeUrl(raw));
+        let raw: string | null = null;
+        try {
+          raw = role.includes("company")
+            ? await getCompanyProfileImage()
+            : await getEmployeeProfileImage();
+        } catch {}
+        // Fallbacks when no uploaded image yet: use OAuth/user profile image if present
+        if (!raw) {
+          try {
+            if (role.includes("company")) {
+              const me = await getAuthMe().catch(() => null as any);
+              raw = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+            } else {
+              const student = await getMyStudentProfile().catch(() => null as any);
+              raw = (student as any)?.avatar_url || (student as any)?.profile_image || null;
+            }
+          } catch {}
+        }
+        if (!cancelled) {
+          const final = safeUrl(raw || null);
+          avatarRef.current = final;
+          setAvatarUrl(final);
+        }
       } catch {
         if (!cancelled) setAvatarUrl(null);
       }
@@ -103,6 +126,12 @@ export default function Navbar() {
           const student = await getMyStudentProfile();
           const name = student.full_name || student.user_name || "";
           if (!cancelled && name) setDisplayName(name);
+          // Also use student profile image as fallback if still missing
+          if (!cancelled && !avatarRef.current && (student as any)?.avatar_url) {
+            const u = safeUrl((student as any).avatar_url);
+            avatarRef.current = u;
+            setAvatarUrl(u);
+          }
         }
       } catch {
         if (!cancelled) setDisplayName(user.user_name);
@@ -114,10 +143,13 @@ export default function Navbar() {
       if (u) setAvatarUrl(safeUrl(u));
     };
     window.addEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+    const onFocus = () => { if (user) load(); };
+    window.addEventListener('focus', onFocus);
     return () => {
       cancelled = true;
       controller.abort();
       window.removeEventListener(PROFILE_IMAGE_UPDATED_EVENT, onUpdated as any);
+      window.removeEventListener('focus', onFocus);
     };
   }, [user]);
 
@@ -160,20 +192,23 @@ export default function Navbar() {
           <div className="relative flex items-center gap-2" ref={menuRef}>
             {user ? (
               <>
-                {/* Apply list icon (students only) */}
+                {/* Student-only: Notifications + Apply list */}
                 {user?.role?.toLowerCase().includes("student") && (
-                  <Link
-                    href="/apply-list"
-                    className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
-                    aria-label="Apply list"
-                  >
-                    <DocumentTextIcon className="h-5 w-5 text-gray-700" aria-hidden="true" />
-                    {count > 0 && (
-                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
-                        {count}
-                      </span>
-                    )}
-                  </Link>
+                  <>
+                    <NotificationsBell />
+                    <Link
+                      href="/apply-list"
+                      className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
+                      aria-label="Apply list"
+                    >
+                      <DocumentTextIcon className="h-5 w-5 text-gray-700" aria-hidden="true" />
+                      {count > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] w-4 h-4">
+                          {count}
+                        </span>
+                      )}
+                    </Link>
+                  </>
                 )}
 
                 {/* Role badge */}
