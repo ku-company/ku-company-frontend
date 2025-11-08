@@ -41,7 +41,9 @@ function InfoRow({
   );
 }
 
-export default function CompanyProfile() {
+type CompanyProfileViewProps = { readOnly?: boolean; profileData?: CompanyProfile | null; verifiedOverride?: boolean | null };
+
+export default function CompanyProfile({ readOnly = false, profileData, verifiedOverride }: CompanyProfileViewProps) {
   const GREEN = "#5D9252";
   const { isReady, user } = useAuth();
 
@@ -51,7 +53,7 @@ export default function CompanyProfile() {
 
   const [openEdit, setOpenEdit] = useState(false);
   const [editSection, setEditSection] = useState<"basics" | "description" | null>(null);
-  const [verified, setVerified] = useState<boolean | null>(null);
+  const [verified, setVerified] = useState<boolean | null>(typeof verifiedOverride !== 'undefined' ? (verifiedOverride as any) : null);
 
   async function refreshVerifiedFlag() {
     try {
@@ -63,7 +65,20 @@ export default function CompanyProfile() {
     }
   }
 
+  // Keep verified state in sync with override from parent (e.g., public view)
   useEffect(() => {
+    if (typeof verifiedOverride !== 'undefined') {
+      setVerified(verifiedOverride as any);
+    }
+  }, [verifiedOverride]);
+
+  useEffect(() => {
+    if (profileData) {
+      setCompany(profileData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     // Wait until auth is hydrated to avoid hydration/CORS/cookie races
     if (!isReady) return;
 
@@ -106,26 +121,29 @@ export default function CompanyProfile() {
       cancelled = true;
       controller.abort();
     };
-  }, [isReady, user]);
+  }, [isReady, user, profileData]);
 
-  // Refresh token + verified flag on mount and whenever the tab regains focus
+  // Refresh token + verified flag only for own-company view (no override, not readOnly)
   useEffect(() => {
+    if (readOnly) return;
+    if (typeof verifiedOverride !== 'undefined') return; // parent controls flag
     refreshVerifiedFlag();
     const onFocus = () => refreshVerifiedFlag();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, []);
+  }, [readOnly, verifiedOverride]);
 
-  if (!isReady) {
+  if (!profileData && !isReady) {
     // Auth is still hydrating — keep things calm to avoid flashes
     return <div className="p-8 text-gray-600">Preparing your session…</div>;
   }
 
   if (loading) return <div className="p-8 text-gray-600">Loading company profile…</div>;
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!profileData && error) return <div className="p-8 text-red-500">{error}</div>;
   if (!company) return <div className="p-8 text-gray-500">No profile found. Please create one.</div>;
 
   const roleLower = (user?.role ?? "").toLowerCase();
+  const allowEdit = !readOnly && roleLower === "company";
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -134,7 +152,7 @@ export default function CompanyProfile() {
       <div className="grid gap-6 md:grid-cols-3">
         {/* Company card */}
         <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
-          {roleLower === "company" && (
+          {allowEdit && (
             <button
               type="button"
               onClick={() => { setEditSection('basics'); setOpenEdit(true); }}
@@ -155,6 +173,7 @@ export default function CompanyProfile() {
             >
               <ProfileImageUploader
                 kind="company"
+                disabled={!allowEdit}
                 initialUrl={null}
                 onUpdated={() => { /* no-op: company profile fetch separate; keep current view */ }}
               />
@@ -189,7 +208,7 @@ export default function CompanyProfile() {
         <section className="space-y-6 md:col-span-2">
           <div className="relative rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
             <PillHeading>Company&apos;s Description</PillHeading>
-            {roleLower === "company" && (
+            {allowEdit && (
               <button
                 type="button"
                 onClick={() => { setEditSection('description'); setOpenEdit(true); }}

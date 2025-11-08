@@ -9,6 +9,7 @@ import LoginPromptModal from "@/components/LoginPromptModal";
 const PUBLIC_PATHS = new Set<string>([
   "/homepage",
   "/login",
+  "/admin/login",
   "/register",
   "/register/student",
   "/register/company",

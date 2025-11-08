@@ -12,6 +12,8 @@ export type AuthMe = {
   access_token?: string;
   refresh_token?: string;
   company_name?: string;
+  first_name?: string;
+  last_name?: string;
 };
 
 function maskToken(t?: string) {

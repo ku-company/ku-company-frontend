@@ -6,6 +6,7 @@ import { listProfessorDegrees, type ProfessorDegree } from "@/api/professordegre
 import EditProfessorProfileModal from "@/components/EditProfessorProfileModal";
 import MarkdownModal from "@/components/MarkdownModal";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { getAuthMe } from "@/api/user";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
 import { BuildingOfficeIcon, BuildingLibraryIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
@@ -31,7 +32,9 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-export default function ProfessorProfileView() {
+type ProfessorProfileViewProps = { readOnly?: boolean; profileData?: ProfessorProfile | null };
+
+export default function ProfessorProfileView({ readOnly = false, profileData }: ProfessorProfileViewProps) {
   const GREEN = "#4F7E4F";
   const { isReady, user } = useAuth();
 
@@ -45,13 +48,13 @@ export default function ProfessorProfileView() {
   const [modal, setModal] = useState<null | { title: string; content?: string; children?: React.ReactNode }>(null);
 
   useEffect(() => {
-    if (!isReady) return;
-    if (!user) {
+    if (profileData) {
+      setProfile(profileData);
       setLoading(false);
-      setError("Please log in to view your profile.");
+      setError(null);
       return;
     }
-
+    if (!isReady || !user) return;
     let cancelled = false;
     const controller = new AbortController();
     (async () => {
@@ -75,10 +78,11 @@ export default function ProfessorProfileView() {
       cancelled = true;
       controller.abort();
     };
-  }, [isReady, user]);
+  }, [isReady, user, profileData]);
 
   // Load degrees once logged-in
   useEffect(() => {
+    if (profileData) return;
     if (!isReady || !user) return;
     let cancelled = false;
     const controller = new AbortController();
@@ -100,9 +104,45 @@ export default function ProfessorProfileView() {
     };
   }, [isReady, user]);
 
-  if (!isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
+  // Ensure profile image visible if API doesn't embed URL yet (avoid employee endpoints)
+  useEffect(() => {
+    (async () => {
+      if (!profile || readOnly) return;
+      const has = !!(profile.profile_image_url && String(profile.profile_image_url).trim());
+      if (has) return;
+      try {
+        let u: string | null = null;
+        try {
+          const me = await getAuthMe();
+          u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+        } catch {}
+        if (u) setProfile({ ...profile, profile_image_url: u });
+      } catch {}
+    })();
+  }, [profile?.profile_image_url, readOnly]);
+
+  // Always refresh avatar URL after auth hydration (avoid employee endpoints)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (readOnly || !isReady) return;
+      try {
+        let u: string | null = null;
+        try {
+          const me = await getAuthMe();
+          u = (me as any)?.profile_image || (me as any)?.avatar_url || null;
+        } catch {}
+        if (!cancelled && u) {
+          setProfile((prev) => (prev ? (prev.profile_image_url === u ? prev : { ...prev, profile_image_url: u }) : prev));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [isReady, readOnly]);
+
+  if (!profileData && !isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
   if (loading) return <div className="p-8 text-gray-600">Loading professor profile…</div>;
-  if (error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!profileData && error) return <div className="p-8 text-red-500">{error}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found. Please create or edit your profile.</div>;
 
   const fullName = [profile.user?.first_name ?? "", profile.user?.last_name ?? ""].map((s) => (s || "").trim()).filter(Boolean).join(" ") || user?.user_name || "";
@@ -117,16 +157,16 @@ export default function ProfessorProfileView() {
         <aside className="relative rounded-2xl border bg-white p-6 shadow-sm">
           <button
             type="button"
-            onClick={() => { if (isVerified) { setEditSection('basics'); setOpenEdit(true); }}}
-            disabled={!isVerified}
-            title={isVerified ? "Edit basics" : "Account not verified"}
-            className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+            onClick={() => { if (!readOnly && isVerified) { setEditSection('basics'); setOpenEdit(true); }}}
+            disabled={readOnly || !isVerified}
+            title={!readOnly && isVerified ? "Edit basics" : "Read-only"}
+            className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${(!readOnly && isVerified) ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
           </button>
           <div className="flex flex-col items-center">
             <div className="relative h-28 w-28 overflow-hidden rounded-full ring-4" style={{ outline: `4px solid ${GREEN}22`, outlineOffset: 0 }}>
-              <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} />
+          <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} disabled={true} />
             </div>
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>{fullName || "Professor"}</h2>
             <p className="text-sm text-gray-600">{profile.position || "-"}</p>
@@ -145,11 +185,11 @@ export default function ProfessorProfileView() {
             <PillHeading>Summary</PillHeading>
             <button
               type="button"
-              onClick={() => { if (isVerified) { setEditSection('summary'); setOpenEdit(true); }}}
-              disabled={!isVerified}
-              title={isVerified ? "Edit summary" : "Account not verified"}
-              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
-            >
+            onClick={() => { if (!readOnly && isVerified) { setEditSection('summary'); setOpenEdit(true); }}}
+            disabled={readOnly || !isVerified}
+            title={!readOnly && isVerified ? "Edit summary" : "Read-only"}
+            className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${(!readOnly && isVerified) ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+          >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
             </button>
             <div className="mt-3 prose prose-sm max-w-none text-gray-700">
@@ -162,11 +202,11 @@ export default function ProfessorProfileView() {
             <PillHeading>Degrees</PillHeading>
             <button
               type="button"
-              onClick={() => { if (isVerified) { setEditSection('degrees'); setOpenEdit(true); }}}
-              disabled={!isVerified}
-              title={isVerified ? "Edit degrees" : "Account not verified"}
-              className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${isVerified ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
-            >
+            onClick={() => { if (!readOnly && isVerified) { setEditSection('degrees'); setOpenEdit(true); }}}
+            disabled={readOnly || !isVerified}
+            title={!readOnly && isVerified ? "Edit degrees" : "Read-only"}
+            className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-lg border bg-white ${(!readOnly && isVerified) ? "text-gray-600 hover:bg-gray-50" : "text-gray-300 cursor-not-allowed"}`}
+          >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
             </button>
             <div className="mt-4 space-y-3">
