@@ -48,10 +48,8 @@ export default function RegisterPage() {
       login(res.data);
 
       // Show onboarding to collect faculty/department and create profile
+      // Do not redirect immediately; wait for modal completion/close handlers
       setShowOnboarding(true);
-
-      // Redirect to home
-      router.push("/");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
