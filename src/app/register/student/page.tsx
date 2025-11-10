@@ -7,6 +7,8 @@ import { registerUser } from "@/api/register";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,16 +42,19 @@ export default function RegisterPage() {
         role: "Student",
       };
 
-      await registerUser(payload);
+      const flow = async () => {
+        await registerUser(payload);
+        const res = await loginUser({ user_name: form.user_name, password: form.password });
+        login(res.data);
+      };
 
-      // Auto login immediately after successful registration
-      const res = await loginUser({
-        user_name: form.user_name,
-        password: form.password,
+      await toast.promise(flow(), {
+        pending: "Creating your account…",
+        success: "Welcome to KU-Company!",
+        error: "Sign up failed",
       });
-      login(res.data);
 
-      // Redirect to home
+      notify.success("Registration complete");
       router.push("/");
     } catch (err: any) {
       console.error("Registration failed:", err);

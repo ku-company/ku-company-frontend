@@ -7,6 +7,8 @@ import { registerUser } from "@/api/register";
 import { loginUser } from "@/api/login";          
 import { useAuth } from "@/context/AuthContext";  
 import { buildGoogleSignupUrl } from "@/api/oauth";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
@@ -49,16 +51,17 @@ export default function RegisterCompanyPage() {
         role: "Company",
       };
 
-      await registerUser(payload);
-      console.log("Company registered successfully");
+      const flow = async () => {
+        await registerUser(payload);
+        const res = await loginUser({ user_name: form.user_name, password: form.password });
+        login(res.data);
+      };
 
-      // Immediately log in to get token
-      const res = await loginUser({
-        user_name: form.user_name,
-        password: form.password,
+      await toast.promise(flow(), {
+        pending: "Creating company account…",
+        success: "Company registered",
+        error: "Sign up failed",
       });
-
-      login(res.data);
 
       // Create default company profile
       try {
@@ -98,6 +101,7 @@ export default function RegisterCompanyPage() {
       } catch {}
 
       // Redirect home after everything succeeds
+      notify.success("Registration complete");
       router.push("/");
     } catch (err: any) {
       console.error("Company registration/login failed:", err);

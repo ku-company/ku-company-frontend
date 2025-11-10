@@ -10,6 +10,7 @@ import {
   setMainResume,
   MAIN_RESUME_UPDATED_EVENT,
 } from "@/api/resume";
+import notify from "@/lib/toast";
 
 type Props = {
   isOpen: boolean;
@@ -91,8 +92,9 @@ export default function ResumeManagerModal({
     try {
       await deleteResume(id);
       await refreshList();
+      notify.success("Resume deleted");
     } catch (e: any) {
-      alert(e.message || "Failed to delete resume");
+      notify.error(e.message || "Failed to delete resume");
     }
   }
 
@@ -101,8 +103,9 @@ export default function ResumeManagerModal({
     try {
       await deleteAllResumes();
       await refreshList();
+      notify.success("All resumes deleted");
     } catch (e: any) {
-      alert(e.message || "Failed to delete all resumes");
+      notify.error(e.message || "Failed to delete all resumes");
     }
   }
 
@@ -263,7 +266,7 @@ export default function ResumeManagerModal({
                     window.dispatchEvent(new CustomEvent(MAIN_RESUME_UPDATED_EVENT, { detail: { id: chosen.id, url: chosen.file_url } }));
                   }
                 } catch (e: any) {
-                  alert(e?.message || "Failed to set main resume");
+                  notify.error(e?.message || "Failed to set main resume");
                 } finally {
                   setSavingMain(false);
                 }

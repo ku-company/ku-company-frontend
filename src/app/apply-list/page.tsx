@@ -7,6 +7,7 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { listResumes } from "@/api/resume";
 import { getMyStudentProfile } from "@/api/studentprofile";
 import { applyJobsBulk } from "@/api/jobs";
+import notify from "@/lib/toast";
 
 type Resume = { id: string; name: string };
 
@@ -72,24 +73,24 @@ export default function ApplyListPage() {
 
   async function handleApplySelected() {
     if (!selectedResumeId) {
-      alert("Please choose a resume first.");
+      notify.info("Please choose a resume first.");
       return;
     }
     const ids = items.map((j) => j.id).filter((id) => selectedIds.has(id));
     if (ids.length === 0) {
-      alert("Please select at least one job.");
+      notify.info("Please select at least one job.");
       return;
     }
     setSubmitting(true);
     try {
       const resumeId = parseInt(selectedResumeId, 10);
       await applyJobsBulk(resumeId, ids);
-      alert("Applied to selected jobs.");
+      notify.success("Applied to selected jobs.");
       clear(); setSelectedIds(new Set());
       router.push("/find-job");
     } catch (err: any) {
       console.error("Apply all failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to apply to some jobs.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to apply to some jobs.");
     } finally {
       setSubmitting(false);
     }

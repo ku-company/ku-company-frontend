@@ -11,6 +11,7 @@ import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
+import notify from "@/lib/toast";
 
 type Job = {
   id: number;
@@ -245,7 +246,7 @@ export default function FindJobPage() {
   }) => {
     try {
       if (!selected?.id) {
-        alert("Please select a job first.");
+        notify.info("Please select a job first.");
         return;
       }
 
@@ -253,13 +254,13 @@ export default function FindJobPage() {
 
       if (payload.mode === "existing") {
         if (!payload.resumeId) {
-          alert("Please select a resume.");
+          notify.info("Please select a resume.");
           return;
         }
         resumeIdToUse = parseInt(payload.resumeId, 10);
       } else if (payload.mode === "upload") {
         if (!payload.file) {
-          alert("Please choose a file to upload.");
+          notify.info("Please choose a file to upload.");
           return;
         }
         const uploaded = await uploadResume(payload.file);
@@ -267,17 +268,17 @@ export default function FindJobPage() {
       }
 
       if (!resumeIdToUse) {
-        alert("Unable to determine resume to use.");
+        notify.error("Unable to determine resume to use.");
         return;
       }
 
       await applyToJob(selected.id, resumeIdToUse);
       setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
       setIsApplyOpen(false);
-      alert("Application submitted successfully.");
+      notify.success("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   };
 

@@ -12,6 +12,7 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { listResumes } from "@/api/resume";
 import { listMyApplications } from "@/api/applications";
 import { applyToJob } from "@/api/jobs";
+import notify from "@/lib/toast";
 
 const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -88,15 +89,15 @@ export default function JobDetailsPage() {
   async function handleApply(payload: { mode: "existing"; resumeId?: string }) {
     if (!job?.id) return;
     const rid = payload.resumeId ? parseInt(payload.resumeId, 10) : NaN;
-    if (!rid) { alert("Please select a resume."); return; }
+    if (!rid) { notify.info("Please select a resume."); return; }
     try {
       await applyToJob(job.id, rid);
       setApplied(true);
       setIsApplyOpen(false);
-      alert("Application submitted successfully.");
+      notify.success("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   }
 
