@@ -15,6 +15,7 @@ const PUBLIC_PATHS = new Set<string>([
   "/register/company",
   "/register/professor",
   "/oauth/callback",
+  "/terms",
 ]);
 
 function isPublicPath(pathname: string): boolean {

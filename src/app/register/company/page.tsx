@@ -24,6 +24,7 @@ export default function RegisterCompanyPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,11 +37,18 @@ export default function RegisterCompanyPage() {
 
     if (form.password !== form.confirm_password) {
       setLoading(false);
+      toast.error("Passwords do not match");
       setError("Passwords do not match");
       return;
     }
 
     try {
+      if (!acceptedTerms) {
+        setLoading(false);
+        toast.error("Please agree to the Terms before signing up.");
+        setError("You must agree to the Terms before signing up.");
+        return;
+      }
       // Register company account
       const payload = {
         company_name: form.company_name,
@@ -49,6 +57,7 @@ export default function RegisterCompanyPage() {
         password: form.password,
         confirm_password: form.confirm_password,
         role: "Company",
+        pdpa_consent: true,
       };
 
       const flow = async () => {
@@ -106,6 +115,7 @@ export default function RegisterCompanyPage() {
     } catch (err: any) {
       console.error("Company registration/login failed:", err);
       setError(err.message || "Something went wrong");
+      // toast.promise above already shows an error toast; no duplicate here
     } finally {
       setLoading(false);
     }
@@ -176,6 +186,29 @@ export default function RegisterCompanyPage() {
               />
             </div>
 
+            {/* Terms of Service consent */}
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                I have read and agree to the
+                {" "}
+                <Link
+                  href="/terms"
+                  className="text-midgreen-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service & Privacy (PDPA/GDPR)
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
               disabled={loading}
@@ -186,6 +219,11 @@ export default function RegisterCompanyPage() {
             <button
               type="button"
               onClick={() => {
+                if (!acceptedTerms) {
+                  toast.error("Please agree to the Terms before continuing with Google.");
+                  setError("You must agree to the Terms before continuing with Google.");
+                  return;
+                }
                 // Kick off Google signup for Company (mark as signup)
                 try {
                   localStorage.setItem("pending_oauth_signup_company", "1");
@@ -199,7 +237,7 @@ export default function RegisterCompanyPage() {
             </button>
           </form>
 
-          {error && <p className="mt-3 text-center text-red-500">{error}</p>}
+          {/* Errors are surfaced via toast notifications */}
 
           <p className="mt-4 text-center text-sm text-gray-600">
             Already have an account?{" "}

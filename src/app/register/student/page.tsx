@@ -26,6 +26,7 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,9 +38,16 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      if (!acceptedTerms) {
+        setLoading(false);
+        toast.error("Please agree to the Terms before signing up.");
+        setError("You must agree to the Terms before signing up.");
+        return;
+      }
       const payload = {
         ...form,
         role: "Student",
+        pdpa_consent: true,
       };
 
       const flow = async () => {
@@ -59,6 +67,7 @@ export default function RegisterPage() {
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
+      // toast.promise above already shows an error toast; no duplicate here
     } finally {
       setLoading(false);
     }
@@ -149,6 +158,29 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Terms of Service consent */}
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                I have read and agree to the
+                {" "}
+                <Link
+                  href="/terms"
+                  className="text-midgreen-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service & Privacy (PDPA/GDPR)
+                </Link>
+                .
+              </span>
+            </label>
+
             {/* Submit */}
             <button
               type="submit"
@@ -160,6 +192,11 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => {
+                if (!acceptedTerms) {
+                  toast.error("Please agree to the Terms before continuing with Google.");
+                  setError("You must agree to the Terms before continuing with Google.");
+                  return;
+                }
                 // Kick off Google signup for Student
                 window.location.href = buildGoogleSignupUrl("Student");
               }}
@@ -170,8 +207,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* Error messages */}
-          {error && <p className="mt-3 text-red-500 text-center">{error}</p>}
+          {/* Errors are surfaced via toast notifications */}
 
           {/* Login link */}
           <p className="mt-4 text-sm text-gray-600 text-center">

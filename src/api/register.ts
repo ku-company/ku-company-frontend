@@ -8,6 +8,8 @@ export interface RegisterPayload {
   user_name: string
   password: string
   confirm_password: string
+  // Optional consent field for PDPA/GDPR ToS acceptance; backend may ignore it
+  pdpa_consent?: boolean
 }
 
 import { assertOk } from "@/utils/httpError";
