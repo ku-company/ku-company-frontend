@@ -8,7 +8,7 @@ interface JobCardProps {
 
 export default function JobCard({ job }: JobCardProps) {
   return (
-    <div className="flex justify-between items-center border border-green-500 rounded-2xl p-4 bg-white shadow-sm">
+    <div className="flex justify-between items-center border-2 border-green-600 rounded-2xl p-4 bg-white shadow-sm">
       <div className="flex-1 pr-4">
         <h2 className="font-semibold text-black">{job.position}</h2>
         <p className="text-sm text-black">{job.company}</p>

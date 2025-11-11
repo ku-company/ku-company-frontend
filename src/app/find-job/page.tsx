@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
-import ApplyModal from "@/components/ApplyModal";
+import { useRouter } from "next/navigation";
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+// import ApplyModal from "@/components/ApplyModal"; // replaced by full apply page
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
@@ -44,6 +45,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 
 export default function FindJobPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { add, contains } = useApplyCart();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
@@ -53,7 +55,7 @@ export default function FindJobPage() {
   const [jobTypes, setJobTypes] = useState<any[]>(["All"]);
   const [sortBy, setSortBy] = useState<string>("Newest");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [isApplyOpen, setIsApplyOpen] = useState(false);
+  const [isApplyOpen, setIsApplyOpen] = useState(false); // legacy: kept to reduce changes
   const [loading, setLoading] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]); //  resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
@@ -234,9 +236,15 @@ export default function FindJobPage() {
   // Selected job
   // -------------------------------
   const selected = jobs.find((j) => j.id === selectedId) ?? null;
+  const postedDays = useMemo(() => {
+    if (!selected?.created_at) return null;
+    const created = new Date(selected.created_at as any).getTime();
+    const days = Math.max(0, Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)));
+    return days;
+  }, [selected?.created_at]);
 
   // -------------------------------
-  // Apply handler
+  // Apply handler (legacy for modal, no longer used from UI)
   // -------------------------------
   const handleApply = async (payload: {
     mode: "existing" | "upload";
@@ -292,17 +300,18 @@ export default function FindJobPage() {
         style={{ borderColor: GREEN }}
       >
         <div className="flex flex-wrap items-center gap-3">
+          {/* Left controls: keyword + dropdowns */}
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="Keyword"
-            className="h-10 w-[200px] flex-1 rounded-full border px-4 text-sm focus:outline-none focus:ring"
+            className="h-11 w-[220px] flex-1 rounded-full border px-4 text-sm bg-gray-50 focus:outline-none"
           />
 
           <select
-            value={category} aria-label="Position"
+            value={category} aria-label="Job Categories"
             onChange={(e) => setCategory(e.target.value)}
-            className="h-10 w-[180px] rounded-full border px-3 text-sm"
+            className="h-11 w-[200px] rounded-full border px-3 text-sm bg-gray-50"
           >
             {categories.map((c, i) => {
               const label =
@@ -324,7 +333,7 @@ export default function FindJobPage() {
           <select
             value={jobType} aria-label="Job type"
             onChange={(e) => setJobType(e.target.value)}
-            className="h-10 w-[180px] rounded-full border px-3 text-sm"
+            className="h-11 w-[160px] rounded-full border px-3 text-sm bg-gray-50"
           >
             {jobTypes.map((t, i) => {
               const label =
@@ -343,31 +352,33 @@ export default function FindJobPage() {
             })}
           </select>
 
+          {/* Search icon button */}
+          <button
+            aria-label="Search"
+            onClick={fetchJobs}
+            className="grid h-11 w-11 place-items-center rounded-full text-white"
+            style={{ backgroundColor: GREEN }}
+          >
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </button>
+
+          {/* Right controls: filter chips */}
           <div className="ml-auto flex gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="h-10 rounded-full border px-3 text-sm"
-              aria-label="Sort"
-            >
-              <option>Newest</option>
-              <option>Oldest</option>
-            </select>
             <button
-              className="rounded-full px-4 py-2 text-sm text-white"
-              style={{ backgroundColor: GREEN }}
-              onClick={fetchJobs}
+              className={`rounded-full border px-4 py-2 text-sm ${category === 'All' && jobType === 'All' ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+              onClick={() => { setCategory('All'); setJobType('All'); fetchJobs(); }}
             >
-              Search
+              All Positions
+            </button>
+            <button
+              className={`rounded-full border px-4 py-2 text-sm ${sortBy === 'Newest' ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+              onClick={() => setSortBy('Newest')}
+            >
+              New for You
             </button>
             <button
               className="rounded-full border px-4 py-2 text-sm hover:bg-gray-50"
-              onClick={() => {
-                setKeyword("");
-                setCategory("All");
-                setJobType("All");
-                fetchJobs();
-              }}
+              onClick={() => { setKeyword(''); setCategory('All'); setJobType('All'); setSortBy('Newest'); fetchJobs(); }}
             >
               Reset
             </button>
@@ -394,7 +405,7 @@ export default function FindJobPage() {
                 <button
                   key={job.id}
                   onClick={() => setSelectedId(job.id)}
-                  className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
+                  className={`relative w-full rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
                   style={{
@@ -443,7 +454,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
+          className="relative rounded-2xl border-2 bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
@@ -452,42 +463,84 @@ export default function FindJobPage() {
             </div>
           ) : (
             <>
-              
-              <div className="pr-20 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
-                  {selected?.id && (
-                    <Link
-                      href={`/job/${selected.id}`}
-                      className="inline-flex items-center justify-center rounded-full border p-1 text-gray-600 hover:bg-gray-50"
-                      title="Open job details"
-                    >
-                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                    </Link>
-                  )}
+              {/* Header with logo + title */}
+              <div className="pr-20">
+                <div className="flex items-start gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-full border bg-white shadow-sm flex-shrink-0">
+                    {selected.company_profile_image ? (
+                      <img src={selected.company_profile_image} alt={(selected.company_name || 'Company') + ' logo'} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-emerald-50 text-emerald-700">
+                        <span className="text-sm font-semibold">{(selected.company_name || "?").slice(0,1).toUpperCase()}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl sm:text-2xl font-semibold">{selected.job_title || selected.position}</h2>
+                      {selected?.id && (
+                        <Link href={`/job/${selected.id}`} className="inline-flex items-center justify-center rounded-full border p-1 text-gray-600 hover:bg-gray-50" title="Open job details">
+                          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                        </Link>
+                      )}
+                      {/* Small chips next to title */}
+                      <span className="ml-2 inline-flex items-center rounded-full border border-gray-300 bg-white px-2 py-0.5 text-xs">
+                        {selected.jobType || '-'}
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2 py-0.5 text-xs">
+                        {selected.work_place || '-'}
+                      </span>
+                    </div>
+                    <div className="text-base text-gray-600 break-words flex items-center gap-1">
+                      <BuildingOfficeIcon className="h-4 w-4" />
+                      {selected.company_user_id ? (
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${selected.company_user_id}`} target="_blank" rel="noopener noreferrer">
+                          {selected.company_name}
+                        </Link>
+                      ) : (
+                        selected.company_name
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500 break-words flex items-center gap-1">
+                      <MapPinIcon className="h-4 w-4" />
+                      {selected.location ?? selected.company_location}
+                    </div>
+                    <div className="mt-1">
+                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+                        {postedDays !== null ? `Posted ${postedDays} day(s) ago` : ''}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-base text-gray-600 break-words flex items-center gap-1">
-                  <BuildingOfficeIcon className="h-4 w-4" />
-                  {selected.company_user_id ? (
-                    <Link className="hover:underline cursor-pointer" href={`/profile/${selected.company_user_id}`} target="_blank" rel="noopener noreferrer">
-                      {selected.company_name}
-                    </Link>
-                  ) : (
-                    selected.company_name
-                  )}
-                </div>
-                <div className="text-sm text-gray-500 break-words flex items-center gap-1">
-                  <MapPinIcon className="h-4 w-4" />
-                  {selected.location ?? selected.company_location}
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-700">
-                <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5">
-                  <span className="font-medium">{selected.jobType || '-'}</span>
-                </span>
-                <span className="inline-flex items-center rounded-full border border-gray-300 bg-white px-2.5 py-0.5">
-                  <span className="font-medium">{selected.work_place || '-'}</span>
-                </span>
+
+                {/* Actions row */}
+                {canApply && (
+                  <div className="mt-3 flex items-center gap-2">
+                    {(() => {
+                      const isApplied = !!selected && appliedIds.has(selected.id);
+                      const isInCart = !!selected && contains(selected.id);
+                      return (
+                        <>
+                        <button
+                          disabled={isApplied}
+                          className={`h-9 rounded-full px-5 text-xs font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          style={{ backgroundColor: GREEN }}
+                          onClick={!isApplied ? () => selected && router.push(`/apply/${selected.id}`) : undefined}
+                        >
+                          {isApplied ? 'APPLIED' : 'Apply'}
+                        </button>
+                          <button
+                            disabled={isApplied || isInCart}
+                            className={`h-9 rounded-full border px-4 text-xs ${isApplied || isInCart ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                            onClick={() => selected && add(selected)}
+                          >
+                            {isInCart ? 'Added to list' : 'Add to list'}
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="mt-2 grid gap-1 text-sm text-gray-600">
                 <div>Available Positions: {selected.available_position}</div>
@@ -501,53 +554,18 @@ export default function FindJobPage() {
               </div>
               <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
-              {canApply && (
-                <div className="mt-6 flex justify-end">
-                  {(() => {
-                    const isApplied = !!selected && appliedIds.has(selected.id);
-                    const isInCart = !!selected && contains(selected.id);
-                    return (
-                      <div className="flex gap-2">
-                        <button
-                          disabled={isApplied}
-                          className={`rounded-full px-6 py-2 text-sm font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
-                          style={{ backgroundColor: GREEN }}
-                          onClick={!isApplied ? () => setIsApplyOpen(true) : undefined}
-                        >
-                          {isApplied ? 'APPLIED' : 'APPLY'}
-                        </button>
-                        <button
-                          disabled={isApplied || isInCart}
-                          className={`rounded-full border px-4 py-2 text-sm ${isApplied || isInCart ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-                          onClick={() => selected && add(selected)}
-                        >
-                          {isInCart ? 'ADDED' : 'ADD TO LIST'}
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+              {/* Keep actions near top per new layout; no duplicate bottom buttons */}
             </>
           )}
         </section>
       </div>
       )}
 
-      {/* Apply Modal */}
-      {canApply && (
-        <ApplyModal
-          isOpen={isApplyOpen}
-          onClose={() => setIsApplyOpen(false)}
-          onSubmit={handleApply}
-          resumes={resumes}
-          jobTitle={selected?.job_title || selected?.position}
-          brandColor={GREEN}
-        />
-      )}
+      {/* Modal removed; using full apply page at /apply/[id] */}
     </main>
   );
 }
+
 
 
 
