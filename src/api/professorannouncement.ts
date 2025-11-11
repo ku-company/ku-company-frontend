@@ -52,7 +52,8 @@ async function handleResponse<T>(res: Response, action: string): Promise<T> {
 export async function fetchProfessorAnnouncements(signal?: AbortSignal) {
   // Use the public announcements feed so all roles can read
   const res = await fetch(API_URL_PUBLIC, withAuthHeaders({ method: "GET", signal }));
-  return handleResponse<any[]>(res, "Failed to fetch announcements");
+  // Response shape may be an array or an object with results/data
+  return handleResponse<any>(res, "Failed to fetch announcements");
 }
 
 /* -----------------------------------------------------------

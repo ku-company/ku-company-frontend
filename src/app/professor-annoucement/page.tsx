@@ -16,10 +16,25 @@ const GREEN = "#5b8f5b";
 
 type Announcement = {
   id: number;
-  author?: { id: number; username: string };
+  author?: {
+    id?: number;
+    username?: string;
+    firstname?: string;
+    lastname?: string;
+  };
   content: string;
   created_at: string;
 };
+
+function formatAuthor(a?: Announcement["author"]) {
+  const first = a?.firstname?.trim();
+  const last = a?.lastname?.trim();
+  const username = a?.username?.trim();
+  const full = [first, last].filter(Boolean).join(" ").trim();
+  const displayName = full || username || "Professor";
+  const initial = (first?.[0] || last?.[0] || username?.[0] || "P").toUpperCase();
+  return { displayName, initial };
+}
 
 export default function ProfessorAnnouncementPage() {
   const { user } = useAuth();
@@ -48,10 +63,12 @@ export default function ProfessorAnnouncementPage() {
       try {
         const data = await fetchProfessorAnnouncements();
 
-        if (Array.isArray(data)) setAnnouncements(data);
-        else if (data?.results) setAnnouncements(data.results);
-        else if (data?.data) setAnnouncements(data.data);
-        else setAnnouncements([]);
+        const list = Array.isArray(data)
+          ? data
+          : (data?.results || data?.data || []);
+
+        const normalized: Announcement[] = (Array.isArray(list) ? list : []).map(toAnnouncement);
+        setAnnouncements(normalized);
 
         setErrorMessage(null);
       } catch (err: any) {
@@ -74,6 +91,24 @@ export default function ProfessorAnnouncementPage() {
       }
     })();
   }, []);
+
+  function toAnnouncement(raw: any): Announcement {
+    const user = raw?.author || raw?.user || raw?.professor?.user || {};
+    const first = user.first_name ?? user.firstname ?? raw?.first_name ?? raw?.firstname;
+    const last = user.last_name ?? user.lastname ?? raw?.last_name ?? raw?.lastname;
+    const username = user.user_name ?? user.username ?? raw?.user_name ?? raw?.username;
+    return {
+      id: Number(raw?.id ?? 0),
+      content: String(raw?.content ?? raw?.text ?? raw?.body ?? ""),
+      created_at: String(raw?.created_at ?? raw?.createdAt ?? new Date().toISOString()),
+      author: {
+        id: typeof user.id === 'number' ? user.id : undefined,
+        username: typeof username === 'string' ? username : undefined,
+        firstname: typeof first === 'string' ? first : undefined,
+        lastname: typeof last === 'string' ? last : undefined,
+      },
+    };
+  }
 
   // Resolve repost details for announcements (best-effort)
   useEffect(() => {
@@ -191,7 +226,8 @@ export default function ProfessorAnnouncementPage() {
       });
 
       if (newPost && (newPost.id || newPost?.data?.id)) {
-        const created = newPost.id !== undefined ? newPost : newPost.data || newPost.results?.[0];
+        const createdRaw = newPost.id !== undefined ? newPost : newPost.data || newPost.results?.[0];
+        const created = toAnnouncement(createdRaw);
         setAnnouncements((prev) => [created, ...prev]);
       }
 
@@ -372,11 +408,11 @@ export default function ProfessorAnnouncementPage() {
               {/* Header */}
               <div className="flex items-center gap-3 mb-2">
                 <div className="h-8 w-8 rounded-full bg-emerald-700 text-white grid place-items-center font-semibold">
-                  {(a.author?.username?.[0] || "P").toUpperCase()}
+                  {formatAuthor(a.author).initial}
                 </div>
                 <div>
                   <div className="font-semibold text-sm text-gray-800">
-                    {a.author?.username || "Professor"}
+                    {formatAuthor(a.author).displayName}
                   </div>
                   <div className="text-xs text-gray-500">
                     {new Date(a.created_at).toLocaleString()}
