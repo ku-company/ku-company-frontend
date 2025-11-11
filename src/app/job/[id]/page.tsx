@@ -116,7 +116,7 @@ export default function JobDetailsPage() {
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
         <div className="space-y-2">
-          <div className="text-2xl font-semibold">{job.job_title || job.position}</div>
+          <div className="text-2xl font-semibold">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
           <div className="text-base text-gray-600 break-words flex items-center gap-1">
             <BuildingOfficeIcon className="h-4 w-4" />
             {job.company_user_id ? (
@@ -189,16 +189,16 @@ export default function JobDetailsPage() {
         )}
       </div>
 
-      {canApply && (
-        <ApplyModal
-          isOpen={isApplyOpen}
-          onClose={() => setIsApplyOpen(false)}
-          onSubmit={handleApply as any}
-          resumes={resumes}
-          jobTitle={job?.job_title || job?.position}
-          brandColor={GREEN}
-        />
-      )}
+        {canApply && (
+          <ApplyModal
+            isOpen={isApplyOpen}
+            onClose={() => setIsApplyOpen(false)}
+            onSubmit={handleApply as any}
+            resumes={resumes}
+          jobTitle={(job?.job_title || job?.position || '').replace(/_/g, ' ')}
+            brandColor={GREEN}
+          />
+        )}
     </main>
   );
 }

@@ -199,10 +199,10 @@ export default function DashboardPage() {
               <div className="flex w-full items-center justify-between">
                 <div>
                   <div className="mt-1 text-xl font-extrabold">
-                    {job.job_title || job.position || "Untitled"}
+                    {(job.job_title || job.position || "Untitled").replace(/_/g, " ")}
                   </div>
                   <div className="mt-0.5 text-sm text-gray-700">
-                    {job.position || "-"}
+                    {(job.position || "-").replace(/_/g, " ")}
                   </div>
                   <div className="mt-1 text-xs font-semibold tracking-wide text-gray-700">
                     {(job.jobType || "").toString().toUpperCase() || "FULL TIME"}

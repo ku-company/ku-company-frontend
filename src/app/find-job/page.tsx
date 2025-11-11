@@ -418,7 +418,7 @@ export default function FindJobPage() {
                     )}
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
                     <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
                         <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
@@ -456,7 +456,7 @@ export default function FindJobPage() {
               
               <div className="pr-20 space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                  <div className="text-2xl font-semibold">{(selected.job_title || selected.position || '').replace(/_/g, ' ')}</div>
                   {selected?.id && (
                     <Link
                       href={`/job/${selected.id}`}
@@ -542,7 +542,7 @@ export default function FindJobPage() {
           onClose={() => setIsApplyOpen(false)}
           onSubmit={handleApply}
           resumes={resumes}
-          jobTitle={selected?.job_title || selected?.position}
+          jobTitle={(selected?.job_title || selected?.position || '').replace(/_/g, ' ')}
           brandColor={GREEN}
         />
       )}
