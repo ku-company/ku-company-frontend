@@ -11,7 +11,7 @@ type Company = {
 
 export default function CompanyCard({ company }: { company: Company }) {
   return (
-    <div className="group relative rounded-2xl border-2 border-green-600 bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+    <div className="group relative rounded-2xl border-2 bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md" style={{ borderColor: '#5D9252' }}>
       {/* Image container: fixed height, relative for Next.js Image with 'fill' */}
       <div className={`relative h-48 ${company.accent ?? "bg-gray-50"} overflow-hidden`}>
         {/* Next.js Image with 'fill' makes it cover the parent container.

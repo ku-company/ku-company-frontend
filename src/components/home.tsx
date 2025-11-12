@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 export default function Home() {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-6">
-      <div className="relative h-64 sm:h-80 lg:h-[28rem] overflow-hidden rounded-2xl shadow-lg border-2 border-green-600">
+      <div className="relative h-64 sm:h-80 lg:h-[28rem] overflow-hidden rounded-2xl shadow-lg border" style={{ borderColor: '#5D9252' }}>
         {/* Background image */}
         <Image
           src="/home.png"

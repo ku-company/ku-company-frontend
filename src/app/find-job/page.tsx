@@ -41,6 +41,33 @@ type Resume = {
 };
 
 const GREEN = "#5b8f5b";
+
+// Strip basic Markdown syntax for compact previews (left list)
+function stripMarkdown(input: string | null | undefined): string {
+  if (!input) return "";
+  let s = String(input);
+  // Remove fenced code blocks
+  s = s.replace(/```[\s\S]*?```/g, " ");
+  // Inline code
+  s = s.replace(/`([^`]+)`/g, "$1");
+  // Images ![alt](url) → alt
+  s = s.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
+  // Links [text](url) → text
+  s = s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+  // Headings ### Title → Title
+  s = s.replace(/^\s{0,3}#{1,6}\s*/gm, "");
+  // Blockquotes > text → text
+  s = s.replace(/^\s{0,3}>\s?/gm, "");
+  // Lists -/+/* or numbered → text
+  s = s.replace(/^\s*[-*+]\s+/gm, "");
+  s = s.replace(/^\s*\d+\.\s+/gm, "");
+  // Emphasis **__*_ → remove markers
+  s = s.replace(/\*\*|__|\*|_/g, "");
+  // Horizontal rules and extra newlines
+  s = s.replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, " ");
+  s = s.replace(/\r?\n+/g, " ");
+  return s.trim();
+}
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export default function FindJobPage() {
@@ -405,7 +432,7 @@ export default function FindJobPage() {
                 <button
                   key={job.id}
                   onClick={() => setSelectedId(job.id)}
-                  className={`relative w-full rounded-2xl border-2 bg-white p-4 text-left shadow-sm transition ${
+                  className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
                   style={{
@@ -441,7 +468,7 @@ export default function FindJobPage() {
                     <div className="text-xs text-gray-500 break-words">{job.location ?? job.company_location}</div>
                   </div>
                   <p className="mt-2 text-sm text-gray-700 line-clamp-3 break-words">
-                    {job.description}
+                    {stripMarkdown(job.description)}
                   </p>
                   <div className="mt-2 text-[11px] text-gray-500">
                     {job.available_position} position(s) | {job.jobType}
@@ -454,7 +481,7 @@ export default function FindJobPage() {
 
         {/* Right panel */}
         <section
-          className="relative rounded-2xl border-2 bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
+          className="relative rounded-2xl border bg-white p-5 sm:p-6 shadow-sm sticky top-20 max-h-[72vh] overflow-y-auto break-words"
           style={{ borderColor: GREEN }}
         >
           {!selected ? (
