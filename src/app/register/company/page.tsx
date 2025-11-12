@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
 import notify from "@/lib/toast";
 import { toast } from "react-toastify";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function RegisterCompanyPage() {
         password: form.password,
         confirm_password: form.confirm_password,
         role: "Company",
-        pdpa_consent: true,
+        pdpa_consent: acceptedTerms,
       };
 
       const flow = async () => {
@@ -69,7 +70,12 @@ export default function RegisterCompanyPage() {
       await toast.promise(flow(), {
         pending: "Creating company account…",
         success: "Company registered",
-        error: "Sign up failed",
+        error: {
+          render({ data }) {
+            const err = data as any;
+            return (err?.message as string) || "Sign up failed";
+          },
+        },
       });
 
       // Create default company profile
@@ -123,6 +129,12 @@ export default function RegisterCompanyPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      {loading && (
+        <LoadingOverlay
+          title="Screening company account…"
+          subtitle="Please wait while our AI completes the screening."
+        />
+      )}
       <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">
         {/* Register Form */}
         <div className="w-full md:w-1/2">

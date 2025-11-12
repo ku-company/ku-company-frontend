@@ -10,6 +10,7 @@ import { buildGoogleSignupUrl } from "@/api/oauth";
 import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
 import notify from "@/lib/toast";
 import { toast } from "react-toastify";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function RegisterPage() {
       const payload = {
         ...form,
         role: "Professor",
-        pdpa_consent: true,
+        pdpa_consent: acceptedTerms,
       };
 
       const flow = async () => {
@@ -60,7 +61,12 @@ export default function RegisterPage() {
       await toast.promise(flow(), {
         pending: "Creating your account…",
         success: "Welcome!",
-        error: "Sign up failed",
+        error: {
+          render({ data }) {
+            const err = data as any;
+            return (err?.message as string) || "Sign up failed";
+          },
+        },
       });
 
       // Show onboarding to collect faculty/department and create profile
@@ -78,6 +84,12 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      {loading && (
+        <LoadingOverlay
+          title="Screening your account…"
+          subtitle="Please wait while our AI completes the screening."
+        />
+      )}
       <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">
         {/* Register Form */}
         <div className="w-full md:w-1/2">
