@@ -69,10 +69,9 @@ export default function RegisterPage() {
         },
       });
 
-      // Show onboarding to collect faculty/department and create profile
+      // Show onboarding to collect faculty/department and create profile (required)
       setShowOnboarding(true);
-      notify.success("Registration complete");
-      router.push("/");
+      notify.success("Registration complete — please complete your profile");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
@@ -235,10 +234,10 @@ export default function RegisterPage() {
 
       <ProfessorOnboardingModal
         isOpen={showOnboarding}
+        requireCompletion={true}
         onClose={() => {
-          setShowOnboarding(false);
-          // After closing (saved or not), move to home; they can edit later
-          router.push("/");
+          // Do nothing if requireCompletion; modal cannot be dismissed without saving
+          // Keeping state so user must complete.
         }}
         onCreated={() => {
           // After profile creation, route to home
