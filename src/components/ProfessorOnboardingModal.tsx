@@ -8,9 +8,11 @@ type Props = {
   onClose: () => void;
   onCreated?: () => void;
   brandColor?: string;
+  // When true, modal cannot be dismissed until saved
+  requireCompletion?: boolean;
 };
 
-export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, brandColor = "#4F7E4F" }: Props) {
+export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, brandColor = "#4F7E4F", requireCompletion = false }: Props) {
   const [department, setDepartment] = useState("");
   const [faculty, setFaculty] = useState("");
   const [saving, setSaving] = useState(false);
@@ -60,19 +62,21 @@ export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, b
       role="dialog"
       aria-modal="true"
       onMouseDown={(e) => {
-        if (e.target === overlayRef.current) onClose();
+        if (e.target === overlayRef.current && !requireCompletion) onClose();
       }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between px-5 py-4">
           <h2 className="text-lg font-semibold">Set Up Your Professor Profile</h2>
-          <button
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          {!requireCompletion && (
+            <button
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="space-y-4 px-5 pb-5">
@@ -103,9 +107,11 @@ export default function ProfessorOnboardingModal({ isOpen, onClose, onCreated, b
         </div>
 
         <div className="flex items-center justify-end gap-2 rounded-b-2xl bg-gray-50 px-5 py-3">
-          <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm hover:bg-gray-100" disabled={saving}>
-            Cancel
-          </button>
+          {!requireCompletion && (
+            <button onClick={onClose} className="rounded-full border px-4 py-2 text-sm hover:bg-gray-100" disabled={saving}>
+              Cancel
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

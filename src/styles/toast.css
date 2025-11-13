@@ -1,0 +1,24 @@
+.Toastify__toast {
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  padding: 10px 12px;
+}
+
+.Toastify__toast-body {
+  font-weight: 600;
+}
+
+/* Colored progress bar per type (to match the sample image) */
+.Toastify__toast--info .Toastify__progress-bar { background: #3b82f6; }
+.Toastify__toast--error .Toastify__progress-bar { background: #ef4444; }
+.Toastify__toast--warning .Toastify__progress-bar { background: #f59e0b; }
+.Toastify__toast--success .Toastify__progress-bar { background: #22c55e; }
+
+/* Make progress bar appear on bottom like the sample */
+.Toastify__progress-bar {
+  bottom: 0;
+  top: auto;
+  height: 4px;
+}
+

@@ -11,6 +11,7 @@ import {
   createProfessorAnnouncement,
   deleteProfessorAnnouncement,
 } from "@/api/professorannouncement";
+import notify from "@/lib/toast";
 
 const GREEN = "#5b8f5b";
 
@@ -234,6 +235,7 @@ export default function ProfessorAnnouncementPage() {
       setContent("");
       setComposerIsConnection(false);
       setErrorMessage(null);
+      notify.success("Announcement posted");
     } catch (err: any) {
       console.error("⚠️ Failed to create announcement:", err);
       const errStr = String(err);
@@ -243,6 +245,7 @@ export default function ProfessorAnnouncementPage() {
       else if (errStr.includes("401"))
         setErrorMessage("Unauthorized. Please login again.");
       else setErrorMessage("Failed to create announcement. Try again.");
+      notify.error("Failed to create announcement");
     }
   };
 
@@ -317,9 +320,11 @@ export default function ProfessorAnnouncementPage() {
       await deleteProfessorAnnouncement(id);
       setAnnouncements((prev) => prev.filter((a) => a.id !== id));
       setErrorMessage(null);
+      notify.success("Announcement deleted");
     } catch (err) {
       console.error("❌ Failed to delete:", err);
       setErrorMessage("Failed to delete announcement. Try again.");
+      notify.error("Failed to delete announcement");
     }
   };
 

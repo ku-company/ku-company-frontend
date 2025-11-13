@@ -11,6 +11,7 @@ import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
+import notify from "@/lib/toast";
 import { getAuthMe } from "@/api/user";
 import { repostJobPosting } from "@/api/professorrepost";
 
@@ -317,7 +318,7 @@ export default function FindJobPage() {
   }) => {
     try {
       if (!selected?.id) {
-        alert("Please select a job first.");
+        notify.info("Please select a job first.");
         return;
       }
 
@@ -325,13 +326,13 @@ export default function FindJobPage() {
 
       if (payload.mode === "existing") {
         if (!payload.resumeId) {
-          alert("Please select a resume.");
+          notify.info("Please select a resume.");
           return;
         }
         resumeIdToUse = parseInt(payload.resumeId, 10);
       } else if (payload.mode === "upload") {
         if (!payload.file) {
-          alert("Please choose a file to upload.");
+          notify.info("Please choose a file to upload.");
           return;
         }
         const uploaded = await uploadResume(payload.file);
@@ -339,17 +340,17 @@ export default function FindJobPage() {
       }
 
       if (!resumeIdToUse) {
-        alert("Unable to determine resume to use.");
+        notify.error("Unable to determine resume to use.");
         return;
       }
 
       await applyToJob(selected.id, resumeIdToUse);
       setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
       setIsApplyOpen(false);
-      alert("Application submitted successfully.");
+      notify.success("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   };
 
@@ -502,7 +503,7 @@ export default function FindJobPage() {
                     )}
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
                     <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
                         <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
@@ -540,7 +541,7 @@ export default function FindJobPage() {
               
               <div className="pr-20 space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-semibold">{selected.job_title || selected.position}</div>
+                  <div className="text-2xl font-semibold">{(selected.job_title || selected.position || '').replace(/_/g, ' ')}</div>
                   {selected?.id && (
                     <Link
                       href={`/job/${selected.id}`}
@@ -638,7 +639,7 @@ export default function FindJobPage() {
           onClose={() => setIsApplyOpen(false)}
           onSubmit={handleApply}
           resumes={resumes}
-          jobTitle={selected?.job_title || selected?.position}
+          jobTitle={(selected?.job_title || selected?.position || '').replace(/_/g, ' ')}
           brandColor={GREEN}
         />
       )}

@@ -7,6 +7,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import BootstrapSession from "@/components/auth/BootstrapSession";
 import AuthExpiryHandler from "@/components/auth/AuthExpiryHandler";
 import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
+import ToastProvider from "@/components/ToastProvider";
 
 // Font setup
 const geistSans = Geist({
@@ -57,6 +58,8 @@ export default function RootLayout({
             {/* Add top padding to prevent content from being overlapped by the fixed navbar */}
             <main>{children}</main>
           </ClientLayout>
+          {/* Global toast notifications */}
+          <ToastProvider />
         </AuthProvider>
       </body>
     </html>
