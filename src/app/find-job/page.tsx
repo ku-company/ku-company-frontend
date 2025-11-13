@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MegaphoneIcon } from "@heroicons/react/24/outline";
 import ApplyModal from "@/components/ApplyModal";
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
@@ -12,6 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
 import notify from "@/lib/toast";
+import { getAuthMe } from "@/api/user";
+import { repostJobPosting } from "@/api/professorrepost";
 
 type Job = {
   id: number;
@@ -60,7 +62,17 @@ export default function FindJobPage() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [verifyRequired, setVerifyRequired] = useState(false);
 
+  // Professor verification + quote modal state
+  const [isProfVerified, setIsProfVerified] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteJob, setQuoteJob] = useState<Job | null>(null);
+  const [quoteContent, setQuoteContent] = useState("");
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [quoteNotice, setQuoteNotice] = useState<string | null>(null);
+  const [quoteIsConnection, setQuoteIsConnection] = useState(false);
+
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+  const isProfessor = useMemo(() => (user?.role || "").toLowerCase() === "professor", [user]);
 
   // Re-sort when sort option changes without re-fetching
   useEffect(() => {
@@ -77,6 +89,66 @@ export default function FindJobPage() {
     });
     setJobs(sorted);
   }, [sortBy]);
+
+  // Determine if current user is a verified professor
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!isProfessor) { setIsProfVerified(false); return; }
+        const me = await getAuthMe().catch(() => null as any);
+        if (!cancelled) {
+          const v = Boolean(
+            (me && (
+              me.verified === true ||
+              me.verify === true ||
+              me.verified_status === true ||
+              (me.user && me.user.verified === true)
+            ))
+          );
+          setIsProfVerified(v);
+        }
+      } catch {
+        if (!cancelled) setIsProfVerified(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isProfessor]);
+
+  function openQuote(job: Job, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setQuoteJob(job);
+    try {
+      const title = job.job_title || job.position || "Job";
+      const company = job.company_name ? ` at ${job.company_name}` : "";
+      const prefill = `Repost: ${title}${company}`; // no raw URL in content
+      setQuoteContent(prefill);
+    } catch {
+      setQuoteContent("");
+    }
+    setQuoteOpen(true);
+    setQuoteNotice(null);
+    setQuoteIsConnection(false);
+  }
+
+  async function postQuote() {
+    if (!quoteJob || !quoteContent.trim()) return;
+    setQuoteSubmitting(true);
+    try {
+      // Use repost endpoint with job posting id
+      await repostJobPosting(quoteJob.id, { content: quoteContent.trim(), is_connection: quoteIsConnection });
+      setQuoteOpen(false);
+      setQuoteJob(null);
+      setQuoteContent("");
+      setQuoteNotice("Reposted job successfully.");
+      setTimeout(() => setQuoteNotice(null), 3000);
+    } catch (err: any) {
+      const msg = String(err?.message || err || "Failed to post announcement");
+      setQuoteNotice(msg);
+    } finally {
+      setQuoteSubmitting(false);
+    }
+  }
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {
@@ -392,9 +464,12 @@ export default function FindJobPage() {
             jobs.map((job) => {
               const active = job.id === selectedId;
               return (
-                <button
+                <div
                   key={job.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedId(job.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedId(job.id); }}
                   className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
@@ -403,6 +478,16 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
+                  {isProfessor && isProfVerified && (
+                    <button
+                      type="button"
+                      title="Repost this job"
+                      onClick={(e) => openQuote(job, e)}
+                      className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <MegaphoneIcon className="h-4 w-4" />
+                    </button>
+                  )}
                   <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
                     {job.company_profile_image ? (
                       // Company profile image from backend
@@ -436,7 +521,7 @@ export default function FindJobPage() {
                   <div className="mt-2 text-[11px] text-gray-500">
                     {job.available_position} position(s) | {job.jobType}
                   </div>
-                </button>
+                </div>
               );
             })
           )}
@@ -500,6 +585,18 @@ export default function FindJobPage() {
                   }
                 </div>
               </div>
+              {isProfessor && isProfVerified && selected?.id && (
+                <button
+                  type="button"
+                  onClick={(e) => openQuote(selected, e)}
+                  className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-50"
+                  title="Repost this job"
+                >
+                  <MegaphoneIcon className="h-4 w-4" />
+                  Repost
+                </button>
+              )}
+
               <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {canApply && (
@@ -545,6 +642,71 @@ export default function FindJobPage() {
           jobTitle={(selected?.job_title || selected?.position || '').replace(/_/g, ' ')}
           brandColor={GREEN}
         />
+      )}
+
+      {/* Quote Modal (professor only) */}
+      {quoteOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4" onClick={() => !quoteSubmitting && setQuoteOpen(false)}>
+          <div
+            className="w-full max-w-lg rounded-xl border bg-white p-4 shadow-lg"
+            style={{ borderColor: GREEN }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <MegaphoneIcon className="h-5 w-5 text-emerald-700" />
+              <div className="font-semibold">Repost job</div>
+            </div>
+            {quoteJob?.id && (
+              <div className="mt-2 text-sm">
+                <a
+                  className="text-emerald-700 font-medium hover:underline"
+                  href={`/job/${quoteJob.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {quoteJob?.job_title || quoteJob?.position}
+                </a>
+                {quoteJob?.company_name ? <span className="text-gray-600"> · {quoteJob.company_name}</span> : null}
+              </div>
+            )}
+            <textarea
+              className="mt-3 w-full h-36 resize-none border rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              value={quoteContent}
+              onChange={(e) => setQuoteContent(e.target.value)}
+            />
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={quoteIsConnection}
+                onChange={(e) => setQuoteIsConnection(e.target.checked)}
+              />
+              I have a connection with this job post
+            </label>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+                onClick={() => setQuoteOpen(false)}
+                disabled={quoteSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                style={{ backgroundColor: GREEN }}
+                onClick={postQuote}
+                disabled={quoteSubmitting || !quoteContent.trim()}
+              >
+                {quoteSubmitting ? "Reposting…" : "Repost"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {quoteNotice && (
+        <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-md border bg-white px-4 py-2 text-sm shadow" style={{ borderColor: GREEN }}>
+          {quoteNotice}
+        </div>
       )}
     </main>
   );
