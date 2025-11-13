@@ -10,6 +10,7 @@ import { buildGoogleSignupUrl } from "@/api/oauth";
 import notify from "@/lib/toast";
 import { toast } from "react-toastify";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,6 +29,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [pendingGoogleStudentId, setPendingGoogleStudentId] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -204,13 +207,8 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => {
-                if (!acceptedTerms) {
-                  toast.error("Please agree to the Terms before continuing with Google.");
-                  setError("You must agree to the Terms before continuing with Google.");
-                  return;
-                }
-                // Kick off Google signup for Student
-                window.location.href = buildGoogleSignupUrl("Student");
+                setPendingGoogleStudentId(form.stdId || "");
+                setShowGoogleModal(true);
               }}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
@@ -239,6 +237,29 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      <GoogleConsentModal
+        isOpen={showGoogleModal}
+        role="Student"
+        requireStudentId
+        initialStudentId={pendingGoogleStudentId}
+        onCancel={() => setShowGoogleModal(false)}
+        onConfirm={({ studentId }) => {
+          setShowGoogleModal(false);
+          const finalStdId = (studentId || pendingGoogleStudentId || "").trim();
+          if (!finalStdId) {
+            toast.error("Student ID is required to continue with Google.");
+            return;
+          }
+          try {
+            localStorage.setItem("pending_oauth_signup_student", "1");
+          } catch {}
+          window.location.href = buildGoogleSignupUrl("Student", {
+            studentId: finalStdId,
+            consent: true,
+          });
+        }}
+      />
     </div>
   );
 }

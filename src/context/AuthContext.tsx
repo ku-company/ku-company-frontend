@@ -23,7 +23,7 @@ type AuthContextType = {
   user: AuthUser | null;
   isReady: boolean;
   login: (data: LoginData) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,13 +116,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function logout() {
-    logoutServerSession();
-    localStorage.clear();
-    setUser(null);
-    if (typeof window !== 'undefined') {
-      const path = window.location?.pathname || '';
-      if (!path.startsWith('/login')) window.location.href = '/login';
+  async function logout() {
+    try {
+      await logoutServerSession();
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    } finally {
+      localStorage.clear();
+      setUser(null);
+      if (typeof window !== "undefined") {
+        const path = window.location?.pathname || "";
+        if (!path.startsWith("/login")) window.location.href = "/login";
+      }
     }
   }
 

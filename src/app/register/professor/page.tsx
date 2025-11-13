@@ -11,6 +11,7 @@ import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
 import notify from "@/lib/toast";
 import { toast } from "react-toastify";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -195,15 +197,7 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!acceptedTerms) {
-                  toast.error("Please agree to the Terms before continuing with Google.");
-                  setError("You must agree to the Terms before continuing with Google.");
-                  return;
-                }
-                // Kick off Google signup for Professor
-                window.location.href = buildGoogleSignupUrl("Professor");
-              }}
+              onClick={() => setShowGoogleModal(true)}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
               <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
@@ -231,6 +225,18 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      <GoogleConsentModal
+        isOpen={showGoogleModal}
+        role="Professor"
+        onCancel={() => setShowGoogleModal(false)}
+        onConfirm={() => {
+          setShowGoogleModal(false);
+          window.location.href = buildGoogleSignupUrl("Professor", {
+            consent: true,
+          });
+        }}
+      />
 
       <ProfessorOnboardingModal
         isOpen={showOnboarding}

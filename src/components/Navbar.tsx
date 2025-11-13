@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_EVENT } from "@/api/profileimage";
@@ -38,7 +38,6 @@ function NavItem({ href, label }: { href: string; label: string }) {
 }
 
 export default function Navbar() {
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { count } = useApplyCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -168,10 +167,9 @@ export default function Navbar() {
     };
   }, [user]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     setDropdownOpen(false);
-    router.push("/login");
   }
 
   return (

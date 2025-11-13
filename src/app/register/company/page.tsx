@@ -10,6 +10,7 @@ import { buildGoogleSignupUrl } from "@/api/oauth";
 import notify from "@/lib/toast";
 import { toast } from "react-toastify";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function RegisterCompanyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -230,18 +232,7 @@ export default function RegisterCompanyPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!acceptedTerms) {
-                  toast.error("Please agree to the Terms before continuing with Google.");
-                  setError("You must agree to the Terms before continuing with Google.");
-                  return;
-                }
-                // Kick off Google signup for Company (mark as signup)
-                try {
-                  localStorage.setItem("pending_oauth_signup_company", "1");
-                } catch {}
-                window.location.href = buildGoogleSignupUrl("Company") + "&signup=1";
-              }}
+              onClick={() => setShowGoogleModal(true)}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
               <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
@@ -267,6 +258,22 @@ export default function RegisterCompanyPage() {
           />
         </div>
       </div>
+
+      <GoogleConsentModal
+        isOpen={showGoogleModal}
+        role="Company"
+        onCancel={() => setShowGoogleModal(false)}
+        onConfirm={() => {
+          setShowGoogleModal(false);
+          try {
+            localStorage.setItem("pending_oauth_signup_company", "1");
+          } catch {}
+          window.location.href = buildGoogleSignupUrl("Company", {
+            consent: true,
+            extraParams: { signup: "1" },
+          });
+        }}
+      />
     </div>
   );
 }
