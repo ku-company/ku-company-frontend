@@ -98,12 +98,26 @@ export default function ProfessorAnnouncementPage() {
     const first = user.first_name ?? user.firstname ?? raw?.first_name ?? raw?.firstname;
     const last = user.last_name ?? user.lastname ?? raw?.last_name ?? raw?.lastname;
     const username = user.user_name ?? user.username ?? raw?.user_name ?? raw?.username;
+
+    const rawAuthorId =
+      user.id ??
+      user.user_id ??
+      raw?.author_id ??
+      raw?.user_id ??
+      raw?.professor_id ??
+      raw?.professor?.id ??
+      raw?.professor?.user_id;
+    const authorId = (() => {
+      if (typeof rawAuthorId === "number") return rawAuthorId;
+      const parsed = Number(rawAuthorId);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    })();
     return {
       id: Number(raw?.id ?? 0),
       content: String(raw?.content ?? raw?.text ?? raw?.body ?? ""),
       created_at: String(raw?.created_at ?? raw?.createdAt ?? new Date().toISOString()),
       author: {
-        id: typeof user.id === 'number' ? user.id : undefined,
+        id: authorId,
         username: typeof username === 'string' ? username : undefined,
         firstname: typeof first === 'string' ? first : undefined,
         lastname: typeof last === 'string' ? last : undefined,
@@ -393,12 +407,16 @@ export default function ProfessorAnnouncementPage() {
             No announcements yet.
           </p>
         ) : (
-          announcements.map((a) => (
-            <article
-              key={a.id}
-              className="rounded-2xl border bg-white shadow-sm p-5 relative"
-              style={{ borderColor: GREEN }}
-            >
+          announcements.map((a) => {
+            const author = formatAuthor(a.author);
+            const profileHref = a.author?.id ? `/profile/${a.author.id}` : null;
+
+            return (
+              <article
+                key={a.id}
+                className="rounded-2xl border bg-white shadow-sm p-5 relative"
+                style={{ borderColor: GREEN }}
+              >
               {/* Delete button (professors only) */}
               {isProfessor && (
                 <button
@@ -413,11 +431,20 @@ export default function ProfessorAnnouncementPage() {
               {/* Header */}
               <div className="flex items-center gap-3 mb-2">
                 <div className="h-8 w-8 rounded-full bg-emerald-700 text-white grid place-items-center font-semibold">
-                  {formatAuthor(a.author).initial}
+                  {author.initial}
                 </div>
                 <div>
                   <div className="font-semibold text-sm text-gray-800">
-                    {formatAuthor(a.author).displayName}
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="text-emerald-700 hover:underline focus-visible:underline"
+                      >
+                        {author.displayName}
+                      </Link>
+                    ) : (
+                      author.displayName
+                    )}
                   </div>
                   <div className="text-xs text-gray-500">
                     {new Date(a.created_at).toLocaleString()}
@@ -464,7 +491,8 @@ export default function ProfessorAnnouncementPage() {
 
               {/* Reactions/comments removed per request */}
             </article>
-          ))
+            );
+          })
         )}
       </div>
       {/* Repost Modal */}
