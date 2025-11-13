@@ -43,18 +43,29 @@ export async function getAuthMe(token?: string): Promise<AuthMe> {
 }
 
 
-export async function updateUserRole(role: string, tokenOverride?: string) {
-  const token = tokenOverride || localStorage.getItem("access_token") || "";
+export type UpdateRoleOptions = {
+  tokenOverride?: string;
+  studentId?: string;
+  consent?: boolean;
+};
+
+export async function updateUserRole(role: string, options?: UpdateRoleOptions) {
+  const token = options?.tokenOverride || localStorage.getItem("access_token") || "";
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
+  const body: Record<string, any> = { role };
+  const trimmedStudentId = options?.studentId?.trim();
+  if (trimmedStudentId) body.stdId = trimmedStudentId;
+  if (options?.consent !== undefined) body.pdpa_consent = options.consent;
+
   const res = await fetch(`${API_BASE}/api/user/role`, {
     method: "PATCH",
     headers,
-    body: JSON.stringify({ role }),
+    body: JSON.stringify(body),
     credentials: "include",
   });
 

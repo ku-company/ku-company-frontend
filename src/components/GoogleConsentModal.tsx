@@ -9,6 +9,8 @@ type GoogleConsentModalProps = {
   role: GoogleSignupRole;
   requireStudentId?: boolean;
   initialStudentId?: string;
+  submitting?: boolean;
+  externalError?: string | null;
   onCancel: () => void;
   onConfirm: (data: { studentId?: string }) => void;
 };
@@ -18,6 +20,8 @@ export default function GoogleConsentModal({
   role,
   requireStudentId = false,
   initialStudentId,
+  submitting = false,
+  externalError = null,
   onCancel,
   onConfirm,
 }: GoogleConsentModalProps) {
@@ -41,6 +45,8 @@ export default function GoogleConsentModal({
   if (!isOpen) return null;
 
   function handleConfirm() {
+    if (submitting) return;
+
     if (!consentChecked) {
       setError("Please agree to the Terms before continuing.");
       return;
@@ -58,6 +64,8 @@ export default function GoogleConsentModal({
 
     onConfirm({});
   }
+
+  const combinedError = error || externalError;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
@@ -87,7 +95,8 @@ export default function GoogleConsentModal({
               type="text"
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+              disabled={submitting}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500 disabled:opacity-60"
               placeholder="e.g., 6601234567"
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -101,6 +110,7 @@ export default function GoogleConsentModal({
             type="checkbox"
             checked={consentChecked}
             onChange={(e) => setConsentChecked(e.target.checked)}
+            disabled={submitting}
             className="mt-1 h-4 w-4"
           />
           <span>
@@ -109,9 +119,9 @@ export default function GoogleConsentModal({
           </span>
         </label>
 
-        {error && (
+        {combinedError && (
           <p className="mb-3 text-sm text-red-600">
-            {error}
+            {combinedError}
           </p>
         )}
 
@@ -119,16 +129,18 @@ export default function GoogleConsentModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            disabled={submitting}
+            className="rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="rounded-full bg-midgreen-500 px-5 py-2 text-sm font-semibold text-white hover:bg-midgreen-600"
+            disabled={submitting}
+            className="rounded-full bg-midgreen-500 px-5 py-2 text-sm font-semibold text-white hover:bg-midgreen-600 disabled:opacity-60"
           >
-            Agree & Continue
+            {submitting ? "Processing..." : "Agree & Continue"}
           </button>
         </div>
       </div>
