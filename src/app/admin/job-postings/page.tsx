@@ -11,7 +11,7 @@ import {
   type AdminJobPosting,
 } from "@/api/admin";
 import { useAuth } from "@/context/AuthContext";
-import { AdminNavbar, ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
+import { ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
 
 type VerificationTab = "all" | "verified" | "unverified";
 
@@ -337,27 +337,12 @@ export default function ManageJobPostingsPage() {
   );
 
   if (loading || !isReady) {
-    return (
-      <>
-        <AdminNavbar />
-        <div className="p-6">Loading…</div>
-      </>
-    );
+    return <div className="p-6">Loading…</div>;
   }
 
   if (err) {
-    return (
-      <>
-        <AdminNavbar />
-        <div className="p-6 text-red-600">{err}</div>
-      </>
-    );
+    return <div className="p-6 text-red-600">{err}</div>;
   }
 
-  return (
-    <>
-      <AdminNavbar />
-      {table}
-    </>
-  );
+  return table;
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
 import { useAuth } from "@/context/AuthContext";
-import { AdminNavbar, ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
+import { ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
 
 // ---- Types ----
 type Status = "approved" | "rejected" | "pending";
@@ -197,25 +197,11 @@ export default function AdminDashboard() {
     })();
   }, [tab, isReady, user]);
 
-  if (loading || !isReady)
-    return (
-      <>
-        <AdminNavbar />
-        <div className="p-6">Loading…</div>
-      </>
-    );
-  if (err)
-    return (
-      <>
-        <AdminNavbar />
-        <div className="p-6 text-red-600">{err}</div>
-      </>
-    );
+  if (loading || !isReady) return <div className="p-6">Loading…</div>;
+  if (err) return <div className="p-6 text-red-600">{err}</div>;
 
   return (
-    <>
-      <AdminNavbar />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
 
@@ -384,7 +370,6 @@ export default function AdminDashboard() {
           Next
         </button>
       </div>
-      </main>
-    </>
+    </main>
   );
 }

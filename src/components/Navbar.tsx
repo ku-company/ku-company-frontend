@@ -12,6 +12,7 @@ import RoleSelector from "@/components/roleselector";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import NotificationsBell from "@/components/NotificationsBell";
+import { AdminNavbar } from "@/components/admin/AdminNavbar";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname() || "/";
@@ -42,11 +43,13 @@ export default function Navbar() {
   const { count } = useApplyCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [showAdminNav, setShowAdminNav] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
+  const isAdmin = (user?.role || "").toLowerCase().includes("admin");
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -203,6 +206,15 @@ export default function Navbar() {
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowAdminNav((prev) => !prev)}
+                className="hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {showAdminNav ? "Hide Admin Links" : "Admin Links"}
+              </button>
+            )}
             {user ? (
               <>
                 {/* Student-only: Notifications + Apply list */}
@@ -278,6 +290,10 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      {isAdmin && showAdminNav && (
+        <AdminNavbar />
+      )}
 
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
