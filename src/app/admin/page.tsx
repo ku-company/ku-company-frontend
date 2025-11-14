@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
 import { useAuth } from "@/context/AuthContext";
+import { AdminNavbar, ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
 
 // ---- Types ----
 type Status = "approved" | "rejected" | "pending";
@@ -40,9 +41,6 @@ function mapUser(u: AdminUser): Row {
     status,
   };
 }
-
-// ---- Brand color ----
-const GREEN = "#5b8f5b";
 
 // ---- Small UI helpers ----
 function StatusDropdown({
@@ -199,11 +197,25 @@ export default function AdminDashboard() {
     })();
   }, [tab, isReady, user]);
 
-  if (loading || !isReady) return <div className="p-6">Loading…</div>;
-  if (err) return <div className="p-6 text-red-600">{err}</div>;
+  if (loading || !isReady)
+    return (
+      <>
+        <AdminNavbar />
+        <div className="p-6">Loading…</div>
+      </>
+    );
+  if (err)
+    return (
+      <>
+        <AdminNavbar />
+        <div className="p-6 text-red-600">{err}</div>
+      </>
+    );
 
   return (
-    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+    <>
+      <AdminNavbar />
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
 
@@ -219,7 +231,7 @@ export default function AdminDashboard() {
           />
           <button
             className="h-9 rounded-full px-4 text-sm text-white"
-            style={{ backgroundColor: GREEN }}
+            style={{ backgroundColor: ADMIN_BRAND_COLOR }}
           >
             APPROVE ACCOUNT
           </button>
@@ -246,8 +258,8 @@ export default function AdminDashboard() {
                 active ? "text-white" : "hover:bg-gray-50"
               }`}
               style={{
-                backgroundColor: active ? GREEN : "white",
-                borderColor: active ? GREEN : "#e5e7eb",
+                backgroundColor: active ? ADMIN_BRAND_COLOR : "white",
+                borderColor: active ? ADMIN_BRAND_COLOR : "#e5e7eb",
               }}
             >
               {t.label}
@@ -277,7 +289,7 @@ export default function AdminDashboard() {
       {/* Table */}
       <div className="mt-4 overflow-hidden rounded-xl border bg-white">
         <table className="min-w-full text-sm">
-          <thead style={{ backgroundColor: GREEN }} className="text-white">
+          <thead style={{ backgroundColor: ADMIN_BRAND_COLOR }} className="text-white">
             <tr className="[&>th]:px-3 [&>th]:py-3 [&>th]:text-left">
               <th className="w-48">Username</th>
               <th className="w-32">Role</th>
@@ -372,6 +384,7 @@ export default function AdminDashboard() {
           Next
         </button>
       </div>
-    </main>
+      </main>
+    </>
   );
 }
