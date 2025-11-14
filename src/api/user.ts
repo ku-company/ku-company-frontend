@@ -69,12 +69,13 @@ export async function updateUserRole(role: string, options?: UpdateRoleOptions) 
     credentials: "include",
   });
 
+  const clone = res.clone();
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(clone));
+  }
+
   const raw = await res.text();
   console.log(`updateUserRole response (role=${role}):`, maskToken(token), res.status, raw);
-
-  if (!res.ok) {
-    throw new Error(raw || `Failed to update role: ${res.status} ${res.statusText}`);
-  }
 
   let json: any = {};
   try { json = JSON.parse(raw); } catch {}
