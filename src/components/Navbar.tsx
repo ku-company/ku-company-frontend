@@ -48,6 +48,7 @@ export default function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
   const isAdmin = (user?.role || "").toLowerCase().includes("admin");
 
@@ -220,7 +221,18 @@ export default function Navbar() {
                 {/* Student-only: Notifications + Apply list */}
                 {user?.role?.toLowerCase().includes("student") && (
                   <>
-                    <NotificationsBell />
+                    {hasUnreadNotifications && (
+                      <span
+                        className="hidden md:inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600"
+                        aria-live="polite"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" aria-hidden="true" />
+                        New alerts
+                      </span>
+                    )}
+                    <NotificationsBell
+                      onUnreadChange={(count) => setHasUnreadNotifications(count > 0)}
+                    />
                     <Link
                       href="/apply-list"
                       className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
