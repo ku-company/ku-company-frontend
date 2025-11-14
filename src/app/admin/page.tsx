@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
@@ -286,9 +287,24 @@ export default function AdminDashboard() {
             </tr>
           </thead>
           <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
-            {current.map((r) => (
-              <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
-                <td className="font-medium">{r.username}</td>
+            {current.map((r) => {
+              const profileHref = typeof r.id === "number" ? `/profile/${r.id}` : null;
+              return (
+                <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
+                  <td className="font-medium">
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="text-gray-900 underline-offset-2 hover:text-emerald-700 hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {r.username}
+                      </Link>
+                    ) : (
+                      r.username
+                    )}
+                  </td>
                 <td>{r.role}</td>
                 <td className="text-gray-700">{r.email}</td>
                 <td>
@@ -328,8 +344,9 @@ export default function AdminDashboard() {
                     Delete
                   </button>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
 
             {current.length === 0 && (
               <tr>
