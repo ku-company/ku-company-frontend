@@ -75,7 +75,7 @@ export default function OAuthAiReviewGate() {
   return (
     <LoadingOverlay
       title="Screening your account…"
-      subtitle="Please wait while our AI completes the screening."
+      subtitle="Please wait while we verify your account.."
     />
   );
 }

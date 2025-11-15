@@ -88,7 +88,7 @@ export default function RegisterPage() {
       {loading && (
         <LoadingOverlay
           title="Screening your account…"
-          subtitle="Please wait while our AI completes the screening."
+          subtitle="Please wait while we verify your account.."
         />
       )}
       <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">

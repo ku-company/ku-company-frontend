@@ -9,7 +9,7 @@ type LoadingOverlayProps = {
 
 export default function LoadingOverlay({
   title = "Creating your account…",
-  subtitle = "Please wait while our we verify your account.",
+  subtitle = "Please wait we verify your account.",
 }: LoadingOverlayProps) {
   return (
     <div

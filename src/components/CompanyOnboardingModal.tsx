@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { updateCompanyProfile } from "@/api/companyprofile";
+import LoadingOverlay from "@/components/LoadingOverlay";
+import { requestAiRegistrationReview } from "@/api/ai";
+import { fetchAuthMe } from "@/api/session";
+import { useAuth } from "@/context/AuthContext";
+import notify from "@/lib/toast";
 
 type Props = {
   isOpen: boolean;
@@ -11,12 +16,14 @@ type Props = {
 export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const [companyName, setCompanyName] = useState("");
   const [country, setCountry] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState(false);
 
   // Basic country list for dropdown; adjust as needed
   const COUNTRIES = [
@@ -227,6 +234,14 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
 
   const canSave = [companyName, country, description].every((v) => (v ?? "").trim().length > 0);
 
+  const resolveUserId = async (): Promise<number | null> => {
+    if (user?.id) return Number(user.id);
+    const latest = await fetchAuthMe();
+    if (latest?.id) return Number(latest.id);
+    const stored = localStorage.getItem("user_id");
+    return stored ? Number(stored) : null;
+  };
+
   const handleSave = async () => {
     if (!canSave || saving) return;
     setSaving(true);
@@ -241,6 +256,20 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
         location: "",
         country,
       });
+
+      try {
+        setReviewing(true);
+        const userId = await resolveUserId();
+        if (!userId) throw new Error("Missing user id for AI review");
+        await requestAiRegistrationReview(userId);
+        notify.success("AI is reviewing your company profile.");
+      } catch (aiErr: any) {
+        console.error("AI review failed:", aiErr);
+        notify.error(aiErr?.message || "AI review failed after onboarding.");
+      } finally {
+        setReviewing(false);
+      }
+
       onClose();
     } catch (e: any) {
       setError(e?.message || "Failed to save company info");
@@ -250,13 +279,20 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
   };
 
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+    <>
+      {reviewing && (
+        <LoadingOverlay
+          title="Submitting to AI…"
+          subtitle="Please wait while we verify your company."
+        />
+      )}
+      <div
+        ref={overlayRef}
+        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between px-5 py-4">
           <h2 className="text-lg font-semibold">Company Information</h2>
           {/* No close button to enforce completion */}
@@ -306,7 +342,8 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 rounded-b-2xl bg-gray-50 px-5 py-3">
+        <div className="flex flex-col gap-2 rounded-b-2xl bg-gray-50 px-5 py-3">
+          <div className="flex items-center justify-end gap-2">
           <button
             onClick={handleSave}
             disabled={!canSave || saving}
@@ -314,9 +351,11 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
           >
             {saving ? "Saving…" : "Save"}
           </button>
+          </div>
         </div>
       </div>
     </div>
+    </>
   );
 }
 
