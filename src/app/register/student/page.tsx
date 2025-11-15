@@ -253,6 +253,7 @@ export default function RegisterPage() {
           }
           try {
             localStorage.setItem("pending_oauth_signup_student", "1");
+            localStorage.setItem("pending_oauth_signup_student_id", finalStdId);
           } catch {}
           window.location.href = buildGoogleSignupUrl("Student", {
             studentId: finalStdId,

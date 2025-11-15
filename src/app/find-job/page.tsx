@@ -118,14 +118,7 @@ export default function FindJobPage() {
   function openQuote(job: Job, e?: React.MouseEvent) {
     if (e) e.stopPropagation();
     setQuoteJob(job);
-    try {
-      const title = job.job_title || job.position || "Job";
-      const company = job.company_name ? ` at ${job.company_name}` : "";
-      const prefill = `Repost: ${title}${company}`; // no raw URL in content
-      setQuoteContent(prefill);
-    } catch {
-      setQuoteContent("");
-    }
+    setQuoteContent("");
     setQuoteOpen(true);
     setQuoteNotice(null);
     setQuoteIsConnection(false);

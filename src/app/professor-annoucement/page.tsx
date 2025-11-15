@@ -15,17 +15,119 @@ import notify from "@/lib/toast";
 
 const GREEN = "#5b8f5b";
 
+type AnnouncementAuthor = {
+  id?: number;
+  userId?: number;
+  profileUserId?: number;
+  username?: string;
+  firstname?: string;
+  lastname?: string;
+};
+
+type JobMeta = {
+  id?: number;
+  title?: string;
+  is_connection?: boolean;
+};
+
 type Announcement = {
   id: number;
-  author?: {
-    id?: number;
-    username?: string;
-    firstname?: string;
-    lastname?: string;
-  };
+  author?: AnnouncementAuthor;
   content: string;
   created_at: string;
+  jobMeta?: JobMeta;
+  raw?: any;
 };
+
+const asNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const asString = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+};
+
+const asBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return undefined;
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "y", "connected", "has_connection"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "none", "not_connected", "no_connection"].includes(normalized))
+      return false;
+  }
+  return undefined;
+};
+
+const pickString = (...values: unknown[]): string | undefined => {
+  for (const value of values) {
+    const str = asString(value);
+    if (str) return str;
+  }
+  return undefined;
+};
+
+function deriveJobMeta(payload: any): JobMeta {
+  if (!payload || typeof payload !== "object") return {};
+  const data = payload.data && typeof payload.data === "object" ? payload.data : payload;
+  const jobSources = [
+    data.job_post,
+    data.job_posting,
+    data.jobPosting,
+    data.job,
+    data.target,
+    data.target_job,
+    data.repost_of,
+    data.reference,
+    data.jobPosting,
+    data.job_detail,
+    data.job_posting_detail,
+  ].filter(Boolean);
+  const job = jobSources[0];
+
+  const id =
+    asNumber(data.job_posting_id) ??
+    asNumber(data.job_post_id) ??
+    asNumber(data.job_id) ??
+    asNumber(data.jobId) ??
+    asNumber(job?.job_posting_id) ??
+    asNumber(job?.job_post_id) ??
+    asNumber(job?.job_id) ??
+    asNumber(job?.id);
+
+  const title =
+    pickString(
+      data.job_title,
+      data.title,
+      data.position,
+      job?.job_title,
+      job?.title,
+      job?.position,
+    ) || undefined;
+
+  const is_connection =
+    asBoolean(data.is_connection) ??
+    asBoolean(data.connection) ??
+    asBoolean(data.has_connection) ??
+    asBoolean((data as any).hasConnection) ??
+    asBoolean((data as any).isConnection) ??
+    asBoolean(data.connection_status) ??
+    asBoolean(job?.is_connection) ??
+    asBoolean(job?.has_connection);
+
+  return { id, title, is_connection };
+}
 
 function formatAuthor(a?: Announcement["author"]) {
   const first = a?.firstname?.trim();
@@ -34,7 +136,8 @@ function formatAuthor(a?: Announcement["author"]) {
   const full = [first, last].filter(Boolean).join(" ").trim();
   const displayName = full || username || "Professor";
   const initial = (first?.[0] || last?.[0] || username?.[0] || "P").toUpperCase();
-  return { displayName, initial };
+  const profileUserId = a?.profileUserId ?? a?.userId ?? a?.id;
+  return { displayName, initial, profileUserId };
 }
 
 export default function ProfessorAnnouncementPage() {
@@ -94,34 +197,80 @@ export default function ProfessorAnnouncementPage() {
   }, []);
 
   function toAnnouncement(raw: any): Announcement {
-    const user = raw?.author || raw?.user || raw?.professor?.user || {};
-    const first = user.first_name ?? user.firstname ?? raw?.first_name ?? raw?.firstname;
-    const last = user.last_name ?? user.lastname ?? raw?.last_name ?? raw?.lastname;
-    const username = user.user_name ?? user.username ?? raw?.user_name ?? raw?.username;
+    const authorNode = raw?.author ?? raw?.professor ?? raw?.user ?? {};
+    const userNode =
+      raw?.author?.user ??
+      raw?.professor?.user ??
+      raw?.user ??
+      raw?.author?.profile ??
+      raw?.profile ??
+      authorNode;
 
-    const rawAuthorId =
-      user.id ??
-      user.user_id ??
-      raw?.author_id ??
-      raw?.user_id ??
-      raw?.professor_id ??
-      raw?.professor?.id ??
-      raw?.professor?.user_id;
-    const authorId = (() => {
-      if (typeof rawAuthorId === "number") return rawAuthorId;
-      const parsed = Number(rawAuthorId);
-      return Number.isFinite(parsed) ? parsed : undefined;
-    })();
+    const first =
+      pickString(
+        userNode?.first_name,
+        userNode?.firstname,
+        authorNode?.first_name,
+        authorNode?.firstname,
+        raw?.first_name,
+        raw?.firstname,
+      ) || undefined;
+    const last =
+      pickString(
+        userNode?.last_name,
+        userNode?.lastname,
+        authorNode?.last_name,
+        authorNode?.lastname,
+        raw?.last_name,
+        raw?.lastname,
+      ) || undefined;
+    const username =
+      pickString(
+        userNode?.user_name,
+        userNode?.username,
+        authorNode?.user_name,
+        authorNode?.username,
+        raw?.user_name,
+        raw?.username,
+      ) || undefined;
+
+    const authorId =
+      asNumber(authorNode?.id) ??
+      asNumber(authorNode?.user_id) ??
+      asNumber(raw?.author_id) ??
+      asNumber(raw?.professor_id) ??
+      asNumber(raw?.user_id) ??
+      asNumber(raw?.professor?.id) ??
+      asNumber(raw?.professor?.user_id);
+
+    const profileUserId =
+      asNumber(userNode?.id) ??
+      asNumber(userNode?.user_id) ??
+      asNumber(raw?.author?.user?.id) ??
+      asNumber(raw?.author?.user_id) ??
+      asNumber(raw?.professor?.user?.id) ??
+      asNumber(raw?.professor?.user_id) ??
+      asNumber(raw?.user?.id) ??
+      asNumber(raw?.user?.user_id) ??
+      asNumber(raw?.user_id) ??
+      authorId;
+
+    const jobMeta = deriveJobMeta(raw);
+
     return {
       id: Number(raw?.id ?? 0),
       content: String(raw?.content ?? raw?.text ?? raw?.body ?? ""),
       created_at: String(raw?.created_at ?? raw?.createdAt ?? new Date().toISOString()),
       author: {
         id: authorId,
-        username: typeof username === 'string' ? username : undefined,
-        firstname: typeof first === 'string' ? first : undefined,
-        lastname: typeof last === 'string' ? last : undefined,
+        userId: profileUserId,
+        profileUserId,
+        username,
+        firstname: first,
+        lastname: last,
       },
+      jobMeta,
+      raw,
     };
   }
 
@@ -131,11 +280,38 @@ export default function ProfessorAnnouncementPage() {
     (async () => {
       if (!Array.isArray(announcements) || announcements.length === 0) return;
       const seeded: Record<number, any> = {};
+      const initialTitles: Record<number, string> = {};
       for (const a of announcements) {
-        const meta = extractMetaFromAnnouncement(a);
-        if (meta.id) seeded[a.id] = { job_posting_id: meta.id, job_title: meta.title, is_connection: meta.is_connection };
+        const meta = a.jobMeta ?? (a.raw ? extractMetaFromAnnouncement(a.raw) : undefined);
+        if (meta?.id) {
+          seeded[a.id] = {
+            job_posting_id: meta.id,
+            job_title: meta.title,
+            is_connection: meta.is_connection,
+          };
+          if (meta.title && !(meta.id in jobTitleCache)) {
+            initialTitles[meta.id] = meta.title;
+          }
+        }
       }
-      if (!cancelled) setReposts(seeded);
+      if (!cancelled) {
+        setReposts(seeded);
+        const titleEntries = Object.entries(initialTitles);
+        if (titleEntries.length > 0) {
+          setJobTitleCache((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const [idStr, title] of titleEntries) {
+              const id = Number(idStr);
+              if (title && !next[id]) {
+                next[id] = title;
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
+      }
       const promises = announcements.map(async (a) => {
         try {
           const detail = await getRepostById(a.id).catch(() => null);
@@ -148,16 +324,44 @@ export default function ProfessorAnnouncementPage() {
       if (!cancelled) {
         const merged = { ...seeded } as Record<number, any>;
         for (const r of results) {
-          if (r.detail) merged[r.id] = r.detail;
+          if (r.detail) merged[r.id] = r.detail?.data ?? r.detail;
         }
         setReposts(merged);
 
-        // Fetch missing job titles
-        const toFetch: number[] = [];
-        for (const v of Object.values(merged)) {
-          const meta = extractRepostMeta(v);
-          if (meta.id && !meta.title && !(meta.id in jobTitleCache)) toFetch.push(meta.id);
+        const mergedTitleEntries: Record<number, string> = {};
+        for (const value of Object.values(merged)) {
+          const meta = extractRepostMeta(value);
+          if (meta.id && meta.title && !jobTitleCache[meta.id]) {
+            mergedTitleEntries[meta.id] = meta.title;
+          }
         }
+        const mergedTitleIds = Object.keys(mergedTitleEntries);
+        if (mergedTitleIds.length > 0) {
+          setJobTitleCache((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const key of mergedTitleIds) {
+              const id = Number(key);
+              const title = mergedTitleEntries[id];
+              if (title && !next[id]) {
+                next[id] = title;
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
+
+        // Fetch missing job titles
+        const toFetch = Array.from(
+          new Set(
+            Object.values(merged)
+              .map((value) => extractRepostMeta(value))
+              .filter((meta): meta is { id: number; title?: string } => typeof meta.id === "number")
+              .filter((meta) => !meta.title && !jobTitleCache[meta.id])
+              .map((meta) => meta.id as number),
+          ),
+        );
         if (toFetch.length > 0) {
           const pairs = await Promise.all(
             toFetch.map(async (jid) => {
@@ -167,15 +371,19 @@ export default function ProfessorAnnouncementPage() {
               } catch {
                 return [jid, ""] as const;
               }
-            })
+            }),
           );
-          if (!cancelled) {
+          if (!cancelled && pairs.length > 0) {
             setJobTitleCache((prev) => {
               const next = { ...prev } as Record<number, string>;
+              let changed = false;
               for (const [jid, t] of pairs) {
-                if (t) next[jid] = t;
+                if (t && next[jid] !== t) {
+                  next[jid] = t;
+                  changed = true;
+                }
               }
-              return next;
+              return changed ? next : prev;
             });
           }
         }
@@ -211,21 +419,15 @@ export default function ProfessorAnnouncementPage() {
     return () => { alive = false; };
   }, [repostParsedId]);
 
-  function extractRepostMeta(x: any): { id?: number; title?: string; is_connection?: boolean } {
-    if (!x || typeof x !== 'object') return {};
-    const id = x.job_posting_id || x.job_post_id || x.jobId || x.job_id || x.job?.id || x.job_posting?.id || x.jobPostingId;
-    const title = x.job_title || x.title || x.position || x.job?.job_title || x.job?.title || x.job?.position || x.job_posting?.job_title || x.job_posting?.position;
-    const isConn = x.is_connection === true || x.connection === true || x.has_connection === true;
-    return { id: typeof id === 'number' ? id : undefined, title: typeof title === 'string' ? title : undefined, is_connection: isConn };
+  function extractRepostMeta(node: any): JobMeta {
+    if (!node || typeof node !== "object") return {};
+    const x = node.data && typeof node.data === "object" ? node.data : node;
+    return deriveJobMeta(x);
   }
 
-  // Attempt to extract repost metadata directly from the announcement object
-  function extractMetaFromAnnouncement(a: any): { id?: number; title?: string; is_connection?: boolean } {
-    if (!a || typeof a !== 'object') return {};
-    const id = a.job_posting_id || a.job_post_id || a.job_id || a.jobId || a.job?.id || a.target?.id || a.repost_of?.id;
-    const title = a.job_title || a.title || a.position || a.job?.job_title || a.job?.position || a.target?.job_title || a.repost_of?.job_title;
-    const isConn = a.is_connection === true || a.connection === true || a.has_connection === true;
-    return { id: typeof id === 'number' ? id : undefined, title: typeof title === 'string' ? title : undefined, is_connection: isConn };
+  function extractMetaFromAnnouncement(node: any): JobMeta {
+    if (!node || typeof node !== "object") return {};
+    return deriveJobMeta(node);
   }
 
   const isProfessor = (user?.role || "").toLowerCase().includes("professor");
@@ -307,14 +509,35 @@ export default function ProfessorAnnouncementPage() {
         is_connection: repostIsConnection,
       });
       // Prepend newly created repost to feed if id present
-      const created = (res && (res.data || res.results?.[0] || res)) || null;
-      if (created && (created.id !== undefined)) {
-        setAnnouncements((prev) => [created, ...prev]);
+      const createdRaw = (res && (res.data || res.results?.[0] || res)) || null;
+      if (createdRaw && createdRaw.id !== undefined) {
+        const normalized = toAnnouncement(createdRaw);
+        setAnnouncements((prev) => [normalized, ...prev]);
         // Seed repost meta so link + connection badge appear immediately
-        setReposts((prev) => ({
-          ...prev,
-          [created.id]: { job_posting_id: repostParsedId, is_connection: repostIsConnection },
-        }));
+        if (normalized.jobMeta?.id) {
+          const jobId = normalized.jobMeta.id;
+          const jobTitle = normalized.jobMeta.title;
+          setReposts((prev) => ({
+            ...prev,
+            [normalized.id]: {
+              job_posting_id: jobId,
+              job_title: jobTitle,
+              is_connection: normalized.jobMeta.is_connection ?? repostIsConnection,
+            },
+          }));
+          if (jobTitle) {
+            setJobTitleCache((prev) => (prev[jobId] ? prev : { ...prev, [jobId]: jobTitle }));
+          }
+        } else {
+          setReposts((prev) => ({
+            ...prev,
+            [normalized.id]: {
+              job_posting_id: repostParsedId,
+              job_title: undefined,
+              is_connection: repostIsConnection,
+            },
+          }));
+        }
       }
       setShowRepostModal(false);
       setRepostInput("");
@@ -409,7 +632,7 @@ export default function ProfessorAnnouncementPage() {
         ) : (
           announcements.map((a) => {
             const author = formatAuthor(a.author);
-            const profileHref = a.author?.id ? `/profile/${a.author.id}` : null;
+            const profileHref = author.profileUserId ? `/profile/${author.profileUserId}` : null;
 
             return (
               <article
@@ -417,8 +640,8 @@ export default function ProfessorAnnouncementPage() {
                 className="rounded-2xl border bg-white shadow-sm p-5 relative"
                 style={{ borderColor: GREEN }}
               >
-              {/* Delete button (professors only) */}
-              {isProfessor && (
+              {/* Delete button (only visible to the author) */}
+              {isProfessor && user?.id && a.author?.userId === user.id && (
                 <button
                   onClick={() => handleDelete(a.id)}
                   className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-md border bg-white text-gray-600 hover:bg-gray-100"
@@ -455,22 +678,30 @@ export default function ProfessorAnnouncementPage() {
               {/* Repost target (if any): title link on top */}
               {(() => {
                 const fromMap = extractRepostMeta(reposts[a.id]);
-                const fromPost = extractMetaFromAnnouncement(a);
+                const fromPost = a.jobMeta ?? (a.raw ? extractMetaFromAnnouncement(a.raw) : undefined);
                 const info = fromMap.id ? fromMap : fromPost;
-                if (!info.id) return null;
-                const label = info.title || jobTitleCache[info.id] || "";
-                if (!label) return (
-                  <div className="mb-1">
-                    <span className="text-gray-500 text-sm">Loading job…</span>
-                  </div>
-                );
+                if (!info?.id) return null;
+                const cachedTitle = info.title || (info.id ? jobTitleCache[info.id] : "");
+                const label = cachedTitle || `Job #${info.id}`;
+                const connectionRaw = info.is_connection ?? fromPost?.is_connection;
+                const connectionValue =
+                  typeof connectionRaw === "boolean" ? connectionRaw : asBoolean(connectionRaw);
+
                 return (
-                  <div className="mb-1 flex items-center gap-2">
-                    <Link className="text-emerald-700 font-medium hover:underline" href={`/job/${info.id}`} target="_blank" rel="noopener noreferrer">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <Link
+                      className="text-emerald-700 font-medium hover:underline"
+                      href={`/job/${info.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {label}
                     </Link>
-                    {(info.is_connection ?? fromPost.is_connection) !== undefined && (
-                      info.is_connection ? (
+                    {!cachedTitle && (
+                      <span className="text-xs text-gray-500">Loading title…</span>
+                    )}
+                    {connectionValue !== undefined && (
+                      connectionValue ? (
                         <span className="inline-flex items-center gap-1 text-emerald-700 text-xs">
                           <CheckBadgeIcon className="h-4 w-4" /> Has connection
                         </span>
