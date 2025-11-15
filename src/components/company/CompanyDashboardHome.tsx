@@ -15,25 +15,22 @@ function formatNumber(value?: number | null) {
   if (value == null) return "0";
   return new Intl.NumberFormat().format(value);
 }
-
 function formatDate(value?: string | null) {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
-
 function relativeTime(value?: string | null) {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const diff = Date.now() - date.getTime();
-  const days = Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = Math.max(0, Math.round((Date.now() - d.getTime()) / 86_400_000));
   if (days === 0) return "Today";
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
 }
-
 function salaryRange(min?: number | null, max?: number | null) {
   if (min == null && max == null) return "—";
   const nf = new Intl.NumberFormat();
@@ -42,13 +39,13 @@ function salaryRange(min?: number | null, max?: number | null) {
 }
 
 const pillClasses: Record<string, string> = {
-  fulltime: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  parttime: "bg-sky-50 text-sky-700 border-sky-100",
-  internship: "bg-amber-50 text-amber-700 border-amber-100",
-  contract: "bg-violet-50 text-violet-700 border-violet-100",
-  hybrid: "bg-lime-50 text-lime-700 border-lime-100",
-  onsite: "bg-orange-50 text-orange-700 border-orange-100",
-  online: "bg-blue-50 text-blue-700 border-blue-100",
+  fulltime: "bg-gray-100 text-gray-800 border-gray-200",
+  parttime: "bg-gray-100 text-gray-800 border-gray-200",
+  internship: "bg-gray-100 text-gray-800 border-gray-200",
+  contract: "bg-gray-100 text-gray-800 border-gray-200",
+  hybrid: "bg-gray-100 text-gray-800 border-gray-200",
+  onsite: "bg-gray-100 text-gray-800 border-gray-200",
+  online: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 const statusBuckets = [
@@ -57,11 +54,9 @@ const statusBuckets = [
   { key: "offer", label: "Offer" },
   { key: "hired", label: "Hired" },
 ];
-
-function normalizeStatus(value?: string | null) {
-  return (value ?? "").trim().toLowerCase();
+function normalizeStatus(v?: string | null) {
+  return (v ?? "").trim().toLowerCase();
 }
-
 function bucketizeAnalytics(applicants: CompanyApplicant[], stats?: CompanyDashboardStats | null) {
   const base = {
     applied: stats?.total_applicants ?? applicants.length,
@@ -69,18 +64,13 @@ function bucketizeAnalytics(applicants: CompanyApplicant[], stats?: CompanyDashb
     offer: 0,
     hired: 0,
   };
-
-  applicants.forEach((app) => {
-    const status = normalizeStatus(app.status);
-    if (status === "requested") base.interview += 1;
-    else if (status === "confirmed") base.offer += 1;
-    else if (status === "approved") base.hired += 1;
+  applicants.forEach((a) => {
+    const s = normalizeStatus(a.status);
+    if (s === "requested") base.interview += 1;
+    else if (s === "confirmed") base.offer += 1;
+    else if (s === "approved") base.hired += 1;
   });
-
-  return statusBuckets.map((bucket) => ({
-    ...bucket,
-    value: base[bucket.key as keyof typeof base],
-  }));
+  return statusBuckets.map((b) => ({ ...b, value: base[b.key as keyof typeof base] }));
 }
 
 export default function CompanyDashboardHome() {
@@ -93,26 +83,26 @@ export default function CompanyDashboardHome() {
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
-    async function load() {
-      setLoading(true);
-      setError(null);
-      const [statsRes, postingsRes, applicantsRes] = await Promise.all([
-        fetchCompanyStats(controller.signal),
-        fetchCompanyActivePostings(controller.signal),
-        fetchCompanyApplicants(controller.signal),
-      ]);
-      if (cancelled) return;
-      setStats(statsRes);
-      setPostings(postingsRes);
-      setApplicants(applicantsRes);
-      setLoading(false);
-    }
-    load().catch((err) => {
-      if (cancelled) return;
-      console.error("Failed to load company dashboard", err);
-      setError(err instanceof Error ? err.message : "Failed to load dashboard");
-      setLoading(false);
-    });
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [s, p, a] = await Promise.all([
+          fetchCompanyStats(controller.signal),
+          fetchCompanyActivePostings(controller.signal),
+          fetchCompanyApplicants(controller.signal),
+        ]);
+        if (cancelled) return;
+        setStats(s);
+        setPostings(p);
+        setApplicants(a);
+      } catch (e: any) {
+        if (cancelled) return;
+        setError(e?.message || "Failed to load dashboard");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => {
       cancelled = true;
       controller.abort();
@@ -121,23 +111,23 @@ export default function CompanyDashboardHome() {
 
   const analytics = useMemo(() => bucketizeAnalytics(applicants, stats), [applicants, stats]);
   const analyticsMax = useMemo(
-    () => Math.max(1, ...analytics.map((bucket) => bucket.value || 0)),
+    () => Math.max(1, ...analytics.map((b) => b.value || 0)),
     [analytics],
   );
   const recentApplicants = useMemo(() => applicants.slice(0, 4), [applicants]);
 
   if (loading) {
     return (
-      <main className="px-4 py-10 sm:px-6 lg:px-10">
-        <div className="space-y-4">
-          <div className="h-6 w-44 rounded bg-gray-100 animate-pulse" />
-          <div className="h-4 w-64 rounded bg-gray-100 animate-pulse" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="rounded-2xl border bg-white px-4 py-6 shadow-sm">
-                <div className="h-10 rounded bg-gray-100 animate-pulse" />
-              </div>
-            ))}
+      <main className="px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="h-7 w-52 rounded bg-gray-100 animate-pulse" />
+          <div className="grid gap-6 lg:grid-cols-[1.1fr,1fr]">
+            <div className="h-64 rounded-[22px] border bg-white shadow-sm" />
+            <div className="h-64 rounded-[22px] border bg-white shadow-sm" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
+            <div className="h-64 rounded-[22px] border bg-white shadow-sm" />
+            <div className="h-64 rounded-[22px] border bg-white shadow-sm" />
           </div>
         </div>
       </main>
@@ -146,8 +136,8 @@ export default function CompanyDashboardHome() {
 
   if (error) {
     return (
-      <main className="px-4 py-10 sm:px-6 lg:px-10">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-rose-700">
+      <main className="px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-6xl rounded-[22px] border border-rose-200 bg-rose-50 px-5 py-4 text-rose-700">
           {error}
         </div>
       </main>
@@ -178,69 +168,102 @@ export default function CompanyDashboardHome() {
   ];
 
   return (
-    <main className="px-4 py-10 sm:px-6 lg:px-10">
+    <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-6xl space-y-10">
+        {/* === Row 1: Summary + Active Job Postings === */}
         <section className="grid gap-8 lg:grid-cols-[1.1fr,1fr]">
-          <div className="rounded-[28px] border-2 border-gray-900/20 bg-white px-8 py-8 shadow-sm">
-            <h2 className="text-3xl font-semibold text-gray-900">Summary</h2>
-            <div className="mt-6 grid divide-x divide-y divide-gray-200 text-gray-900 sm:grid-cols-2">
-              {summaryCards.map((card) => (
-                <div key={card.label} className="flex flex-col gap-2 px-6 py-8">
-                  <p className="text-base font-semibold text-gray-800">{card.label}</p>
-                  <p className="text-5xl font-semibold text-[#1C3318]">{formatNumber(card.value)}</p>
-                  <p className="text-xs text-gray-500">Latest Updated: {formatDate(card.updated)}</p>
-                </div>
-              ))}
+          {/* Summary card with four metrics */}
+          <div className="rounded-[22px] border border-gray-300 bg-white px-6 py-6 shadow-sm">
+            <h2 className="text-[28px] font-extrabold text-gray-900 tracking-tight">Summary</h2>
+
+            <div className="mt-5 grid overflow-hidden rounded-[18px] border border-gray-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-300">
+                {summaryCards.map((card, idx) => (
+                  <div key={idx} className="px-6 py-7">
+                    <p className="text-[13px] font-semibold text-gray-800">{card.label}</p>
+                    <p className="mt-1 text-[56px] leading-none font-extrabold text-[#1c3318]">
+                      {formatNumber(card.value)}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Latest Updated: {formatDate(card.updated)}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="rounded-[28px] border-2 border-gray-900/20 bg-white px-8 py-6 shadow-sm">
+          {/* Active Job Postings */}
+          <div className="rounded-[22px] border border-gray-300 bg-white px-6 py-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-gray-900">Active Job Postings</h2>
-              <Link href="/company/jobpostings" className="text-sm font-semibold text-emerald-700 hover:underline">
+              <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight">
+                Active Job Postings
+              </h2>
+              <Link
+                href="/company/jobpostings"
+                className="text-sm font-semibold text-emerald-700 hover:underline"
+              >
                 View all
               </Link>
             </div>
-            <div className="mt-5 space-y-4">
+
+            <div className="mt-4 space-y-4">
               {postings.length === 0 && (
-                <p className="rounded-2xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+                <p className="rounded-[18px] border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
                   No active roles yet.
                 </p>
               )}
+
               {postings.slice(0, 3).map((job) => (
                 <article
                   key={job.id}
-                  className="rounded-[28px] border-2 border-gray-900/20 px-5 py-4"
+                  className="rounded-[18px] border border-gray-300 bg-white px-5 py-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
+                    {/* Left: title + tags + details */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-[15px] font-extrabold text-gray-900">
                         {job.job_title || job.position || "Untitled role"}
                       </h3>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
                         {job.jobType && (
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 ${pillClasses[job.jobType.toLowerCase()] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 ${
+                              pillClasses[job.jobType.toLowerCase()] ??
+                              "bg-gray-50 text-gray-700 border-gray-200"
+                            }`}
+                          >
                             {job.jobType}
                           </span>
                         )}
                         {job.work_place && (
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 ${pillClasses[job.work_place.toLowerCase()] ?? "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 ${
+                              pillClasses[job.work_place.toLowerCase()] ??
+                              "bg-gray-50 text-gray-700 border-gray-200"
+                            }`}
+                          >
                             {job.work_place}
                           </span>
                         )}
                       </div>
-                      <p className="mt-3 text-sm text-gray-700">
-                        Positions: <span className="font-semibold">{job.available_position ?? "—"}</span>
+
+                      <p className="mt-3 text-[13px] text-gray-800 leading-5">
+                        <span className="font-semibold">Positions:</span>{" "}
+                        {job.available_position ?? "—"}
                         <br />
-                        Expected Salary:{" "}
-                        <span className="font-semibold">
-                          {salaryRange(job.minimum_expected_salary, job.maximum_expected_salary)}
-                        </span>
+                        <span className="font-semibold">Expected Salary:</span>{" "}
+                        {salaryRange(job.minimum_expected_salary, job.maximum_expected_salary)}
                       </p>
                     </div>
+
+                    {/* Right: time + status pill */}
                     <div className="flex flex-col items-end text-right">
-                      <p className="text-xs text-gray-500">{relativeTime(job.created_at ?? undefined)}</p>
-                      <span className="mt-2 inline-flex items-center rounded-full bg-emerald-600 px-3 py-0.5 text-xs font-semibold text-white">
+                      <p className="text-[11px] text-gray-500">
+                        {relativeTime(job.created_at ?? undefined)}
+                      </p>
+                      <span className="mt-2 inline-flex items-center rounded-full bg-emerald-600 px-3 py-0.5 text-[11px] font-semibold text-white">
                         {job.status ?? "Active"}
                       </span>
                     </div>
@@ -251,36 +274,46 @@ export default function CompanyDashboardHome() {
           </div>
         </section>
 
+        {/* === Row 2: Recent Applicants + Analytics === */}
         <section className="grid gap-8 lg:grid-cols-[1.15fr,0.85fr]">
-          <div className="rounded-[28px] border-2 border-gray-900/20 bg-white px-8 py-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-gray-900">Recent Applicants</h2>
+          {/* Recent Applicants */}
+          <div className="rounded-[22px] border border-gray-300 bg-white px-6 py-6 shadow-sm">
+            <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight">
+              Recent Applicants
+            </h2>
+
             <div className="mt-5 space-y-3">
               {recentApplicants.length === 0 && (
-                <p className="rounded-2xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
+                <p className="rounded-[18px] border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
                   No applicants yet.
                 </p>
               )}
-              {recentApplicants.map((applicant) => (
+
+              {recentApplicants.map((a) => (
                 <div
-                  key={applicant.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border-2 border-gray-900/20 px-4 py-3"
+                  key={a.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-gray-300 bg-white px-4 py-3"
                 >
                   <p className="font-medium text-gray-900">
-                    {applicant.name} <span className="text-gray-600">— {applicant.position}</span>
+                    {a.name} <span className="text-gray-600">— {a.position}</span>
                   </p>
+
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-                      {applicant.status}
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-700">
+                      {a.status}
                     </span>
-                    {applicant.applicant_user_id ? (
+
+                    {a.applicant_user_id ? (
                       <Link
-                        href={`/profile/${applicant.applicant_user_id}`}
-                        className="rounded-full bg-gray-100 px-4 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                        href={`/profile/${a.applicant_user_id}`}
+                        className="rounded-full border border-gray-300 bg-gray-100 px-4 py-1 text-[12px] font-semibold text-gray-800 hover:bg-gray-200"
                       >
                         View Profile
                       </Link>
                     ) : (
-                      <span className="rounded-full bg-gray-100 px-4 py-1 text-xs text-gray-400">Profile unavailable</span>
+                      <span className="rounded-full bg-gray-100 px-4 py-1 text-[12px] text-gray-400">
+                        Profile unavailable
+                      </span>
                     )}
                   </div>
                 </div>
@@ -288,20 +321,29 @@ export default function CompanyDashboardHome() {
             </div>
           </div>
 
-          <div className="rounded-[28px] border-2 border-gray-900/20 bg-white px-8 py-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-gray-900">Analytics Snapshot</h2>
-            <div className="mt-8 grid grid-cols-4 gap-6">
+          {/* Analytics Snapshot */}
+          <div className="rounded-[22px] border border-gray-300 bg-white px-6 py-6 shadow-sm">
+            <h2 className="text-[24px] font-extrabold text-gray-900 tracking-tight">
+              Analytics Snapshot
+            </h2>
+
+            <div className="mt-6 grid grid-cols-4 gap-6">
               {analytics.map((bucket) => {
-                const height = bucket.value ? (bucket.value / analyticsMax) * 100 : 0;
+                const heightPct = bucket.value ? (bucket.value / analyticsMax) * 100 : 0;
                 return (
                   <div key={bucket.key} className="flex flex-col items-center gap-3">
-                    <div className="flex h-48 w-full items-end justify-center border border-gray-300 bg-gradient-to-b from-gray-50 to-white px-3">
+                    <div className="flex h-48 w-full items-end justify-center rounded border border-gray-300 bg-white px-3">
                       <div
-                        className="w-10 bg-[#3C7A3D]"
-                        style={{ height: `${Math.max(12, height)}%` }}
+                        className="w-10 rounded-sm"
+                        style={{
+                          height: `${Math.max(12, heightPct)}%`,
+                          backgroundColor: "#3C7A3D",
+                        }}
                       />
                     </div>
-                    <div className="text-center text-sm font-semibold text-gray-900">{bucket.label}</div>
+                    <div className="text-center text-sm font-semibold text-gray-900">
+                      {bucket.label}
+                    </div>
                   </div>
                 );
               })}
