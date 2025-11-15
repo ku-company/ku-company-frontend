@@ -4,7 +4,7 @@ import Image from "next/image";
 import { MapPinIcon, PhoneIcon } from "@heroicons/react/24/outline";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { buildInit } from "@/api/base";
+import { buildInit, API_BASE } from "@/api/base";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -66,7 +66,7 @@ export default function CompanyProfile() {
   const GREEN = "#5D9252";
   const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  const BASE_URL = API_BASE;
   const API_URL_GET_ALL = `${BASE_URL}/api/company/job-postings/all`;
 
   // TODO: when API is ready, fetch company profile and hydrate UI:

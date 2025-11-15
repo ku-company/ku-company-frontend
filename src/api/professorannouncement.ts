@@ -1,9 +1,7 @@
-import { buildInit } from "./base";
+import { buildInit, API_BASE } from "./base";
 
 /* -------------------- Base URLs -------------------- */
-const RAW_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
-const BASE_URL = RAW_BASE.replace(/\/$/, ""); // กัน double slash
+const BASE_URL = API_BASE.replace(/\/$/, ""); // prevent double slash
 
 const API_URL = `${BASE_URL}/api/professor/announcements/`;
 // Public feed endpoint (read-only)

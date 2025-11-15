@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import EditJobModal, { EditableJob } from "@/components/EditJobModal";
-import { buildInit } from "@/api/base";
+import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import notify from "@/lib/toast";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = API_BASE;
 const API_URL_BASE = `${BASE_URL}/api/company/job-postings`;
 const API_URL_GET_ALL = `${API_URL_BASE}/all`;
 
@@ -259,16 +259,13 @@ export default function DashboardPage() {
         <form onSubmit={createSubmit} className="rounded-lg border bg-white p-4 shadow-sm">
           <div className="grid gap-3">
             <div className="flex items-center gap-2">
-              <select
+              <input
+                type="text"
                 value={cPosition}
                 onChange={(e) => setCPosition(e.target.value)}
-                className="w-1/2 rounded-md border px-3 py-2 text-sm focus:outline-none"
-              >
-                <option value="">Choose Position</option>
-                <option value="Backend_Developer">Backend Developer</option>
-                <option value="Frontend_Developer">Frontend Developer</option>
-                <option value="Fullstack_Developer">Fullstack Developer</option>
-              </select>
+                placeholder="Position (e.g., Backend Developer)"
+                className="w-1/2 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
               <input
                 type="text"
                 value={cTitle}

@@ -8,7 +8,7 @@ import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGl
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
-import { buildInit } from "@/api/base";
+import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
@@ -82,7 +82,7 @@ function stripMarkdown(input: string | null | undefined): string {
   s = s.replace(/\r?\n+/g, " ");
   return s.trim();
 }
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = API_BASE;
 
 export default function FindJobPage() {
   const { user } = useAuth();

@@ -1,7 +1,6 @@
-// src/api/oauth.ts
+import { API_BASE } from "./base";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
+// src/api/oauth.ts
 
 export function buildGoogleSignupUrl(role: "Student" | "Company" | "Professor" = "Student") {
   const url = new URL(`${API_BASE}/api/auth/google?role=Student`);

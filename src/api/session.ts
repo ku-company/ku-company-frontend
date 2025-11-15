@@ -1,6 +1,4 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
-  "http://localhost:8000";
+import { API_BASE } from "./base";
 
 // Unwraps { message, data } or returns raw
 function unwrap<T>(p: any): T {

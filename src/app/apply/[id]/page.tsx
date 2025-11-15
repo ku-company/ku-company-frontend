@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MapPinIcon } from "@heroicons/react/24/outline";
-import { buildInit } from "@/api/base";
+import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { listResumes, uploadResume, type ResumeItem } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
 
 const GREEN = "#5b8f5b";
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = API_BASE;
 const APPLY_JOB_STORAGE_KEY = "ku-company/apply/selected-job";
 
 type Job = {

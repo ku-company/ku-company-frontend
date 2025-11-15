@@ -95,7 +95,7 @@ export default function PublicProfilePage() {
     const verified = !!(profile?.user?.verified);
     return (
       <>
-        <CompanyProfileView readOnly profileData={companyData} verifiedOverride={verified} />
+        <CompanyProfileView readOnly profileData={companyData} verifiedOverride={verified} companyProfileId={companyProfileId} />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <CompanyComments companyUserId={companyUserId} companyProfileId={companyProfileId} />
         </div>

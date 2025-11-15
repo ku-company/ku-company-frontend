@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
 import { MapPinIcon, PhoneIcon, GlobeAltIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { getAuthMe } from "@/api/user";
-import { buildInit } from "@/api/base";
+import { buildInit, API_BASE } from "@/api/base";
 import { refreshAccessToken } from "@/api/token";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
@@ -42,9 +42,14 @@ function InfoRow({
   );
 }
 
-type CompanyProfileViewProps = { readOnly?: boolean; profileData?: CompanyProfile | null; verifiedOverride?: boolean | null };
+type CompanyProfileViewProps = {
+  readOnly?: boolean;
+  profileData?: CompanyProfile | null;
+  verifiedOverride?: boolean | null;
+  companyProfileId?: number | null;
+};
 
-export default function CompanyProfile({ readOnly = false, profileData, verifiedOverride }: CompanyProfileViewProps) {
+export default function CompanyProfile({ readOnly = false, profileData, verifiedOverride, companyProfileId }: CompanyProfileViewProps) {
   const GREEN = "#5D9252";
   const { isReady, user } = useAuth();
 
@@ -58,8 +63,9 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
 
   // Jobs for summary + active list
   const [jobs, setJobs] = useState<any[]>([]);
-  const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+  const BASE_URL = API_BASE;
   const API_URL_GET_ALL = `${BASE_URL}/api/company/job-postings/all`;
+  const API_URL_PUBLIC_POSTINGS = `${BASE_URL}/api/job-postings`;
 
   async function refreshVerifiedFlag() {
     try {
@@ -141,6 +147,7 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
 
   // Fetch company's own jobs when viewing own company profile
   useEffect(() => {
+    if (readOnly) return;
     const roleLower = (user?.role ?? "").toLowerCase();
     if (roleLower !== "company") return;
     const controller = new AbortController();
@@ -156,7 +163,34 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
       }
     })();
     return () => controller.abort();
-  }, [user?.access_token, user?.role]);
+  }, [user?.access_token, user?.role, readOnly]);
+
+  // Fetch jobs for public/read-only company profile view
+  useEffect(() => {
+    if (!readOnly) return;
+    if (!companyProfileId) {
+      setJobs([]);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(API_URL_PUBLIC_POSTINGS, buildInit({ method: "GET", signal: controller.signal as any }));
+        if (!res.ok) throw new Error("Failed to fetch public job postings");
+        const json = await res.json().catch(() => ({} as any));
+        const list = json?.job_postings || json?.data || [];
+        const filtered = Array.isArray(list) ? list.filter((job: any) => job?.company_id === companyProfileId) : [];
+        if (!cancelled) setJobs(filtered);
+      } catch {
+        if (!cancelled) setJobs([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [readOnly, companyProfileId, API_URL_GET_ALL]);
 
   if (!profileData && !isReady) {
     // Auth is still hydrating — keep things calm to avoid flashes

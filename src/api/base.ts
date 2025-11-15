@@ -1,4 +1,6 @@
-export const API_BASE = "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/apiBase";
+
+export const API_BASE = getApiBaseUrl();
 
 // Helper to include authorization headers (if tokens exist)
 export function getAuthHeaders(): HeadersInit {
