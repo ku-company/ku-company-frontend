@@ -10,6 +10,7 @@ import {
   adminUpdateJobPostingVerified,
   type AdminJobPosting,
 } from "@/api/admin";
+import { getCompanyProfileById } from "@/api/companyprofile";
 import { useAuth } from "@/context/AuthContext";
 import { ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
 
@@ -48,7 +49,10 @@ function mapJob(post: AdminJobPosting): JobRow {
     raw.company_name ||
     raw.companyName ||
     raw.company_profile?.company_name ||
-    (post.company_id ? `Company #${post.company_id}` : "Unknown company");
+    raw.company?.name ||
+    raw.company_profile?.name ||
+    raw.company?.title ||
+    "Unknown company";
   const verified =
     typeof post.verified === "boolean"
       ? post.verified
@@ -89,6 +93,7 @@ export default function ManageJobPostingsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("All");
+  const [companyNames, setCompanyNames] = useState<Record<number, string>>({});
   const pageSize = 6;
 
   const loadForTab = useCallback(async (target: VerificationTab) => {
@@ -119,6 +124,56 @@ export default function ManageJobPostingsPage() {
     }
     loadForTab(tab);
   }, [isReady, user, tab, router, loadForTab]);
+
+  useEffect(() => {
+    const idsToFetch = Array.from(
+      new Set(
+        rows
+          .map((row) => row.companyId)
+          .filter((id): id is number => typeof id === "number" && id > 0 && !companyNames[id]),
+      ),
+    );
+    if (idsToFetch.length === 0) return;
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    (async () => {
+      const entries = await Promise.all(
+        idsToFetch.map(async (companyId) => {
+          try {
+            const profile = await getCompanyProfileById(companyId, controller.signal);
+            const label = profile?.company_name?.trim() || `Company #${companyId}`;
+            return [companyId, label] as const;
+          } catch (error) {
+            if (controller.signal.aborted) return null;
+            console.warn("[ManageJobPostings] Failed to fetch company profile", companyId, error);
+            return [companyId, `Company #${companyId}`] as const;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      setCompanyNames((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const entry of entries) {
+          if (!entry) continue;
+          const [companyId, label] = entry;
+          if (next[companyId] !== label) {
+            next[companyId] = label;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [rows, companyNames]);
 
   const handleVerifiedChange = async (id: number, next: boolean) => {
     setRows((prev) => prev.map((row) => (row.id === id ? { ...row, verified: next } : row)));
@@ -258,10 +313,10 @@ export default function ManageJobPostingsPage() {
                 <td className="text-gray-700">
                   {row.companyId ? (
                     <Link
-                      href={`/company/profile?companyId=${row.companyId}`}
+                      href={`/company/${row.companyId}`}
                       className="text-gray-900 underline-offset-2 hover:text-emerald-700 hover:underline"
                     >
-                      {row.companyLabel}
+                      {companyNames[row.companyId] || row.companyLabel}
                     </Link>
                   ) : (
                     row.companyLabel

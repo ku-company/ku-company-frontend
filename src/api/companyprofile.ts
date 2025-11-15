@@ -1,3 +1,5 @@
+import { extractErrorMessage } from "@/utils/httpError";
+
 export type CompanyProfile = {
   company_name: string;
   description: string;
@@ -5,6 +7,11 @@ export type CompanyProfile = {
   tel: string;
   location: string;
   country: string;
+};
+
+export type PublicCompanyProfile = CompanyProfile & {
+  id: number;
+  user_id?: number;
 };
 
 const API_BASE =
@@ -96,4 +103,22 @@ export async function updateCompanyProfile(payload: CompanyProfile): Promise<Com
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
 }
-import { extractErrorMessage } from "@/utils/httpError";
+
+export async function getCompanyProfileById(
+  companyId: number,
+  signal?: AbortSignal,
+): Promise<PublicCompanyProfile | null> {
+  if (!Number.isFinite(companyId)) {
+    return null;
+  }
+  const res = await fetch(
+    `${API_BASE}/api/user/company-profile/${companyId}`,
+    buildInit({ signal }),
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(res));
+  }
+  const json = await res.json().catch(() => ({}));
+  return unwrap<PublicCompanyProfile>(json);
+}
