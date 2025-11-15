@@ -1,12 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 // import ApplyModal from "@/components/ApplyModal"; // replaced by full apply page
-import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MegaphoneIcon } from "@heroicons/react/24/outline";
-import ApplyModal from "@/components/ApplyModal";
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
@@ -14,9 +12,6 @@ import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
-import notify from "@/lib/toast";
-import { getAuthMe } from "@/api/user";
-import { repostJobPosting } from "@/api/professorrepost";
 
 type Job = {
   id: number;
@@ -46,6 +41,20 @@ type Resume = {
 };
 
 const GREEN = "#5b8f5b";
+const NEW_FOR_YOU_WINDOW_DAYS = 7;
+const APPLY_JOB_STORAGE_KEY = "ku-company/apply/selected-job";
+
+const normalizeJobTypeValue = (input: string) => {
+  if (!input) return "";
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.toLowerCase() === "all") return "All";
+  if (!/[\s_-]/.test(trimmed)) return trimmed;
+  return trimmed
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join("");
+};
 
 // Strip basic Markdown syntax for compact previews (left list)
 function stripMarkdown(input: string | null | undefined): string {
@@ -79,13 +88,13 @@ export default function FindJobPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { add, contains } = useApplyCart();
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [keyword, setKeyword] = useState("");
-  const [category, setCategory] = useState<string>("All");
   const [jobType, setJobType] = useState<string>("All");
-  const [categories, setCategories] = useState<any[]>(["All"]);
   const [jobTypes, setJobTypes] = useState<any[]>(["All"]);
   const [sortBy, setSortBy] = useState<string>("Newest");
+  const [showNewForYou, setShowNewForYou] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isApplyOpen, setIsApplyOpen] = useState(false); // legacy: kept to reduce changes
   const [loading, setLoading] = useState(false);
@@ -93,23 +102,29 @@ export default function FindJobPage() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [verifyRequired, setVerifyRequired] = useState(false);
 
-  // Professor verification + quote modal state
-  const [isProfVerified, setIsProfVerified] = useState(false);
-  const [quoteOpen, setQuoteOpen] = useState(false);
-  const [quoteJob, setQuoteJob] = useState<Job | null>(null);
-  const [quoteContent, setQuoteContent] = useState("");
-  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
-  const [quoteNotice, setQuoteNotice] = useState<string | null>(null);
-  const [quoteIsConnection, setQuoteIsConnection] = useState(false);
-
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
-  const isProfessor = useMemo(() => (user?.role || "").toLowerCase() === "professor", [user]);
 
-  // Re-sort when sort option changes without re-fetching
-  useEffect(() => {
-    if (!jobs || jobs.length === 0) return;
+  const handleApplyNavigation = useCallback(
+    (job: Job) => {
+      if (!job?.id) return;
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(
+            APPLY_JOB_STORAGE_KEY,
+            JSON.stringify({ job, cachedAt: Date.now() })
+          );
+        } catch {
+          // storage may be unavailable; continue navigation
+        }
+      }
+      router.push(`/apply/${job.id}`);
+    },
+    [router]
+  );
+
+  const sortJobs = (list: Job[]) => {
     const sortKey = (sortBy || "Newest").toLowerCase();
-    const sorted = [...jobs].sort((a, b) => {
+    return [...list].sort((a, b) => {
       if (sortKey.includes("newest")) {
         return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
       }
@@ -118,68 +133,58 @@ export default function FindJobPage() {
       }
       return 0;
     });
-    setJobs(sorted);
-  }, [sortBy]);
+  };
 
-  // Determine if current user is a verified professor
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!isProfessor) { setIsProfVerified(false); return; }
-        const me = await getAuthMe().catch(() => null as any);
-        if (!cancelled) {
-          const v = Boolean(
-            (me && (
-              me.verified === true ||
-              me.verify === true ||
-              me.verified_status === true ||
-              (me.user && me.user.verified === true)
-            ))
-          );
-          setIsProfVerified(v);
-        }
-      } catch {
-        if (!cancelled) setIsProfVerified(false);
+  const filterNewForYou = (list: Job[], onlyNew: boolean) => {
+    if (!onlyNew) return list;
+    const cutoff = Date.now() - NEW_FOR_YOU_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    return list.filter((job) => {
+      const created = new Date(job.created_at as any).getTime();
+      return Number.isFinite(created) ? created >= cutoff : false;
+    });
+  };
+
+  const syncVisibleJobs = useCallback(
+    (baseList: Job[]) => {
+      const keywordTerm = keyword.trim().toLowerCase();
+      let list = baseList;
+      if (jobType !== "All") {
+        list = list.filter(
+          (job) =>
+            normalizeJobTypeValue(job.jobType || "").toLowerCase() ===
+            normalizeJobTypeValue(jobType).toLowerCase()
+        );
       }
-    })();
-    return () => { cancelled = true; };
-  }, [isProfessor]);
+      if (keywordTerm) {
+        list = list.filter((job) => {
+          const haystack = [
+            job.job_title,
+            job.position,
+            job.company_name,
+            job.description,
+            job.location,
+            job.company_location,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(keywordTerm);
+        });
+      }
+      const sorted = sortJobs(list);
+      const visible = filterNewForYou(sorted, showNewForYou);
+      setJobs(visible);
+      setSelectedId((prev) => {
+        if (!visible.length) return null;
+        return prev && visible.some((job) => job.id === prev) ? prev : visible[0].id;
+      });
+    },
+    [showNewForYou, sortBy, jobType, keyword]
+  );
 
-  function openQuote(job: Job, e?: React.MouseEvent) {
-    if (e) e.stopPropagation();
-    setQuoteJob(job);
-    try {
-      const title = job.job_title || job.position || "Job";
-      const company = job.company_name ? ` at ${job.company_name}` : "";
-      const prefill = `Repost: ${title}${company}`; // no raw URL in content
-      setQuoteContent(prefill);
-    } catch {
-      setQuoteContent("");
-    }
-    setQuoteOpen(true);
-    setQuoteNotice(null);
-    setQuoteIsConnection(false);
-  }
-
-  async function postQuote() {
-    if (!quoteJob || !quoteContent.trim()) return;
-    setQuoteSubmitting(true);
-    try {
-      // Use repost endpoint with job posting id
-      await repostJobPosting(quoteJob.id, { content: quoteContent.trim(), is_connection: quoteIsConnection });
-      setQuoteOpen(false);
-      setQuoteJob(null);
-      setQuoteContent("");
-      setQuoteNotice("Reposted job successfully.");
-      setTimeout(() => setQuoteNotice(null), 3000);
-    } catch (err: any) {
-      const msg = String(err?.message || err || "Failed to post announcement");
-      setQuoteNotice(msg);
-    } finally {
-      setQuoteSubmitting(false);
-    }
-  }
+  useEffect(() => {
+    syncVisibleJobs(allJobs);
+  }, [allJobs, syncVisibleJobs]);
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {
@@ -203,34 +208,33 @@ export default function FindJobPage() {
     }
   };
 
-  // Load dropdowns (category + jobType)
+  // -------------------------------
+  // Load job type dropdown
+  // -------------------------------
   useEffect(() => {
-    async function fetchDropdowns() {
+    async function fetchJobTypes() {
       try {
-        const [catData, typeData] = await Promise.all([
-          safeFetchJson(`${BASE_URL}/api/job-postings/category`),
-          safeFetchJson(`${BASE_URL}/api/job-postings/job-type`),
-        ]);
+        const typeData = await safeFetchJson(`${BASE_URL}/api/job-postings/job-type`);
 
         const extractArray = (data: any) => {
           if (Array.isArray(data)) return data;
           if (Array.isArray(data?.data)) return data.data;
-          if (Array.isArray(data?.categories)) return data.categories;
-          if (Array.isArray(data?.jobTypes)) return data.jobTypes; if (Array.isArray(data?.job_types)) return data.job_types;
-          if (Array.isArray(Object.values(data)[0])) return Object.values(data)[0];
+          if (Array.isArray(data?.jobTypes)) return data.jobTypes;
+          if (Array.isArray(data?.job_types)) return data.job_types;
+          if (data && typeof data === "object") {
+            const first = Object.values(data)[0];
+            if (Array.isArray(first)) return first;
+          }
           return [];
         };
 
-        const catArray = extractArray(catData);
         const typeArray = extractArray(typeData);
-
-        setCategories(["All", ...catArray]);
         setJobTypes(["All", ...typeArray]);
       } catch (err) {
         console.error("Failed to load dropdowns", err);
       }
     }
-    fetchDropdowns();
+    fetchJobTypes();
   }, []);
 
   // -------------------------------
@@ -239,10 +243,11 @@ export default function FindJobPage() {
   const fetchJobs = async () => {
     setLoading(true);
     try {
+      const keywordToUse = keyword.trim();
+      const jobTypeToUse = jobType;
       const params = new URLSearchParams();
-      if (keyword) params.append("keyword", keyword);
-      if (category !== "All") params.append("category", category);
-      if (jobType !== "All") params.append("jobType", jobType);
+      if (keywordToUse) params.append("keyword", keywordToUse);
+      if (jobTypeToUse !== "All") params.append("jobType", normalizeJobTypeValue(jobTypeToUse));
 
       const url = `${BASE_URL}/api/job-postings/?${params.toString()}`;
       console.log("Fetching:", url);
@@ -254,6 +259,7 @@ export default function FindJobPage() {
         // If backend requires verification, show friendly message instead of list
         if (/please\s+verify\s+your\s+account/i.test(text)) {
           setVerifyRequired(true);
+          setAllJobs([]);
           setJobs([]);
           setSelectedId(null);
           return;
@@ -270,23 +276,13 @@ export default function FindJobPage() {
         const exp = new Date(j.expired_at as any).getTime();
         return isFinite(exp) ? exp >= now : true;
       });
-      // Client-side sorting (backend defaults to updated_at desc)
-      const sortKey = (sortBy || "Newest").toLowerCase();
-      filtered = [...filtered].sort((a, b) => {
-        if (sortKey.includes("newest")) {
-          return new Date(b.created_at as any).getTime() - new Date(a.created_at as any).getTime();
-        }
-        if (sortKey.includes("oldest")) {
-          return new Date(a.created_at as any).getTime() - new Date(b.created_at as any).getTime();
-        }
-        return 0;
-      });
-      setJobs(filtered);
+      setAllJobs(filtered);
       setVerifyRequired(false);
-      if (filtered.length > 0) setSelectedId(filtered[0].id);
     } catch (err) {
       console.error("Failed to fetch jobs", err);
+      setAllJobs([]);
       setJobs([]);
+      setSelectedId(null);
     } finally {
       setLoading(false);
     }
@@ -355,7 +351,7 @@ export default function FindJobPage() {
   }) => {
     try {
       if (!selected?.id) {
-        notify.info("Please select a job first.");
+        alert("Please select a job first.");
         return;
       }
 
@@ -363,13 +359,13 @@ export default function FindJobPage() {
 
       if (payload.mode === "existing") {
         if (!payload.resumeId) {
-          notify.info("Please select a resume.");
+          alert("Please select a resume.");
           return;
         }
         resumeIdToUse = parseInt(payload.resumeId, 10);
       } else if (payload.mode === "upload") {
         if (!payload.file) {
-          notify.info("Please choose a file to upload.");
+          alert("Please choose a file to upload.");
           return;
         }
         const uploaded = await uploadResume(payload.file);
@@ -377,17 +373,17 @@ export default function FindJobPage() {
       }
 
       if (!resumeIdToUse) {
-        notify.error("Unable to determine resume to use.");
+        alert("Unable to determine resume to use.");
         return;
       }
 
       await applyToJob(selected.id, resumeIdToUse);
       setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
       setIsApplyOpen(false);
-      notify.success("Application submitted successfully.");
+      alert("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   };
 
@@ -407,33 +403,12 @@ export default function FindJobPage() {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="Keyword"
-            className="h-11 w-[220px] flex-1 rounded-full border px-4 text-sm bg-gray-50 focus:outline-none"
+            className="h-11 min-w-[220px] max-w-[360px] flex-shrink rounded-full border px-4 text-sm bg-gray-50 focus:outline-none"
           />
 
           <select
-            value={category} aria-label="Job Categories"
-            onChange={(e) => setCategory(e.target.value)}
-            className="h-11 w-[200px] rounded-full border px-3 text-sm bg-gray-50"
-          >
-            {categories.map((c, i) => {
-              const label =
-                typeof c === "object"
-                  ? c.label || c.name || c.title || c.value || "Unnamed"
-                  : String(c);
-              const value =
-                typeof c === "object"
-                  ? c.value || c.name || c.title || label
-                  : String(c);
-              return (
-                <option key={`${i}-${value}`} value={value}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
-
-          <select
-            value={jobType} aria-label="Job type"
+            value={jobType}
+            aria-label="Job type"
             onChange={(e) => setJobType(e.target.value)}
             className="h-11 w-[160px] rounded-full border px-3 text-sm bg-gray-50"
           >
@@ -442,10 +417,14 @@ export default function FindJobPage() {
                 typeof t === "object"
                   ? t.label || t.name || t.title || t.value || "Unnamed"
                   : String(t);
-              const value =
+              const rawValue =
                 typeof t === "object"
                   ? t.value || t.name || t.title || label
                   : String(t);
+              const value =
+                rawValue.toLowerCase() === "all"
+                  ? "All"
+                  : normalizeJobTypeValue(rawValue);
               return (
                 <option key={`${i}-${value}`} value={value}>
                   {label}
@@ -465,22 +444,28 @@ export default function FindJobPage() {
           </button>
 
           {/* Right controls: filter chips */}
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex gap-3">
             <button
-              className={`rounded-full border px-4 py-2 text-sm ${category === 'All' && jobType === 'All' ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-              onClick={() => { setCategory('All'); setJobType('All'); fetchJobs(); }}
+              className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
+              onClick={() => { setJobType("All"); fetchJobs(); }}
             >
               All Positions
             </button>
             <button
-              className={`rounded-full border px-4 py-2 text-sm ${sortBy === 'Newest' ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
-              onClick={() => setSortBy('Newest')}
+              className={`rounded-full border px-5 py-2 text-sm ${showNewForYou ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+              onClick={() => setShowNewForYou((prev) => !prev)}
+              aria-pressed={showNewForYou}
             >
               New for You
             </button>
             <button
-              className="rounded-full border px-4 py-2 text-sm hover:bg-gray-50"
-              onClick={() => { setKeyword(''); setCategory('All'); setJobType('All'); setSortBy('Newest'); fetchJobs(); }}
+              className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
+              onClick={() => {
+                setKeyword('');
+                setJobType("All");
+                setSortBy('Newest');
+                fetchJobs();
+              }}
             >
               Reset
             </button>
@@ -504,12 +489,9 @@ export default function FindJobPage() {
             jobs.map((job) => {
               const active = job.id === selectedId;
               return (
-                <div
+                <button
                   key={job.id}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => setSelectedId(job.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedId(job.id); }}
                   className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
@@ -518,16 +500,6 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
-                  {isProfessor && isProfVerified && (
-                    <button
-                      type="button"
-                      title="Repost this job"
-                      onClick={(e) => openQuote(job, e)}
-                      className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <MegaphoneIcon className="h-4 w-4" />
-                    </button>
-                  )}
                   <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
                     {job.company_profile_image ? (
                       // Company profile image from backend
@@ -543,7 +515,7 @@ export default function FindJobPage() {
                     )}
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
                     <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
                         <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
@@ -561,7 +533,7 @@ export default function FindJobPage() {
                   <div className="mt-2 text-[11px] text-gray-500">
                     {job.available_position} position(s) | {job.jobType}
                   </div>
-                </div>
+                </button>
               );
             })
           )}
@@ -640,7 +612,7 @@ export default function FindJobPage() {
                           disabled={isApplied}
                           className={`h-9 rounded-full px-5 text-xs font-semibold text-white ${isApplied ? 'opacity-60 cursor-not-allowed' : ''}`}
                           style={{ backgroundColor: GREEN }}
-                          onClick={!isApplied ? () => selected && router.push(`/apply/${selected.id}`) : undefined}
+                          onClick={!isApplied ? () => selected && handleApplyNavigation(selected) : undefined}
                         >
                           {isApplied ? 'APPLIED' : 'Apply'}
                         </button>
@@ -667,18 +639,6 @@ export default function FindJobPage() {
                   }
                 </div>
               </div>
-              {isProfessor && isProfVerified && selected?.id && (
-                <button
-                  type="button"
-                  onClick={(e) => openQuote(selected, e)}
-                  className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-50"
-                  title="Repost this job"
-                >
-                  <MegaphoneIcon className="h-4 w-4" />
-                  Repost
-                </button>
-              )}
-
               <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {/* Keep actions near top per new layout; no duplicate bottom buttons */}
@@ -692,11 +652,3 @@ export default function FindJobPage() {
     </main>
   );
 }
-
-
-
-
-
-
-
-

@@ -3,15 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BuildingOfficeIcon, MapPinIcon } from "@heroicons/react/24/outline";
+import { MapPinIcon } from "@heroicons/react/24/outline";
 import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
-import { getMyStudentProfile, patchMyStudentProfile, type StudentProfile } from "@/api/studentprofile";
 import { listResumes, uploadResume, type ResumeItem } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
 
 const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const APPLY_JOB_STORAGE_KEY = "ku-company/apply/selected-job";
 
 type Job = {
   id: number;
@@ -34,17 +34,7 @@ export default function ApplyingJobPage() {
   const { user } = useAuth();
 
   const [job, setJob] = useState<Job | null>(null);
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [resumes, setResumes] = useState<ResumeItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form state
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
 
   type Mode = "upload" | "existing" | "none";
   const [mode, setMode] = useState<Mode>("upload");
@@ -54,34 +44,54 @@ export default function ApplyingJobPage() {
 
   const canApply = (user?.role || "").toLowerCase() === "student";
 
-  // Load job, profile, and resumes
+  // Hydrate from session storage (allows placeholder/mock jobs to show their info)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!id || Number.isNaN(id)) return;
+    try {
+      const raw = sessionStorage.getItem(APPLY_JOB_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const storedJob = parsed?.job ?? parsed;
+      if (!storedJob) return;
+      const storedId =
+        typeof storedJob.id === "string" ? parseInt(storedJob.id, 10) : storedJob.id;
+      if (!storedId || Number.isNaN(storedId)) return;
+      if (storedId === id) {
+        setJob((prev) => prev ?? storedJob);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [id]);
+
+  // Load job and resumes
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        setLoading(true);
-        // Job
         if (id && !Number.isNaN(id)) {
           const res = await fetch(`${BASE_URL}/api/job-postings/${id}`, buildInit({ credentials: "include" }));
           const json = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
           const item = json.job_posting || json.data || json;
-          if (alive) setJob(item);
+          if (alive) {
+            setJob(item);
+            if (typeof window !== "undefined") {
+              try {
+                sessionStorage.setItem(
+                  APPLY_JOB_STORAGE_KEY,
+                  JSON.stringify({ job: item, cachedAt: Date.now() })
+                );
+              } catch {
+                // storage may fail; ignore
+              }
+            }
+          }
         }
 
-        // Profile (student)
+        // Resumes (student)
         if (canApply) {
-          try {
-            const p = await getMyStudentProfile();
-            if (alive) {
-              setProfile(p);
-              setFirstName(p.first_name || "");
-              setLastName(p.last_name || "");
-              setEmail(p.email || user?.email || "");
-              setPhone(p.phone || "");
-            }
-          } catch {}
-
           try {
             const list = await listResumes();
             if (alive) {
@@ -91,9 +101,7 @@ export default function ApplyingJobPage() {
           } catch {}
         }
       } catch (e: any) {
-        if (alive) setError(e?.message || "Failed to load data");
-      } finally {
-        if (alive) setLoading(false);
+        if (alive) console.error("Failed to load apply data", e);
       }
     })();
     return () => {
@@ -109,21 +117,6 @@ export default function ApplyingJobPage() {
     if (mode === "existing") return !selectedResumeId;
     return true; // none -> disable
   }, [mode, file, selectedResumeId, submitting]);
-
-  async function handleSaveProfile() {
-    try {
-      setSavingProfile(true);
-      await patchMyStudentProfile({
-        summary: profile?.bio || undefined,
-        contactInfo: profile?.contactInfo || undefined,
-      });
-      alert("Saved basic details (demo). You can manage full profile on your profile page.");
-    } catch (e: any) {
-      alert(e?.message || "Failed to save profile");
-    } finally {
-      setSavingProfile(false);
-    }
-  }
 
   async function handleApply() {
     if (!id || Number.isNaN(id)) return;
@@ -182,10 +175,7 @@ export default function ApplyingJobPage() {
                 </span>
               )}
             </div>
-            <div className="mt-1 text-gray-600 flex items-center gap-1 text-sm">
-              <BuildingOfficeIcon className="h-4 w-4" />
-              {job?.company_name}
-            </div>
+            <div className="mt-1 text-gray-600 text-sm">{job?.company_name}</div>
             <div className="text-gray-500 flex items-center gap-1 text-sm">
               <MapPinIcon className="h-4 w-4" />
               {job?.location ?? job?.company_location}
@@ -193,39 +183,6 @@ export default function ApplyingJobPage() {
           </div>
         </div>
       </div>
-
-      {/* Personal details */}
-      <section className="mt-6 rounded-2xl border-2 bg-white p-5 shadow-sm" style={{ borderColor: GREEN }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Personal details</h2>
-          <button
-            onClick={handleSaveProfile}
-            className="rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50"
-            disabled={savingProfile}
-          >
-            Save
-          </button>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">First name</label>
-            <input className="mt-1 w-full rounded-lg border px-3 py-2" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Email address</label>
-            <input className="mt-1 w-full rounded-lg border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Last name</label>
-            <input className="mt-1 w-full rounded-lg border px-3 py-2" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Phone number</label>
-            <input className="mt-1 w-full rounded-lg border px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-        </div>
-      </section>
 
       {/* Resume section */}
       <section className="mt-6 rounded-2xl border-2 bg-white p-5 shadow-sm" style={{ borderColor: GREEN }}>
