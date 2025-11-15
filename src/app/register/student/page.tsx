@@ -48,8 +48,10 @@ export default function RegisterPage() {
         setError("You must agree to the Terms before signing up.");
         return;
       }
+      const trimmedStdId = (form.stdId || "").trim();
       const payload = {
         ...form,
+        stdId: trimmedStdId || undefined,
         role: "Student",
         pdpa_consent: acceptedTerms,
       };
@@ -66,7 +68,11 @@ export default function RegisterPage() {
         error: {
           render({ data }) {
             const err = data as any;
-            return (err?.message as string) || "Sign up failed";
+            const msg = (err?.message as string) || "";
+            if (msg.toLowerCase().includes("stdid") || msg.toLowerCase().includes("student id")) {
+              return "This Student ID is already taken.";
+            }
+            return msg || "Sign up failed";
           },
         },
       });
@@ -258,6 +264,7 @@ export default function RegisterPage() {
           window.location.href = buildGoogleSignupUrl("Student", {
             studentId: finalStdId,
             consent: true,
+            extraParams: { signup: "1" },
           });
         }}
       />

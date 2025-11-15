@@ -243,17 +243,42 @@ export default function ProfessorAnnouncementPage() {
       asNumber(raw?.professor?.id) ??
       asNumber(raw?.professor?.user_id);
 
+    const userIdCandidates: unknown[] = [
+      raw?.author?.user_id,
+      raw?.author?.user?.user_id,
+      raw?.author?.user?.id,
+      raw?.author?.user_id,
+      raw?.professor?.user_id,
+      raw?.professor?.user?.user_id,
+      raw?.professor?.user?.id,
+      raw?.user?.user_id,
+      raw?.user?.id,
+      raw?.user_id,
+      userNode?.user_id,
+      userNode?.id,
+    ];
+
+    const resolvedUserId =
+      userIdCandidates
+        .map((value) => asNumber(value))
+        .find((value): value is number => typeof value === "number");
+
+    const profileIdCandidates: unknown[] = [
+      raw?.author?.profile_user_id,
+      raw?.author?.profile?.id,
+      raw?.profile?.id,
+      raw?.profile_user_id,
+      userNode?.profile?.id,
+      resolvedUserId,
+      authorId,
+    ];
+
     const profileUserId =
-      asNumber(userNode?.id) ??
-      asNumber(userNode?.user_id) ??
-      asNumber(raw?.author?.user?.id) ??
-      asNumber(raw?.author?.user_id) ??
-      asNumber(raw?.professor?.user?.id) ??
-      asNumber(raw?.professor?.user_id) ??
-      asNumber(raw?.user?.id) ??
-      asNumber(raw?.user?.user_id) ??
-      asNumber(raw?.user_id) ??
-      authorId;
+      profileIdCandidates
+        .map((value) => asNumber(value))
+        .find((value): value is number => typeof value === "number") ?? resolvedUserId ?? authorId;
+
+    const announcementUserId = resolvedUserId ?? authorId;
 
     const jobMeta = deriveJobMeta(raw);
 
@@ -263,7 +288,7 @@ export default function ProfessorAnnouncementPage() {
       created_at: String(raw?.created_at ?? raw?.createdAt ?? new Date().toISOString()),
       author: {
         id: authorId,
-        userId: profileUserId,
+        userId: announcementUserId,
         profileUserId,
         username,
         firstname: first,

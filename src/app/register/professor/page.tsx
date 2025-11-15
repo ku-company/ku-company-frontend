@@ -234,6 +234,7 @@ export default function RegisterPage() {
           setShowGoogleModal(false);
           window.location.href = buildGoogleSignupUrl("Professor", {
             consent: true,
+            extraParams: { signup: "1" },
           });
         }}
       />

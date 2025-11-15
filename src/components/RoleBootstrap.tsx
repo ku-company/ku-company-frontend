@@ -9,6 +9,7 @@ import { getAuthMe, updateUserRole } from "@/api/user";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import type { GoogleSignupRole } from "@/api/oauth";
+import { markPendingAiReview } from "@/utils/aiReview";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -39,7 +40,14 @@ export default function RoleBootstrap() {
   }
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !user) {
+      setShowRoleModal(false);
+      setShowConsentModal(false);
+      setPendingRole(null);
+      setPendingStudentId("");
+      setShowCompanyOnboarding(false);
+      return;
+    }
     if (user && isUnknown) {
       setShowRoleModal(true);
     } else {
@@ -121,6 +129,10 @@ export default function RoleBootstrap() {
           // Ignore if already exists or backend glitches
           console.warn("Professor profile auto-create skipped:", e);
         }
+      }
+
+      if (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student") {
+        markPendingAiReview(finalRole as GoogleSignupRole);
       }
 
       if (finalRole !== "Unknown") {

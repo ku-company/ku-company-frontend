@@ -97,12 +97,18 @@ export default function BootstrapSession() {
         console.log("🟢 fetchAuthMe() returned:", me);
 
         if (me && me.user_name) {
+          if (me.id !== undefined && me.id !== null) {
+            try {
+              localStorage.setItem("user_id", String(me.id));
+            } catch {}
+          }
           login({
             access_token: localStorage.getItem("access_token") ?? "",
             refresh_token: localStorage.getItem("refresh_token") ?? "",
             user_name: me.user_name,
             email: me.email ?? "",
             role: me.role ?? me.roles ?? "student",
+            id: me.id,
           });
           console.log("✅ Logged in as:", me.role ?? me.roles);
 
