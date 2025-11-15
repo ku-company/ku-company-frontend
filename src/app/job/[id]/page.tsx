@@ -12,6 +12,7 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { listResumes } from "@/api/resume";
 import { listMyApplications } from "@/api/applications";
 import { applyToJob } from "@/api/jobs";
+import notify from "@/lib/toast";
 
 const GREEN = "#5b8f5b";
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -88,15 +89,15 @@ export default function JobDetailsPage() {
   async function handleApply(payload: { mode: "existing"; resumeId?: string }) {
     if (!job?.id) return;
     const rid = payload.resumeId ? parseInt(payload.resumeId, 10) : NaN;
-    if (!rid) { alert("Please select a resume."); return; }
+    if (!rid) { notify.info("Please select a resume."); return; }
     try {
       await applyToJob(job.id, rid);
       setApplied(true);
       setIsApplyOpen(false);
-      alert("Application submitted successfully.");
+      notify.success("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   }
 
@@ -115,7 +116,7 @@ export default function JobDetailsPage() {
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm" style={{ borderColor: GREEN }}>
         <div className="space-y-2">
-          <div className="text-2xl font-semibold">{job.job_title || job.position}</div>
+          <div className="text-2xl font-semibold">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
           <div className="text-base text-gray-600 break-words flex items-center gap-1">
             <BuildingOfficeIcon className="h-4 w-4" />
             {job.company_user_id ? (
@@ -188,16 +189,16 @@ export default function JobDetailsPage() {
         )}
       </div>
 
-      {canApply && (
-        <ApplyModal
-          isOpen={isApplyOpen}
-          onClose={() => setIsApplyOpen(false)}
-          onSubmit={handleApply as any}
-          resumes={resumes}
-          jobTitle={job?.job_title || job?.position}
-          brandColor={GREEN}
-        />
-      )}
+        {canApply && (
+          <ApplyModal
+            isOpen={isApplyOpen}
+            onClose={() => setIsApplyOpen(false)}
+            onSubmit={handleApply as any}
+            resumes={resumes}
+          jobTitle={(job?.job_title || job?.position || '').replace(/_/g, ' ')}
+            brandColor={GREEN}
+          />
+        )}
     </main>
   );
 }

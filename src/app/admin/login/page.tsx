@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -21,13 +23,18 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await loginUser(form);
-      const role = (res?.data?.roles || res?.data?.role || "").toString().toLowerCase();
+      const res = await toast.promise(loginUser(form), {
+        pending: "Signing in…",
+        success: "Admin login successful",
+        error: "Login failed",
+      });
+      const role = (res?.data?.roles || (res as any)?.data?.role || "").toString().toLowerCase();
       if (role !== "admin") {
         setError("This account is not an Admin.");
         return;
       }
       login(res.data);
+      notify.success("Welcome, Admin");
       router.replace("/admin");
     } catch (err: any) {
       setError(err?.message || "Invalid credentials");

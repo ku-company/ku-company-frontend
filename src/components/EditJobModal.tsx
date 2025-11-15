@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { POSITION_OPTIONS, normalizePosition, PositionEnum } from "@/types/positions";
 
 export type EditableJob = {
   title: string;
@@ -55,7 +56,8 @@ export default function EditJobModal({
     const src = initial || (mode === "create" ? { title: "", position: "", details: "", positionsAvailable: 1 } as EditableJob : null);
     if (!src) return;
     setTitle(src.title ?? "");
-    setPosition(src.position ?? "");
+    // Normalize any underscore values coming from older data
+    setPosition(normalizePosition(src.position));
     setDetails(src.details ?? "");
     setPositionsAvailable(src.positionsAvailable ?? "");
     setJobType(src.jobType ?? (mode === "create" ? "Full Time" : ""));
@@ -89,12 +91,8 @@ export default function EditJobModal({
     Number(expectedSalaryMin) <= Number(expectedSalaryMax)
   );
 
-  // === Prisma-compatible position enums ===
-  const positionOptions = [
-    { label: "Backend Developer", value: "Backend_Developer" },
-    { label: "Frontend Developer", value: "Frontend_Developer" },
-    { label: "Fullstack Developer", value: "Fullstack_Developer" },
-  ];
+  // Position options from centralized enum
+  const positionOptions = POSITION_OPTIONS;
 
   return (
     <div

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 // import ApplyModal from "@/components/ApplyModal"; // replaced by full apply page
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MegaphoneIcon } from "@heroicons/react/24/outline";
+import ApplyModal from "@/components/ApplyModal";
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
@@ -12,6 +14,9 @@ import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
+import notify from "@/lib/toast";
+import { getAuthMe } from "@/api/user";
+import { repostJobPosting } from "@/api/professorrepost";
 
 type Job = {
   id: number;
@@ -88,7 +93,17 @@ export default function FindJobPage() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [verifyRequired, setVerifyRequired] = useState(false);
 
+  // Professor verification + quote modal state
+  const [isProfVerified, setIsProfVerified] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteJob, setQuoteJob] = useState<Job | null>(null);
+  const [quoteContent, setQuoteContent] = useState("");
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [quoteNotice, setQuoteNotice] = useState<string | null>(null);
+  const [quoteIsConnection, setQuoteIsConnection] = useState(false);
+
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+  const isProfessor = useMemo(() => (user?.role || "").toLowerCase() === "professor", [user]);
 
   // Re-sort when sort option changes without re-fetching
   useEffect(() => {
@@ -105,6 +120,66 @@ export default function FindJobPage() {
     });
     setJobs(sorted);
   }, [sortBy]);
+
+  // Determine if current user is a verified professor
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!isProfessor) { setIsProfVerified(false); return; }
+        const me = await getAuthMe().catch(() => null as any);
+        if (!cancelled) {
+          const v = Boolean(
+            (me && (
+              me.verified === true ||
+              me.verify === true ||
+              me.verified_status === true ||
+              (me.user && me.user.verified === true)
+            ))
+          );
+          setIsProfVerified(v);
+        }
+      } catch {
+        if (!cancelled) setIsProfVerified(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isProfessor]);
+
+  function openQuote(job: Job, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setQuoteJob(job);
+    try {
+      const title = job.job_title || job.position || "Job";
+      const company = job.company_name ? ` at ${job.company_name}` : "";
+      const prefill = `Repost: ${title}${company}`; // no raw URL in content
+      setQuoteContent(prefill);
+    } catch {
+      setQuoteContent("");
+    }
+    setQuoteOpen(true);
+    setQuoteNotice(null);
+    setQuoteIsConnection(false);
+  }
+
+  async function postQuote() {
+    if (!quoteJob || !quoteContent.trim()) return;
+    setQuoteSubmitting(true);
+    try {
+      // Use repost endpoint with job posting id
+      await repostJobPosting(quoteJob.id, { content: quoteContent.trim(), is_connection: quoteIsConnection });
+      setQuoteOpen(false);
+      setQuoteJob(null);
+      setQuoteContent("");
+      setQuoteNotice("Reposted job successfully.");
+      setTimeout(() => setQuoteNotice(null), 3000);
+    } catch (err: any) {
+      const msg = String(err?.message || err || "Failed to post announcement");
+      setQuoteNotice(msg);
+    } finally {
+      setQuoteSubmitting(false);
+    }
+  }
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {
@@ -280,7 +355,7 @@ export default function FindJobPage() {
   }) => {
     try {
       if (!selected?.id) {
-        alert("Please select a job first.");
+        notify.info("Please select a job first.");
         return;
       }
 
@@ -288,13 +363,13 @@ export default function FindJobPage() {
 
       if (payload.mode === "existing") {
         if (!payload.resumeId) {
-          alert("Please select a resume.");
+          notify.info("Please select a resume.");
           return;
         }
         resumeIdToUse = parseInt(payload.resumeId, 10);
       } else if (payload.mode === "upload") {
         if (!payload.file) {
-          alert("Please choose a file to upload.");
+          notify.info("Please choose a file to upload.");
           return;
         }
         const uploaded = await uploadResume(payload.file);
@@ -302,17 +377,17 @@ export default function FindJobPage() {
       }
 
       if (!resumeIdToUse) {
-        alert("Unable to determine resume to use.");
+        notify.error("Unable to determine resume to use.");
         return;
       }
 
       await applyToJob(selected.id, resumeIdToUse);
       setAppliedIds((prev) => new Set<number>([...Array.from(prev), selected.id!]));
       setIsApplyOpen(false);
-      alert("Application submitted successfully.");
+      notify.success("Application submitted successfully.");
     } catch (err: any) {
       console.error("Apply failed", err);
-      alert(typeof err?.message === "string" ? err.message : "Failed to submit application.");
+      notify.error(typeof err?.message === "string" ? err.message : "Failed to submit application.");
     }
   };
 
@@ -429,9 +504,12 @@ export default function FindJobPage() {
             jobs.map((job) => {
               const active = job.id === selectedId;
               return (
-                <button
+                <div
                   key={job.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedId(job.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedId(job.id); }}
                   className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
@@ -440,6 +518,16 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
+                  {isProfessor && isProfVerified && (
+                    <button
+                      type="button"
+                      title="Repost this job"
+                      onClick={(e) => openQuote(job, e)}
+                      className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <MegaphoneIcon className="h-4 w-4" />
+                    </button>
+                  )}
                   <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
                     {job.company_profile_image ? (
                       // Company profile image from backend
@@ -455,7 +543,7 @@ export default function FindJobPage() {
                     )}
                   </div>
                   <div className="min-w-0 pr-14">
-                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{job.job_title || job.position}</div>
+                    <div className="font-semibold leading-5 break-words line-clamp-3 text-[15px]">{(job.job_title || job.position || '').replace(/_/g, ' ')}</div>
                     <div className="mt-1 text-sm text-gray-600 break-words">
                       {job.company_user_id ? (
                         <Link className="hover:underline cursor-pointer" href={`/profile/${job.company_user_id}`} target="_blank" rel="noopener noreferrer">
@@ -473,7 +561,7 @@ export default function FindJobPage() {
                   <div className="mt-2 text-[11px] text-gray-500">
                     {job.available_position} position(s) | {job.jobType}
                   </div>
-                </button>
+                </div>
               );
             })
           )}
@@ -579,6 +667,18 @@ export default function FindJobPage() {
                   }
                 </div>
               </div>
+              {isProfessor && isProfVerified && selected?.id && (
+                <button
+                  type="button"
+                  onClick={(e) => openQuote(selected, e)}
+                  className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-50"
+                  title="Repost this job"
+                >
+                  <MegaphoneIcon className="h-4 w-4" />
+                  Repost
+                </button>
+              )}
+
               <Markdown className="mt-4 text-base text-gray-700" content={selected.description} />
 
               {/* Keep actions near top per new layout; no duplicate bottom buttons */}

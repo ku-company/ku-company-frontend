@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import EditJobModal, { EditableJob } from "@/components/EditJobModal";
 import { buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
+import notify from "@/lib/toast";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_URL_BASE = `${BASE_URL}/api/company/job-postings`;
@@ -124,9 +125,11 @@ export default function DashboardPage() {
       setCSalaryMax("");
       setCWorkType("");
       setCExpiredAt("");
+      setCreateOpen(false);
+      notify.success("Job posted successfully.");
     } catch (err) {
       console.error("Failed to add job:", err);
-      alert("Failed to add job posting.");
+      notify.error("Failed to add job posting.");
     }
   };
 
@@ -165,9 +168,10 @@ export default function DashboardPage() {
       const updatedJob = data.data || data;
       setJobs((prev) => prev.map((j, i) => (i === editIndex ? updatedJob : j)));
       closeEdit();
+      notify.success("Job updated successfully.");
     } catch (err) {
       console.error("Failed to update job:", err);
-      alert("Failed to update job posting.");
+      notify.error("Failed to update job posting.");
     }
   };
 

@@ -104,6 +104,7 @@
 "use client";
 
 import { useState } from "react";
+import { POSITION_OPTIONS, PositionEnum } from "@/types/positions";
 
 export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void }) {
   // enums จาก Prisma (ต้องตรง)
@@ -114,14 +115,10 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
     { label: "Contract", value: "Contract" },
   ];
 
-  const positions = [
-    { label: "Backend Developer", value: "Backend Developer" },
-    { label: "Frontend Developer", value: "Frontend Developer" },
-    { label: "Fullstack Developer", value: "Fullstack Developer" },
-  ];
+  const positions = POSITION_OPTIONS;
 
   const [jobType, setJobType] = useState("Internship");
-  const [position, setPosition] = useState("Backend_Developer");
+  const [position, setPosition] = useState(PositionEnum.BackendDeveloper);
   const [details, setDetails] = useState("");
   const [positionsAvailable, setPositionsAvailable] = useState(1);
 

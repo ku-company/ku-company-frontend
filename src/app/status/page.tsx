@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { API_BASE, buildInit } from "@/api/base";
+import notify from "@/lib/toast";
 
 /* ---------- Types ---------- */
 type UIStatus = "Approved" | "Confirmed" | "Declined" | "Pending";
@@ -134,19 +135,20 @@ export default function AppliedCompanyStatusPage() {
         setApplications((prev) =>
           prev.map((a) => (a.id === id ? { ...a, status: "Confirmed", canConfirm: false } : a))
         );
+        notify.success("Status updated: Confirmed");
       } else {
         const msg = await res.text();
         console.error("Confirm failed:", msg);
         try {
           const j = JSON.parse(msg);
-          alert(j?.message || msg);
+          notify.error(j?.message || msg);
         } catch {
-          alert(msg);
+          notify.error(msg);
         }
       }
     } catch (err) {
       console.error("Confirm error:", err);
-      alert("Confirm failed. Please try again.");
+      notify.error("Confirm failed. Please try again.");
     }
   };
 
@@ -159,14 +161,15 @@ export default function AppliedCompanyStatusPage() {
       );
       if (res.ok) {
         setApplications((prev) => prev.filter((a) => a.id !== id));
+        notify.success("Application cancelled");
       } else {
         const msg = await res.text();
         console.error("Cancel failed:", msg);
-        alert("Cancel failed: " + msg);
+        notify.error("Cancel failed: " + msg);
       }
     } catch (err) {
       console.error("Cancel error:", err);
-      alert("Cancel failed. Please try again.");
+      notify.error("Cancel failed. Please try again.");
     }
   };
 

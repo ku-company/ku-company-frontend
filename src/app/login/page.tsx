@@ -7,6 +7,8 @@ import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
 import { normalizeRole } from "@/api/session";
 import { createProfessorProfile } from "@/api/professorprofile";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,7 +29,14 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await loginUser(form);
+      const res = await toast.promise(
+        loginUser(form),
+        {
+          pending: "Logging in…",
+          success: "Logged in",
+          error: "Login failed",
+        }
+      );
       login(res.data);
 
       // If professor, ensure profile exists (workaround for backend bug)
@@ -39,6 +48,7 @@ export default function LoginPage() {
       } catch (e) {
         console.warn("Professor profile auto-create skipped:", e);
       }
+      notify.success("Welcome back!");
       router.push("/"); // main page will now bootstrap the session
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
