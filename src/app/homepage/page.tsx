@@ -137,9 +137,6 @@ function TopCompaniesSection({ companies, showPlaceholder }: { companies: TopCom
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-10">
       <div className="flex items-center justify-between">
         <h2 className="text-xl sm:text-2xl font-semibold">Find your next employer</h2>
-        <a href="/companies" className="text-xs text-gray-500 hover:text-gray-700">
-          See more...
-        </a>
       </div>
       {showPlaceholder && (
         <p className="mt-6 text-sm text-gray-600">Showing featured companies while we wait for live job data.</p>
