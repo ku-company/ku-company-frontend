@@ -25,11 +25,23 @@ export default function DashboardPage() {
   const { user, isReady } = useAuth();
   const isCompany = useMemo(() => (user?.role || "").toLowerCase().includes("company"), [user]);
 
-  const [createOpen, setCreateOpen] = useState(false);
+  // Inline create form instead of modal
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  // Create form state (mirrors EditJobModal fields)
+  const [cTitle, setCTitle] = useState("");
+  const [cPosition, setCPosition] = useState("");
+  const [cDetails, setCDetails] = useState("");
+  const [cPositionsAvailable, setCPositionsAvailable] = useState<number | "">("");
+  const [cJobType, setCJobType] = useState("");
+  const [cLocation, setCLocation] = useState("");
+  const [cSalaryMin, setCSalaryMin] = useState<string>("");
+  const [cSalaryMax, setCSalaryMax] = useState<string>("");
+  const [cWorkType, setCWorkType] = useState<string>("");
+  const [cExpiredAt, setCExpiredAt] = useState<string>("");
 
   function toBackendJobType(label?: string): string | undefined {
     if (!label) return undefined;
@@ -102,6 +114,17 @@ export default function DashboardPage() {
 
       const newJob = data.data || data;
       setJobs((prev) => [newJob, ...prev]);
+      // reset create form
+      setCTitle("");
+      setCPosition("");
+      setCDetails("");
+      setCPositionsAvailable("");
+      setCJobType("");
+      setCLocation("");
+      setCSalaryMin("");
+      setCSalaryMax("");
+      setCWorkType("");
+      setCExpiredAt("");
       setCreateOpen(false);
       notify.success("Job posted successfully.");
     } catch (err) {
@@ -177,69 +200,203 @@ export default function DashboardPage() {
         }
       : null;
 
+  // derived
+  const canCreate = Boolean(
+    cTitle &&
+    cPosition &&
+    cDetails &&
+    cPositionsAvailable &&
+    cJobType &&
+    cLocation &&
+    cWorkType &&
+    cSalaryMin !== "" &&
+    cSalaryMax !== "" &&
+    Number(cSalaryMin) > 0 &&
+    Number(cSalaryMax) > 0 &&
+    Number(cSalaryMin) <= Number(cSalaryMax)
+  );
+
+  const createSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canCreate) return;
+    handleAddJob({
+      title: cTitle,
+      position: cPosition,
+      details: cDetails,
+      positionsAvailable: Number(cPositionsAvailable),
+      jobType: cJobType,
+      location: cLocation,
+      minimum_expected_salary: cSalaryMin ? Number(cSalaryMin) : undefined,
+      maximum_expected_salary: cSalaryMax ? Number(cSalaryMax) : undefined,
+      workType: cWorkType,
+      expired_at: cExpiredAt || null,
+    });
+  };
+
+  // delete
+  const handleDelete = async (id: any) => {
+    try {
+      const headers: HeadersInit = user?.access_token
+        ? { Authorization: `Bearer ${user.access_token}` }
+        : {};
+      await fetchAuthedJson(`${API_URL_BASE}/${id}` , {
+        method: "DELETE",
+        headers,
+      });
+      setJobs(prev => prev.filter(j => j.id !== id));
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+      alert("Failed to delete job posting.");
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <h1 className="mb-4 text-2xl font-bold">Job Openings</h1>
+    <div className="mx-auto max-w-6xl p-6">
+      <h1 className="mb-6 text-2xl font-bold">Job Openings</h1>
 
-      <button
-        onClick={() => setCreateOpen(true)}
-        className="rounded-[30] px-4 py-2 font-semibold text-white" style={{ backgroundColor: '#5D9252' }}
-      >
-        + Post a Job
-      </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Create form panel */}
+        <form onSubmit={createSubmit} className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="grid gap-3">
+            <div className="flex items-center gap-2">
+              <select
+                value={cPosition}
+                onChange={(e) => setCPosition(e.target.value)}
+                className="w-1/2 rounded-md border px-3 py-2 text-sm focus:outline-none"
+              >
+                <option value="">Choose Position</option>
+                <option value="Backend_Developer">Backend Developer</option>
+                <option value="Frontend_Developer">Frontend Developer</option>
+                <option value="Fullstack_Developer">Fullstack Developer</option>
+              </select>
+              <input
+                type="text"
+                value={cTitle}
+                onChange={(e) => setCTitle(e.target.value)}
+                placeholder="Job Title"
+                className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none"
+              />
+            </div>
 
-      <div className="mt-6 space-y-4">
+            <textarea
+              value={cDetails}
+              onChange={(e) => setCDetails(e.target.value)}
+              placeholder="Enter Job Description..."
+              className="h-32 w-full rounded-md border px-3 py-2 text-sm focus:outline-none"
+            />
+            <div className="text-xs text-gray-500">Description supports basic Markdown (headings, lists, bold/italic, links, code).</div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Number of Position Available</label>
+              <input
+                type="number"
+                min={1}
+                className="w-24 rounded-md border px-3 py-2 text-sm text-center"
+                value={cPositionsAvailable}
+                onChange={(e) => setCPositionsAvailable(e.target.value ? Number(e.target.value) : "")}
+              />
+            </div>
+
+            <div className="grid gap-1">
+              <label className="text-sm font-medium text-gray-700">Job Type</label>
+              <select className="rounded-md border px-3 py-2 text-sm" value={cJobType} onChange={(e)=>setCJobType(e.target.value)}>
+                <option value="">Select type</option>
+                <option>Full Time</option>
+                <option>Part Time</option>
+                <option>Internship</option>
+                <option>Contract</option>
+              </select>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <label className="text-sm font-medium text-gray-700">Location</label>
+                <input value={cLocation} onChange={(e)=>setCLocation(e.target.value)} placeholder="City / Remote" className="rounded-md border px-3 py-2 text-sm" />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium text-gray-700">Expected Salary (Min - Max)</label>
+                <div className="flex items-center gap-2">
+                  <input value={cSalaryMin} onChange={(e)=>setCSalaryMin(e.target.value)} placeholder="18000" className="w-28 rounded-md border px-3 py-2 text-sm" />
+                  <span>-</span>
+                  <input value={cSalaryMax} onChange={(e)=>setCSalaryMax(e.target.value)} placeholder="30000" className="w-28 rounded-md border px-3 py-2 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <label className="text-sm font-medium text-gray-700">Workplace</label>
+                <select value={cWorkType} onChange={(e)=>setCWorkType(e.target.value)} className="rounded-md border px-3 py-2 text-sm">
+                  <option value="">Select</option>
+                  <option value="OnSite">On-site</option>
+                  <option value="Online">Online</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium text-gray-700">Expiration Date <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input type="date" value={cExpiredAt} onChange={(e)=>setCExpiredAt(e.target.value)} className="rounded-md border px-3 py-2 text-sm" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => { setCTitle(""); setCPosition(""); setCDetails(""); setCPositionsAvailable(""); setCJobType(""); setCLocation(""); setCSalaryMin(""); setCSalaryMax(""); setCWorkType(""); setCExpiredAt(""); }} className="rounded-full border px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cancel</button>
+              <button disabled={!canCreate} className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: '#5D9252' }}>
+                Create Job
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Job list */}
+        <div className="space-y-4">
         {loading ? (
           <p className="text-gray-500">Loading jobs...</p>
         ) : jobs.length === 0 ? (
           <p className="text-gray-500">No job postings yet.</p>
         ) : (
           jobs.map((job: any, i: number) => (
-            <div key={job.id || i} className="rounded-2xl border justify-center items-center bg-gray-50 p-5 shadow-sm min-h-28 md:min-h-30">
-              <div className="flex w-full items-center justify-between">
-                <div>
-                  <div className="mt-1 text-xl font-extrabold">
-                    {(job.job_title || job.position || "Untitled").replace(/_/g, " ")}
+            <div key={job.id || i} className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="flex w-full justify-between">
+                <div className="pr-4">
+                  <div className="text-lg font-semibold">{job.job_title || job.position || "Untitled"}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {job.jobType ? (
+                      <span className="rounded-full border px-2 py-0.5">{String(job.jobType)}</span>
+                    ) : null}
+                    {job.work_place ? (
+                      <span className="rounded-full border px-2 py-0.5">{String(job.work_place)}</span>
+                    ) : null}
                   </div>
-                  <div className="mt-0.5 text-sm text-gray-700">
-                    {(job.position || "-").replace(/_/g, " ")}
-                  </div>
-                  <div className="mt-1 text-xs font-semibold tracking-wide text-gray-700">
-                    {(job.jobType || "").toString().toUpperCase() || "FULL TIME"}
-                    <span className="mx-2 text-gray-300">|</span>
+                  <div className="mt-2 text-sm text-gray-700">
                     Positions: {job.available_position ?? 1}
                   </div>
+                  {(job.minimum_expected_salary || job.maximum_expected_salary) && (
+                    <div className="text-sm text-gray-700">
+                      Expected Salary: {job.minimum_expected_salary ?? "-"} – {job.maximum_expected_salary ?? "-"}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* Example right-side meta; placeholders until backend fields exist */}
-                  <div className="text-sm text-gray-800">
-                    {job.location || "REMOTE"}
-                    <span className="mx-2 text-gray-300">|</span>
-                    {job.country || "THAILAND"}
+                <div className="flex flex-col items-end justify-between">
+                  <div className="text-xs text-gray-500">
+                    {job.created_at ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+                      Math.round((new Date(job.created_at).getTime() - Date.now()) / (1000*60*60*24)),
+                      "day"
+                    ) : null}
                   </div>
-                  <button
-                    onClick={() => openEdit(i)}
-                    className="rounded-full border px-3 py-1 text-sm font-medium hover:bg-gray-100"
-                    style={{ borderColor: "#5D9252", color: "#2c4d2a" }}
-                  >
-                    Edit
-                  </button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button onClick={() => openEdit(i)} className="rounded-full border px-3 py-1 text-sm hover:bg-gray-100" style={{ borderColor: '#5D9252', color: '#2c4d2a' }}>Edit</button>
+                    <button onClick={() => job.id && handleDelete(job.id)} className="rounded-full border px-3 py-1 text-sm hover:bg-red-50 text-red-700 border-red-300">Delete</button>
+                  </div>
                 </div>
               </div>
             </div>
           ))
         )}
+        </div>
       </div>
 
-      {/* Create Job Modal */}
-      <EditJobModal
-        isOpen={createOpen}
-        onClose={() => setCreateOpen(false)}
-        initial={{ title: "", position: "", details: "", positionsAvailable: 1, jobType: "Full Time", location: "", minimum_expected_salary: undefined, maximum_expected_salary: undefined, workType: "", expired_at: "" }}
-        onSave={handleAddJob}
-        brandColor="#5D9252"
-        mode="create"
-      />
+      {/* Removed modal create; now inline */}
 
       <EditJobModal
         isOpen={editOpen}
