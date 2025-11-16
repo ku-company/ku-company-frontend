@@ -6,6 +6,7 @@ import EditJobModal, { EditableJob } from "@/components/EditJobModal";
 import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import notify from "@/lib/toast";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 const BASE_URL = API_BASE;
 const API_URL_BASE = `${BASE_URL}/api/company/job-postings`;
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
 
   // Create form state (mirrors EditJobModal fields)
   const [cTitle, setCTitle] = useState("");
@@ -86,6 +88,7 @@ export default function DashboardPage() {
   // POST: create job
   // ---------------------------
   const handleAddJob = async (job: any) => {
+    setCreatingJob(true);
     try {
       const body = {
         job_title: (job.title || "").trim() || (job.position || "").trim(),
@@ -125,11 +128,12 @@ export default function DashboardPage() {
       setCSalaryMax("");
       setCWorkType("");
       setCExpiredAt("");
-      setCreateOpen(false);
       notify.success("Job posted successfully.");
     } catch (err) {
       console.error("Failed to add job:", err);
       notify.error("Failed to add job posting.");
+    } finally {
+      setCreatingJob(false);
     }
   };
 
@@ -252,6 +256,12 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6">
+      {creatingJob && (
+        <LoadingOverlay
+          title="Publishing job posting…"
+          subtitle="Sit tight while we save and share your job listing."
+        />
+      )}
       <h1 className="mb-6 text-2xl font-bold">Job Openings</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -338,8 +348,8 @@ export default function DashboardPage() {
 
             <div className="flex items-center justify-end gap-2">
               <button type="button" onClick={() => { setCTitle(""); setCPosition(""); setCDetails(""); setCPositionsAvailable(""); setCJobType(""); setCLocation(""); setCSalaryMin(""); setCSalaryMax(""); setCWorkType(""); setCExpiredAt(""); }} className="rounded-full border px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cancel</button>
-              <button disabled={!canCreate} className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: '#5D9252' }}>
-                Create Job
+              <button disabled={!canCreate || creatingJob} className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: '#5D9252' }}>
+                {creatingJob ? "Posting…" : "Create Job"}
               </button>
             </div>
           </div>
