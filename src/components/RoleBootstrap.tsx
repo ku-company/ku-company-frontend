@@ -10,6 +10,7 @@ import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import type { GoogleSignupRole } from "@/api/oauth";
 import { markPendingAiReview } from "@/utils/aiReview";
+import { attachStudentId } from "@/api/student";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -102,8 +103,10 @@ export default function RoleBootstrap() {
       setPatchingRole(true);
       setConsentError(null);
 
+      const trimmedStudentId = (studentId || "").trim();
+
       const patchData = await updateUserRole(pendingRole, {
-        studentId,
+        studentId: trimmedStudentId,
         consent: true,
       });
       persistTokens({ access_token: patchData.access_token, refresh_token: patchData.refresh_token });
@@ -129,6 +132,13 @@ export default function RoleBootstrap() {
           // Ignore if already exists or backend glitches
           console.warn("Professor profile auto-create skipped:", e);
         }
+      }
+
+      if (finalRole === "Student" && trimmedStudentId) {
+        await attachStudentId(trimmedStudentId);
+        try {
+          localStorage.setItem("last_student_id", trimmedStudentId);
+        } catch {}
       }
 
       if (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student") {

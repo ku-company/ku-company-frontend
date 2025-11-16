@@ -136,7 +136,7 @@ function formatAuthor(a?: Announcement["author"]) {
   const full = [first, last].filter(Boolean).join(" ").trim();
   const displayName = full || username || "Professor";
   const initial = (first?.[0] || last?.[0] || username?.[0] || "P").toUpperCase();
-  const profileUserId = a?.profileUserId ?? a?.userId ?? a?.id;
+  const profileUserId = a?.userId;
   return { displayName, initial, profileUserId };
 }
 
@@ -264,12 +264,12 @@ export default function ProfessorAnnouncementPage() {
         .find((value): value is number => typeof value === "number");
 
     const profileIdCandidates: unknown[] = [
+      resolvedUserId,
       raw?.author?.profile_user_id,
       raw?.author?.profile?.id,
       raw?.profile?.id,
       raw?.profile_user_id,
       userNode?.profile?.id,
-      resolvedUserId,
       authorId,
     ];
 
