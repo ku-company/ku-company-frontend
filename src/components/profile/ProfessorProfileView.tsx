@@ -9,7 +9,13 @@ import ProfileImageUploader from "@/components/ProfileImageUploader";
 import { getAuthMe } from "@/api/user";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
-import { BuildingOfficeIcon, BuildingLibraryIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import {
+  BuildingOfficeIcon,
+  BuildingLibraryIcon,
+  EnvelopeIcon,
+  CheckBadgeIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 
 function PillHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -170,6 +176,18 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
             </div>
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>{fullName || "Professor"}</h2>
             <p className="text-sm text-gray-600">{profile.position || "-"}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-sm text-gray-600">Professor</span>
+              {isVerified ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-200">
+                  <CheckBadgeIcon className="h-4 w-4" /> Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 border border-gray-200">
+                  <ExclamationTriangleIcon className="h-4 w-4" /> Not Verified
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 space-y-4">

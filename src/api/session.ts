@@ -36,7 +36,7 @@ export async function fetchAuthMe() {
 
     const json = await res.json().catch(() => ({}));
     console.log("🟢 fetchAuthMe JSON:", json);
-    return unwrap<{ user_name?: string; email?: string; role?: string; roles?: string }>(json);
+    return unwrap<{ id?: number; user_name?: string; email?: string; role?: string; roles?: string }>(json);
   } catch (err) {
     // Network errors, CORS issues, or fetch being unavailable
     console.warn("⚠️ fetchAuthMe error (treated as logged out):", err);

@@ -2,9 +2,36 @@ import { API_BASE } from "./base";
 
 // src/api/oauth.ts
 
-export function buildGoogleSignupUrl(role: "Student" | "Company" | "Professor" = "Student") {
-  const url = new URL(`${API_BASE}/api/auth/google?role=Student`);
+export type GoogleSignupRole = "Student" | "Company" | "Professor";
+
+export type GoogleSignupOptions = {
+  studentId?: string;
+  consent?: boolean;
+  extraParams?: Record<string, string | number | boolean | null | undefined>;
+};
+
+export function buildGoogleSignupUrl(
+  role: GoogleSignupRole = "Student",
+  options?: GoogleSignupOptions
+) {
+  const url = new URL(`${API_BASE}/api/auth/google`);
   url.searchParams.set("role", role);
+
+  if (options?.studentId) {
+    url.searchParams.set("stdId", options.studentId);
+  }
+
+  if (options?.consent !== undefined) {
+    url.searchParams.set("consent", options.consent ? "true" : "false");
+  }
+
+  if (options?.extraParams) {
+    for (const [key, value] of Object.entries(options.extraParams)) {
+      if (value === undefined || value === null) continue;
+      url.searchParams.set(key, String(value));
+    }
+  }
+
   return url.toString();
 }
 

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useRef } fro
 import { logoutServerSession } from "@/api/logout";
 
 type AuthUser = {
+  id?: number | null;
   user_name: string;
   email: string;
   role: string;
@@ -17,13 +18,14 @@ type LoginData = {
   email: string;
   roles?: string;
   role?: string;
+  id?: number | string | null;
 };
 
 type AuthContextType = {
   user: AuthUser | null;
   isReady: boolean;
   login: (data: LoginData) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,10 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user_name = localStorage.getItem("user_name") ?? "";
     const email = localStorage.getItem("email") ?? "";
     const role = localStorage.getItem("role") ?? "";
+    const idRaw = localStorage.getItem("user_id");
+    const id = idRaw ? Number(idRaw) : null;
 
     // Consider user authenticated if an access token exists; fill other fields if present
     if (token) {
-      setUser({ user_name, email, role: normalizeRole(role), access_token: token });
+      setUser({ id, user_name, email, role: normalizeRole(role), access_token: token });
     }
     setIsReady(true);
   }, []);
@@ -107,7 +111,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user_name", data.user_name ?? "");
     localStorage.setItem("email", data.email ?? "");
     localStorage.setItem("role", role);
+    if (data.id !== undefined && data.id !== null) {
+      localStorage.setItem("user_id", String(data.id));
+    }
+    const fallbackId =
+      typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+
     setUser({
+      id:
+        data.id !== undefined && data.id !== null
+          ? Number(data.id)
+          : fallbackId
+          ? Number(fallbackId)
+          : undefined,
       user_name: data.user_name ?? "",
       email: data.email ?? "",
       role,
@@ -116,13 +132,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  function logout() {
-    logoutServerSession();
-    localStorage.clear();
-    setUser(null);
-    if (typeof window !== 'undefined') {
-      const path = window.location?.pathname || '';
-      if (!path.startsWith('/login')) window.location.href = '/login';
+  async function logout() {
+    try {
+      await logoutServerSession();
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    } finally {
+      localStorage.clear();
+      setUser(null);
+      if (typeof window !== "undefined") {
+        const path = window.location?.pathname || "";
+        if (!path.startsWith("/login")) window.location.href = "/login";
+      }
     }
   }
 

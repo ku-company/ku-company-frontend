@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminListAllUsers, adminFilterUsersByStatus, adminVerifyUser, adminRejectUser, adminDeleteUser, type AdminUser } from "@/api/admin";
 import { useAuth } from "@/context/AuthContext";
+import { ADMIN_BRAND_COLOR } from "@/components/admin/AdminNavbar";
 
 // ---- Types ----
 type Status = "approved" | "rejected" | "pending";
@@ -40,9 +42,6 @@ function mapUser(u: AdminUser): Row {
     status,
   };
 }
-
-// ---- Brand color ----
-const GREEN = "#5b8f5b";
 
 // ---- Small UI helpers ----
 function StatusDropdown({
@@ -219,7 +218,7 @@ export default function AdminDashboard() {
           />
           <button
             className="h-9 rounded-full px-4 text-sm text-white"
-            style={{ backgroundColor: GREEN }}
+            style={{ backgroundColor: ADMIN_BRAND_COLOR }}
           >
             APPROVE ACCOUNT
           </button>
@@ -246,8 +245,8 @@ export default function AdminDashboard() {
                 active ? "text-white" : "hover:bg-gray-50"
               }`}
               style={{
-                backgroundColor: active ? GREEN : "white",
-                borderColor: active ? GREEN : "#e5e7eb",
+                backgroundColor: active ? ADMIN_BRAND_COLOR : "white",
+                borderColor: active ? ADMIN_BRAND_COLOR : "#e5e7eb",
               }}
             >
               {t.label}
@@ -277,7 +276,7 @@ export default function AdminDashboard() {
       {/* Table */}
       <div className="mt-4 overflow-hidden rounded-xl border bg-white">
         <table className="min-w-full text-sm">
-          <thead style={{ backgroundColor: GREEN }} className="text-white">
+          <thead style={{ backgroundColor: ADMIN_BRAND_COLOR }} className="text-white">
             <tr className="[&>th]:px-3 [&>th]:py-3 [&>th]:text-left">
               <th className="w-48">Username</th>
               <th className="w-32">Role</th>
@@ -288,9 +287,24 @@ export default function AdminDashboard() {
             </tr>
           </thead>
           <tbody className="[&>tr:nth-child(even)]:bg-gray-50">
-            {current.map((r) => (
-              <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
-                <td className="font-medium">{r.username}</td>
+            {current.map((r) => {
+              const profileHref = typeof r.id === "number" ? `/profile/${r.id}` : null;
+              return (
+                <tr key={(r.id ?? r.email) + r.username} className="[&>td]:px-3 [&>td]:py-3">
+                  <td className="font-medium">
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="text-gray-900 underline-offset-2 hover:text-emerald-700 hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {r.username}
+                      </Link>
+                    ) : (
+                      r.username
+                    )}
+                  </td>
                 <td>{r.role}</td>
                 <td className="text-gray-700">{r.email}</td>
                 <td>
@@ -330,8 +344,9 @@ export default function AdminDashboard() {
                     Delete
                   </button>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
 
             {current.length === 0 && (
               <tr>

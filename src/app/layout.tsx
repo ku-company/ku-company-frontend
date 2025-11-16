@@ -5,6 +5,7 @@ import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
 import BootstrapSession from "@/components/auth/BootstrapSession";
+import OAuthAiReviewGate from "@/components/auth/OAuthAiReviewGate";
 import AuthExpiryHandler from "@/components/auth/AuthExpiryHandler";
 import ClientLayout from "@/components/ClientLayout"; // Dynamically chooses navbar based on role
 import ToastProvider from "@/components/ToastProvider";
@@ -51,6 +52,8 @@ export default function RootLayout({
         <AuthProvider>
           {/* Restore user from server session (cookies) if available */}
           <BootstrapSession />
+          {/* Run AI review immediately after OAuth signups */}
+          <OAuthAiReviewGate />
           {/* Auto-logout when JWT expires */}
           <AuthExpiryHandler />
           {/* Dynamically render layout and navbar based on user role */}

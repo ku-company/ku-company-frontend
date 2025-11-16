@@ -48,10 +48,57 @@ async function handleResponse<T>(res: Response, action: string): Promise<T> {
    🔹 Fetch all announcements
 ----------------------------------------------------------- */
 export async function fetchProfessorAnnouncements(signal?: AbortSignal) {
-  // Use the public announcements feed so all roles can read
-  const res = await fetch(API_URL_PUBLIC, withAuthHeaders({ method: "GET", signal }));
+  const url = API_URL_PUBLIC; // Use the public announcements feed so all roles can read
+  const init = withAuthHeaders({ method: "GET", signal });
+  const started = Date.now();
+
+  // Best-effort client-side logging for visibility in the browser console
+  try {
+    const headersAny: any = init.headers || {};
+    const sanitizedHeaders: Record<string, any> = { ...headersAny };
+    const authKey = Object.keys(sanitizedHeaders).find((k) => k.toLowerCase() === "authorization");
+    if (authKey) sanitizedHeaders[authKey] = "(redacted)";
+    console.groupCollapsed(`[Announcements] GET ${url}`);
+    console.log("request", {
+      method: init.method || "GET",
+      credentials: (init as any).credentials,
+      headers: sanitizedHeaders,
+    });
+    console.groupEnd();
+  } catch {}
+
+  const res = await fetch(url, init);
+
+  try {
+    console.groupCollapsed(`[Announcements] Response ${url}`);
+    console.log("response", { status: res.status, ok: res.ok });
+    console.groupEnd();
+  } catch {}
+
   // Response shape may be an array or an object with results/data
-  return handleResponse<any>(res, "Failed to fetch announcements");
+  const data = await handleResponse<any>(res, "Failed to fetch announcements");
+
+  // Log the actual payload returned from the backend (collapsed to avoid noisy console by default)
+  try {
+    console.groupCollapsed(`[Announcements] Backend payload ${url}`);
+    console.log(data);
+    console.groupEnd();
+  } catch {}
+
+  try {
+    const duration = Date.now() - started;
+    const previewCount = Array.isArray(data)
+      ? data.length
+      : Array.isArray(data?.results ?? data?.data)
+      ? (data?.results ?? data?.data).length
+      : undefined;
+    console.log("[Announcements] Loaded", {
+      durationMs: duration,
+      count: previewCount,
+    });
+  } catch {}
+
+  return data;
 }
 
 /* -----------------------------------------------------------

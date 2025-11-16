@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import RoleSelectModal from "@/components/roleselector";
 import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
+import type { GoogleSignupRole } from "@/api/oauth";
+import { markPendingAiReview } from "@/utils/aiReview";
+import { attachStudentId } from "@/api/student";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -18,10 +22,15 @@ function normalizeRole(r?: string | null) {
 }
 
 export default function RoleBootstrap() {
-  const { user, isReady, login } = useAuth();
+  const { user, isReady, login, logout } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
   const [showCompanyOnboarding, setShowCompanyOnboarding] = useState(false);
+  const [pendingRole, setPendingRole] = useState<GoogleSignupRole | null>(null);
+  const [pendingStudentId, setPendingStudentId] = useState("");
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const isUnknown = useMemo(() => normalizeRole(user?.role) === "Unknown", [user?.role]);
 
@@ -32,7 +41,14 @@ export default function RoleBootstrap() {
   }
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || !user) {
+      setShowRoleModal(false);
+      setShowConsentModal(false);
+      setPendingRole(null);
+      setPendingStudentId("");
+      setShowCompanyOnboarding(false);
+      return;
+    }
     if (user && isUnknown) {
       setShowRoleModal(true);
     } else {
@@ -69,20 +85,30 @@ export default function RoleBootstrap() {
 
   // Note: no secondary guard; onboarding modal opens only when flagged by signup flow.
 
-  async function handleRoleSelect(selected: string) {
+  function handleRoleSelect(selected: string) {
+    const normalized = selected.toLowerCase();
+    const payloadRole: GoogleSignupRole =
+      normalized === "company" ? "Company" : normalized === "professor" ? "Professor" : "Student";
+
+    setConsentError(null);
+    setPendingRole(payloadRole);
+    setPendingStudentId("");
+    setShowConsentModal(true);
+  }
+
+  async function completeRoleSelection(studentId?: string) {
+    if (!pendingRole) return;
     try {
+      setConsentBusy(true);
       setPatchingRole(true);
+      setConsentError(null);
 
-      const payloadRole =
-        selected.toLowerCase() === "student"
-          ? "Student"
-          : selected.toLowerCase() === "company"
-          ? "Company"
-          : selected.toLowerCase() === "professor"
-          ? "Professor"
-          : "Student";
+      const trimmedStudentId = (studentId || "").trim();
 
-      const patchData = await updateUserRole(payloadRole);
+      const patchData = await updateUserRole(pendingRole, {
+        studentId: trimmedStudentId,
+        consent: true,
+      });
       persistTokens({ access_token: patchData.access_token, refresh_token: patchData.refresh_token });
       const newToken = patchData.access_token || localStorage.getItem("access_token") || "";
       const me2 = await getAuthMe(newToken);
@@ -108,20 +134,41 @@ export default function RoleBootstrap() {
         }
       }
 
+      if (finalRole === "Student" && trimmedStudentId) {
+        await attachStudentId(trimmedStudentId);
+        try {
+          localStorage.setItem("last_student_id", trimmedStudentId);
+        } catch {}
+      }
+
+      if (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student") {
+        markPendingAiReview(finalRole as GoogleSignupRole);
+      }
+
       if (finalRole !== "Unknown") {
         setShowRoleModal(false);
       }
 
-      // If user chose Company, prompt for company info
       if (finalRole === "Company") {
         setShowCompanyOnboarding(true);
       }
-    } catch (err) {
+
+      setShowConsentModal(false);
+      setPendingRole(null);
+    } catch (err: any) {
       console.error("Failed to update role:", err);
-      // keep modal open for retry
+      setConsentError(err?.message || "Failed to update role. Please try again.");
     } finally {
+      setConsentBusy(false);
       setPatchingRole(false);
     }
+  }
+
+  function handleConsentReject() {
+    setShowConsentModal(false);
+    setPendingRole(null);
+    setPendingStudentId("");
+    logout().catch(() => {});
   }
 
   return (
@@ -142,6 +189,22 @@ export default function RoleBootstrap() {
               if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
             } catch {}
             setShowCompanyOnboarding(false);
+          }}
+        />
+      )}
+      {pendingRole && (
+        <GoogleConsentModal
+          isOpen={showConsentModal}
+          role={pendingRole}
+          requireStudentId={pendingRole === "Student"}
+          initialStudentId={pendingStudentId}
+          submitting={consentBusy}
+          externalError={consentError}
+          onCancel={handleConsentReject}
+          onConfirm={({ studentId }) => {
+            const trimmed = (studentId || "").trim();
+            setPendingStudentId(trimmed);
+            completeRoleSelection(trimmed);
           }}
         />
       )}

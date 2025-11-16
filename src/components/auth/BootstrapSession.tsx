@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fetchAuthMe, normalizeRole } from "@/api/session";
+import { updateUserRole } from "@/api/user";
 import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile, createDefaultCompanyProfile } from "@/api/companyprofile";
@@ -17,6 +18,51 @@ export default function BootstrapSession() {
 
     console.log("🟡 BootstrapSession started...");
     (async () => {
+      const clearPendingStudentMarkers = () => {
+        try {
+          localStorage.removeItem("pending_oauth_signup_student");
+          localStorage.removeItem("pending_oauth_signup_student_id");
+        } catch {}
+      };
+
+      const syncPendingStudentId = async () => {
+        const wantsSync = typeof window !== "undefined" && localStorage.getItem("pending_oauth_signup_student") === "1";
+        const pendingId = typeof window !== "undefined" ? localStorage.getItem("pending_oauth_signup_student_id") : null;
+        if (!wantsSync || !pendingId) return;
+        const tokenOverride = localStorage.getItem("access_token") ?? "";
+        if (!tokenOverride) {
+          clearPendingStudentMarkers();
+          return;
+        }
+        try {
+          const patch = await updateUserRole("Student", {
+            studentId: pendingId,
+            consent: true,
+            tokenOverride,
+          });
+          if (patch?.access_token) localStorage.setItem("access_token", patch.access_token);
+          if (patch?.refresh_token) localStorage.setItem("refresh_token", patch.refresh_token);
+
+          const latestToken = patch?.access_token || localStorage.getItem("access_token") || tokenOverride;
+          const refreshed = await fetchAuthMe(latestToken);
+          if (refreshed && refreshed.user_name) {
+            login({
+              access_token: latestToken || "",
+              refresh_token: localStorage.getItem("refresh_token") ?? "",
+              user_name: refreshed.user_name,
+              email: refreshed.email ?? "",
+              role: refreshed.role ?? refreshed.roles ?? "student",
+            });
+            console.log("🟢 Student ID synced for OAuth signup");
+          }
+          clearPendingStudentMarkers();
+        } catch (err) {
+          console.error("⚠️ Failed to sync student ID after OAuth signup:", err);
+          // Avoid locking the user into a bad state; allow retry manually if needed.
+          clearPendingStudentMarkers();
+        }
+      };
+
       try {
         // 1) Capture OAuth tokens in URL (either ? or #) and store
         try {
@@ -51,12 +97,18 @@ export default function BootstrapSession() {
         console.log("🟢 fetchAuthMe() returned:", me);
 
         if (me && me.user_name) {
+          if (me.id !== undefined && me.id !== null) {
+            try {
+              localStorage.setItem("user_id", String(me.id));
+            } catch {}
+          }
           login({
             access_token: localStorage.getItem("access_token") ?? "",
             refresh_token: localStorage.getItem("refresh_token") ?? "",
             user_name: me.user_name,
             email: me.email ?? "",
             role: me.role ?? me.roles ?? "student",
+            id: me.id,
           });
           console.log("✅ Logged in as:", me.role ?? me.roles);
 
@@ -95,6 +147,8 @@ export default function BootstrapSession() {
               console.warn("⚠️ Unable to ensure company profile:", e);
             }
           }
+
+          await syncPendingStudentId();
         } else {
           console.warn("⚠️ No user data from fetchAuthMe()");
         }

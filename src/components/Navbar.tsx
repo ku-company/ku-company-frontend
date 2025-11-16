@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getEmployeeProfileImage, getCompanyProfileImage, PROFILE_IMAGE_UPDATED_EVENT } from "@/api/profileimage";
@@ -12,6 +12,7 @@ import RoleSelector from "@/components/roleselector";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import NotificationsBell from "@/components/NotificationsBell";
+import { AdminNavbar } from "@/components/admin/AdminNavbar";
 
 function NavItem({ href, label }: { href: string; label: string }) {
   const pathname = usePathname() || "/";
@@ -38,16 +39,18 @@ function NavItem({ href, label }: { href: string; label: string }) {
 }
 
 export default function Navbar() {
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { count } = useApplyCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [showAdminNav, setShowAdminNav] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
+  const isAdmin = (user?.role || "").toLowerCase().includes("admin");
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -168,10 +171,9 @@ export default function Navbar() {
     };
   }, [user]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     setDropdownOpen(false);
-    router.push("/login");
   }
 
   return (
@@ -205,12 +207,32 @@ export default function Navbar() {
           </nav>
 
           <div className="relative flex items-center gap-2" ref={menuRef}>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowAdminNav((prev) => !prev)}
+                className="hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {showAdminNav ? "Hide Admin Links" : "Admin Links"}
+              </button>
+            )}
             {user ? (
               <>
                 {/* Student-only: Notifications + Apply list */}
                 {user?.role?.toLowerCase().includes("student") && (
                   <>
-                    <NotificationsBell />
+                    {hasUnreadNotifications && (
+                      <span
+                        className="hidden md:inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600"
+                        aria-live="polite"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" aria-hidden="true" />
+                        New alerts
+                      </span>
+                    )}
+                    <NotificationsBell
+                      onUnreadChange={(count) => setHasUnreadNotifications(count > 0)}
+                    />
                     <Link
                       href="/apply-list"
                       className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
@@ -280,6 +302,10 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      {isAdmin && showAdminNav && (
+        <AdminNavbar />
+      )}
 
       {showRoleSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

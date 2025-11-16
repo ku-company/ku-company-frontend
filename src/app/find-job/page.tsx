@@ -185,6 +185,33 @@ export default function FindJobPage() {
   useEffect(() => {
     syncVisibleJobs(allJobs);
   }, [allJobs, syncVisibleJobs]);
+  function openQuote(job: Job, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setQuoteJob(job);
+    setQuoteContent("");
+    setQuoteOpen(true);
+    setQuoteNotice(null);
+    setQuoteIsConnection(false);
+  }
+
+  async function postQuote() {
+    if (!quoteJob || !quoteContent.trim()) return;
+    setQuoteSubmitting(true);
+    try {
+      // Use repost endpoint with job posting id
+      await repostJobPosting(quoteJob.id, { content: quoteContent.trim(), is_connection: quoteIsConnection });
+      setQuoteOpen(false);
+      setQuoteJob(null);
+      setQuoteContent("");
+      setQuoteNotice("Reposted job successfully.");
+      setTimeout(() => setQuoteNotice(null), 3000);
+    } catch (err: any) {
+      const msg = String(err?.message || err || "Failed to post announcement");
+      setQuoteNotice(msg);
+    } finally {
+      setQuoteSubmitting(false);
+    }
+  }
 
   // Utility: fetch with token safely
   const authFetch = async (url: string) => {

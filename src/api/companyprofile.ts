@@ -10,6 +10,32 @@ export type CompanyProfile = {
   country: string;
 };
 
+export type PublicCompanyProfile = CompanyProfile & {
+  id: number;
+  user_id?: number;
+};
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
+
+function buildInit(init: RequestInit = {}): RequestInit {
+  const token = (typeof window !== "undefined")
+    ? localStorage.getItem("access_token")
+    : null;
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers || {}),
+  };
+
+  return {
+    credentials: "include", // <<< important for cookie-based auth
+    ...init,
+    headers,
+  };
+}
+
 function unwrap<T>(payload: any): T {
   return payload && typeof payload === "object" && "data" in payload && payload.data
     ? (payload.data as T)
@@ -77,4 +103,23 @@ export async function updateCompanyProfile(payload: CompanyProfile): Promise<Com
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
+}
+
+export async function getCompanyProfileById(
+  companyId: number,
+  signal?: AbortSignal,
+): Promise<PublicCompanyProfile | null> {
+  if (!Number.isFinite(companyId)) {
+    return null;
+  }
+  const res = await fetch(
+    `${API_BASE}/api/user/company-profile/${companyId}`,
+    buildInit({ signal }),
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(res));
+  }
+  const json = await res.json().catch(() => ({}));
+  return unwrap<PublicCompanyProfile>(json);
 }

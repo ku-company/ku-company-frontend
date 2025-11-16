@@ -1,79 +1,91 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BellIcon } from "@heroicons/react/24/outline";
-import { API_BASE, buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
+import { fetchNotifications, type NotificationItem } from "@/api/notifications";
 
-type UIStatus = "Approved" | "Confirmed" | "Declined" | "Pending";
-type Application = {
-  id: number;
-  position: string;
-  company_name: string;
-  status: UIStatus;
+type NotificationsBellProps = {
+  onUnreadChange?: (count: number) => void;
 };
 
-const STORAGE_KEY = "notif.appStatusMap"; // id -> status
+const STORAGE_KEY = "notif.latestMap"; // id -> version
 
-function loadSeen(): Record<string, UIStatus> {
+function loadSeen(): Record<string, string> {
+  if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {} as any;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
     const obj = JSON.parse(raw);
     return obj && typeof obj === "object" ? obj : {};
   } catch {
-    return {} as any;
+    return {};
   }
 }
 
-function saveSeen(map: Record<string, UIStatus>) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch {}
+function saveSeen(map: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
 }
 
-async function fetchMyApplications(): Promise<Application[]> {
-  const res = await fetch(`${API_BASE}/api/employee/my-applications`, buildInit({ method: "GET", credentials: "include" }));
-  const text = await res.text();
-  let json: any = {};
-  try { json = JSON.parse(text); } catch {}
-  const data: any[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
-  return data.map((a) => {
-    const position = a?.job_post?.position ?? a?.job_post?.job_title ?? a?.position ?? "—";
-    const companyName = a?.job_post?.company?.company_name ?? a?.job_post?.company_name ?? `Company #${a?.job_post?.company_id ?? "-"}`;
-    const emp = (a?.employee_send_status ?? "").toString().toLowerCase();
-    const comp = (a?.company_send_status ?? "").toString().toLowerCase();
-    let status: UIStatus = "Pending";
-    if (emp === "confirmed") status = "Confirmed";
-    else if (emp === "rejected") status = "Declined";
-    else if (comp === "approved" || comp === "confirmed") status = "Approved";
-    return { id: Number(a?.id ?? 0), position, company_name: String(companyName), status } as Application;
-  });
+function formatTimestamp(ts?: string) {
+  if (!ts) return "";
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
-export default function NotificationsBell() {
+function statusChipClasses(status?: string) {
+  const normalized = (status ?? "").toLowerCase();
+  if (normalized === "confirmed") return "text-emerald-700 bg-emerald-100 border border-emerald-200";
+  if (normalized === "declined" || normalized === "rejected") return "text-rose-700 bg-rose-100 border border-rose-200";
+  if (normalized === "approved") return "text-amber-700 bg-amber-100 border border-amber-200";
+  return "text-gray-700 bg-gray-100 border border-gray-200";
+}
+
+function typePillClasses(type: string) {
+  if (type === "announcement") return "bg-sky-100 text-sky-700 border border-sky-200";
+  return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+}
+
+export default function NotificationsBell({ onUnreadChange }: NotificationsBellProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<Application[]>([]);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
+  const [hasOpened, setHasOpened] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // compute unread by comparing to storage
-  async function refresh() {
+  const refresh = useCallback(async () => {
     try {
-      const list = await fetchMyApplications();
+      const list = await fetchNotifications();
       setItems(list);
       const seen = loadSeen();
       let cnt = 0;
-      for (const app of list) {
-        const prev = seen[String(app.id)];
-        if (!prev) continue; // treat unseen apps as baseline (no notification)
-        if (prev !== app.status) cnt++;
+      for (const item of list) {
+        const prev = seen[item.id];
+        if (!prev || prev !== item.version) cnt++;
       }
       setUnread(cnt);
+      onUnreadChange?.(cnt);
       return list;
-    } catch {
-      // ignore
+    } catch (error) {
+      console.warn("Failed to refresh notifications", error);
+      setItems([]);
+      setUnread(0);
+      onUnreadChange?.(0);
+      return [];
     }
-  }
+  }, [onUnreadChange]);
 
   // bootstrap + polling and focus refresh
   useEffect(() => {
@@ -83,13 +95,13 @@ export default function NotificationsBell() {
     const onFocus = () => refresh();
     if (typeof window !== "undefined") {
       window.addEventListener("focus", onFocus);
-      timer = window.setInterval(refresh, 30000) as unknown as number; // 30s
+      timer = window.setInterval(refresh, 30000) as unknown as number;
     }
     return () => {
       if (typeof window !== "undefined") window.removeEventListener("focus", onFocus);
       if (timer) window.clearInterval(timer);
     };
-  }, [user]);
+  }, [user, refresh]);
 
   // click outside to close
   useEffect(() => {
@@ -98,25 +110,41 @@ export default function NotificationsBell() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  // Mark all as read when closing dropdown
   useEffect(() => {
-    if (!open) {
-      const seen = loadSeen();
-      for (const it of items) seen[String(it.id)] = it.status;
-      saveSeen(seen);
-    } else {
-      // opening: clear bell indicator immediately
+    if (open) {
+      setHasOpened(true);
       setUnread(0);
+      onUnreadChange?.(0);
     }
-  }, [open, items]);
+  }, [open, onUnreadChange]);
+
+  // mark as read after dropdown closes post-open
+  useEffect(() => {
+    if (!hasOpened || open) return;
+    const seen = loadSeen();
+    let updated = false;
+    for (const item of items) {
+      if (seen[item.id] !== item.version) {
+        seen[item.id] = item.version;
+        updated = true;
+      }
+    }
+    if (updated) saveSeen(seen);
+  }, [open, items, hasOpened]);
 
   if (!user || !(user.role || "").toLowerCase().includes("student")) return null;
+
+  const seenMap = useMemo(() => loadSeen(), [items]);
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => { setOpen((v) => !v); if (!open) refresh(); }}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          if (next) refresh();
+        }}
         className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100"
         aria-label="Notifications"
         title="Notifications"
@@ -136,21 +164,28 @@ export default function NotificationsBell() {
             {items.length === 0 ? (
               <div className="px-3 py-6 text-sm text-gray-500">No recent activity.</div>
             ) : (
-              items.map((it) => {
-                const seen = loadSeen();
-                const changed = seen[String(it.id)] && seen[String(it.id)] !== it.status;
-                const status = it.status;
-                const statusColor = status === 'Confirmed' ? 'text-emerald-700 bg-emerald-100 border border-emerald-200'
-                  : status === 'Declined' ? 'text-rose-700 bg-rose-100 border border-rose-200'
-                  : status === 'Approved' ? 'text-amber-700 bg-amber-100 border border-amber-200'
-                  : 'text-gray-700 bg-gray-100 border border-gray-200';
+              items.map((item) => {
+                const changed = seenMap[item.id] !== item.version;
                 return (
-                  <div key={it.id} className={`px-3 py-2 text-sm ${changed ? '' : ''} flex items-start gap-2`}>
+                  <div key={item.id} className="px-3 py-2 text-sm flex items-start gap-2">
                     {changed && <span className="mt-1 w-2 h-2 rounded-full bg-red-600" />}
-                    <div className="min-w-0">
-                      <div className="text-gray-800 truncate">Application for {it.position} at {it.company_name}</div>
-                      <div className="mt-1">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${statusColor}`}>{status}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-gray-800 font-medium">{item.title}</p>
+                        <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                          {formatTimestamp(item.timestamp)}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-gray-600 text-sm line-clamp-2">{item.body}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${typePillClasses(item.type)}`}>
+                          {item.type === "announcement" ? "Announcement" : "Application"}
+                        </span>
+                        {item.status && (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${statusChipClasses(item.status)}`}>
+                            {item.status}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

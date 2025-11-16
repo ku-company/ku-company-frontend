@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { shouldDeferAutoLogout } from "@/utils/httpError";
 
@@ -10,7 +9,6 @@ export const AUTH_EXPIRED_EVENT = "auth:expired";
 
 export default function AuthExpiryHandler() {
   const { logout } = useAuth();
-  const router = useRouter();
   const installed = useRef(false);
 
   useEffect(() => {
@@ -81,12 +79,11 @@ export default function AuthExpiryHandler() {
 
     // When notified, clear auth and route to login
     const onExpired = () => {
-      try { logout(); } catch {}
-      try { router.replace("/login"); } catch {}
+      logout().catch(() => {});
     };
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
-  }, [logout, router]);
+  }, [logout]);
 
   return null;
 }
