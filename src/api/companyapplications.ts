@@ -1,27 +1,4 @@
-
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
-
-
-function buildInit(init: RequestInit = {}): RequestInit {
-  const token = (typeof window !== "undefined")
-    ? localStorage.getItem("access_token")
-    : null;
-
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(init.headers || {}),
-  };
-
-  return {
-    credentials: "include", // <<< important for cookie-based auth
-    ...init,
-    headers,
-  };
-}
+import { API_BASE, buildInit } from "./base";
 
 
 export async function getAllApplications() {

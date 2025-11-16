@@ -1,3 +1,4 @@
+import { API_BASE, buildInit } from "./base";
 import { extractErrorMessage } from "@/utils/httpError";
 
 export type CompanyProfile = {

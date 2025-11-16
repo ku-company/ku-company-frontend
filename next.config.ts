@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "localhost", // for testing purposes
       },
+      {
+        protocol: "https",
+        hostname: "ku-company.s3.ap-southeast-1.amazonaws.com",
+      },
     ],
   },
   async redirects() {

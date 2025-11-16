@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { POSITION_OPTIONS, normalizePosition, PositionEnum } from "@/types/positions";
+import { normalizePosition } from "@/types/positions";
 
 export type EditableJob = {
   title: string;
@@ -92,8 +92,6 @@ export default function EditJobModal({
   );
 
   // Position options from centralized enum
-  const positionOptions = POSITION_OPTIONS;
-
   return (
     <div
       ref={overlayRef}
@@ -121,22 +119,14 @@ export default function EditJobModal({
         <div className="space-y-4 px-5 py-5">
           {/* Position + Title */}
           <div className="flex items-center gap-3">
-            <select
+            <input
+              type="text"
               value={position}
-              onChange={(e) => {
-                const v = e.target.value;
-                setPosition(v);
-              }}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder="Position (e.g., Backend Developer)"
               className="w-1/2 rounded-md border px-3 py-2 text-sm focus:ring-2"
               style={{ outlineColor: brandColor }}
-            >
-              <option value="">Choose Position</option>
-              {positionOptions.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+            />
 
             <input
               ref={firstFieldRef}
