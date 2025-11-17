@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   listResumes,
   uploadResume,
+  deleteResume,
   type ResumeItem,
 } from "@/api/resume";
 import { applyToJob } from "@/api/jobs";
@@ -44,7 +45,9 @@ export default function ApplyingJobPage() {
 
   const canApply = (user?.role || "").toLowerCase() === "student";
 
-  // Load cached job
+  /* --------------------------------------------------
+     Load cached job
+  -------------------------------------------------- */
   useEffect(() => {
     if (!id || Number.isNaN(id)) return;
 
@@ -56,18 +59,20 @@ export default function ApplyingJobPage() {
       const storedJob = parsed?.job;
 
       if (storedJob?.id === id) {
-        setJob((prev) => prev ?? storedJob);
+        setJob(storedJob);
       }
     } catch {}
   }, [id]);
 
-  // Load job + resumes
+  /* --------------------------------------------------
+     Load job + resumes
+  -------------------------------------------------- */
   useEffect(() => {
     let alive = true;
 
     (async () => {
       try {
-        // Load job
+        /* Load job */
         if (id && !Number.isNaN(id)) {
           const res = await fetch(
             `${BASE_URL}/api/job-postings/${id}`,
@@ -88,7 +93,7 @@ export default function ApplyingJobPage() {
           }
         }
 
-        // Load resumes
+        /* Load resumes */
         if (canApply) {
           const list = await listResumes();
 
@@ -112,14 +117,13 @@ export default function ApplyingJobPage() {
   const title = job?.job_title || job?.position || "Job";
   const submitDisabled = submitting || !selectedResumeId;
 
-  // -----------------------------
-  // UPLOAD RESUME (FIXED)
-  // -----------------------------
+  /* --------------------------------------------------
+     UPLOAD RESUME
+  -------------------------------------------------- */
   async function handleUploadResume(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Backend requires PDF only
     if (file.type !== "application/pdf") {
       alert("Please upload PDF only.");
       return;
@@ -127,8 +131,6 @@ export default function ApplyingJobPage() {
 
     try {
       await uploadResume(file);
-
-      // Refresh list from backend
       const newList = await listResumes();
       setResumes(newList);
 
@@ -140,9 +142,29 @@ export default function ApplyingJobPage() {
     }
   }
 
-  // -----------------------------
-  // APPLY JOB
-  // -----------------------------
+  /* --------------------------------------------------
+     DELETE RESUME
+  -------------------------------------------------- */
+  async function handleDeleteResume(id: number) {
+    if (!confirm("Delete this resume?")) return;
+
+    try {
+      await deleteResume(id);
+
+      const newList = await listResumes();
+      setResumes(newList);
+
+      // auto select first one
+      if (newList.length > 0) setSelectedResumeId(newList[0].id);
+      else setSelectedResumeId(null);
+    } catch (err: any) {
+      alert("Failed to delete resume");
+    }
+  }
+
+  /* --------------------------------------------------
+     APPLY JOB
+  -------------------------------------------------- */
   async function handleApply() {
     if (!id || Number.isNaN(id)) return;
     if (!selectedResumeId) return;
@@ -161,9 +183,9 @@ export default function ApplyingJobPage() {
     }
   }
 
-  // -----------------------------
-  // NOT STUDENT
-  // -----------------------------
+  /* --------------------------------------------------
+     NOT STUDENT
+  -------------------------------------------------- */
   if (!canApply) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-6">
@@ -174,9 +196,9 @@ export default function ApplyingJobPage() {
     );
   }
 
-  // -----------------------------
-  // PAGE UI
-  // -----------------------------
+  /* --------------------------------------------------
+     PAGE UI
+  -------------------------------------------------- */
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
       <h1 className="text-2xl font-semibold mb-4">Applying Job</h1>
@@ -247,27 +269,36 @@ export default function ApplyingJobPage() {
 
         {/* Resume list */}
         <div className="mt-4 flex flex-col gap-3">
-          {resumes.length === 0 && (
+          {resumes.length === 0 ? (
             <div className="text-gray-500 text-sm">No résumé found.</div>
-          )}
+          ) : (
+            resumes.map((r) => (
+              <div
+                key={r.id}
+                className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-gray-50"
+              >
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    className="h-4 w-4"
+                    checked={selectedResumeId === r.id}
+                    onChange={() => setSelectedResumeId(r.id)}
+                  />
 
-          {resumes.map((r) => (
-            <label
-              key={r.id}
-              className="flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer hover:bg-gray-50"
-            >
-              <input
-                type="radio"
-                className="h-4 w-4"
-                checked={selectedResumeId === r.id}
-                onChange={() => setSelectedResumeId(r.id)}
-              />
+                  <div className="text-sm font-medium">
+                    {r.name?.length > 80 ? r.name.slice(0, 80) + "..." : r.name}
+                  </div>
+                </label>
 
-              <div className="text-sm font-medium">
-                {r.name?.length > 80 ? r.name.slice(0, 80) + "..." : r.name}
+                <button
+                  onClick={() => handleDeleteResume(r.id)}
+                  className="text-red-500 text-sm hover:underline"
+                >
+                  Delete
+                </button>
               </div>
-            </label>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Buttons */}
@@ -285,7 +316,7 @@ export default function ApplyingJobPage() {
             className="rounded-full px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
             style={{ backgroundColor: GREEN }}
           >
-            Apply
+            {submitting ? "Submitting…" : "Apply"}
           </button>
         </div>
       </section>

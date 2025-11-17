@@ -21,6 +21,20 @@ async function fetchAuthedJson(url: string, init: RequestInit = {}) {
   return res.json();
 }
 
+function formatThaiDate(dateStr?: string) {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isReady } = useAuth();
@@ -35,6 +49,7 @@ export default function DashboardPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [creatingJob, setCreatingJob] = useState(false);
 
+  // CREATE FORM STATES
   const [cTitle, setCTitle] = useState("");
   const [cPosition, setCPosition] = useState("");
   const [cDetails, setCDetails] = useState("");
@@ -49,13 +64,11 @@ export default function DashboardPage() {
   function toBackendJobType(label?: string): string | undefined {
     if (!label) return undefined;
     const t = label.replace(/\s+/g, "").toLowerCase();
-    if (t.includes("fulltime")) return "FullTime";
-    if (t.includes("parttime")) return "PartTime";
+    if (t.includes("full")) return "FullTime";
+    if (t.includes("part")) return "PartTime";
     if (t.includes("intern")) return "Internship";
     if (t.includes("contract")) return "Contract";
-    if (["FullTime", "PartTime", "Internship", "Contract"].includes(label))
-      return label;
-    return undefined;
+    return label;
   }
 
   /* ---------------------------------
@@ -91,7 +104,6 @@ export default function DashboardPage() {
     load();
   }, [isReady, isCompany, router]);
 
-
   /* ---------------------------------
      CREATE JOB
   ---------------------------------- */
@@ -99,7 +111,7 @@ export default function DashboardPage() {
     setCreatingJob(true);
     try {
       const body = {
-        job_title: (job.title || "").trim() || (job.position || "").trim(),
+        job_title: job.title.trim() || job.position.trim(),
         description: job.details,
         location: job.location || "",
         work_place: job.workType || undefined,
@@ -113,9 +125,7 @@ export default function DashboardPage() {
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        ...(user?.access_token
-          ? { Authorization: `Bearer ${user.access_token}` }
-          : {}),
+        ...(user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
       };
 
       const data = await fetchAuthedJson(API_URL_BASE, {
@@ -127,7 +137,7 @@ export default function DashboardPage() {
       const newJob = data.data || data;
       setJobs((prev) => [newJob, ...prev]);
 
-      /** reset form */
+      // reset form
       setCTitle("");
       setCPosition("");
       setCDetails("");
@@ -148,7 +158,6 @@ export default function DashboardPage() {
     }
   };
 
-
   /* ---------------------------------
      UPDATE (EDIT)
   ---------------------------------- */
@@ -158,8 +167,7 @@ export default function DashboardPage() {
 
     try {
       const body = {
-        job_title:
-          (updated.title || "").trim() || (updated.position || "").trim(),
+        job_title: updated.title.trim() || updated.position.trim(),
         description: updated.details,
         location: updated.location || job.location,
         work_place: updated.workType || job.work_place,
@@ -175,9 +183,7 @@ export default function DashboardPage() {
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
-        ...(user?.access_token
-          ? { Authorization: `Bearer ${user.access_token}` }
-          : {}),
+        ...(user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
       };
 
       const data = await fetchAuthedJson(`${API_URL_BASE}/${job.id}`, {
@@ -188,9 +194,7 @@ export default function DashboardPage() {
 
       const updatedJob = data.data || data;
 
-      setJobs((prev) =>
-        prev.map((j, i) => (i === editIndex ? updatedJob : j))
-      );
+      setJobs((prev) => prev.map((j, idx) => (idx === editIndex ? updatedJob : j)));
 
       closeEdit();
       notify.success("Job updated successfully.");
@@ -213,19 +217,16 @@ export default function DashboardPage() {
   const editInitial: EditableJob | null =
     editIndex !== null
       ? {
-          title:
-            jobs[editIndex]?.job_title || jobs[editIndex]?.position || "",
-          position: jobs[editIndex]?.position ?? "",
-          jobType: jobs[editIndex]?.jobType ?? "",
-          details: jobs[editIndex]?.description ?? "",
-          positionsAvailable: Number(
-            jobs[editIndex]?.available_position ?? 1
-          ),
-          location: jobs[editIndex]?.location ?? "",
-          minimum_expected_salary: jobs[editIndex]?.minimum_expected_salary,
-          maximum_expected_salary: jobs[editIndex]?.maximum_expected_salary,
-          workType: jobs[editIndex]?.work_place ?? "",
-          expired_at: jobs[editIndex]?.expired_at
+          title: jobs[editIndex].job_title || jobs[editIndex].position || "",
+          position: jobs[editIndex].position ?? "",
+          jobType: jobs[editIndex].jobType ?? "",
+          details: jobs[editIndex].description ?? "",
+          positionsAvailable: Number(jobs[editIndex].available_position ?? 1),
+          location: jobs[editIndex].location ?? "",
+          minimum_expected_salary: jobs[editIndex].minimum_expected_salary,
+          maximum_expected_salary: jobs[editIndex].maximum_expected_salary,
+          workType: jobs[editIndex].work_place ?? "",
+          expired_at: jobs[editIndex].expired_at
             ? String(jobs[editIndex].expired_at).slice(0, 10)
             : "",
         }
@@ -260,17 +261,12 @@ export default function DashboardPage() {
       positionsAvailable: Number(cPositionsAvailable),
       jobType: cJobType,
       location: cLocation,
-      minimum_expected_salary: cSalaryMin
-        ? Number(cSalaryMin)
-        : undefined,
-      maximum_expected_salary: cSalaryMax
-        ? Number(cSalaryMax)
-        : undefined,
+      minimum_expected_salary: Number(cSalaryMin),
+      maximum_expected_salary: Number(cSalaryMax),
       workType: cWorkType,
       expired_at: cExpiredAt || null,
     });
   };
-
 
   /* ---------------------------------
      DELETE JOB
@@ -293,7 +289,6 @@ export default function DashboardPage() {
     }
   };
 
-
   /* ---------------------------------
      UI RENDER
   ---------------------------------- */
@@ -310,10 +305,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* CREATE FORM */}
-        <form
-          onSubmit={createSubmit}
-          className="rounded-lg border bg-white p-4 shadow-sm"
-        >
+        <form onSubmit={createSubmit} className="rounded-lg border bg-white p-4 shadow-sm">
           <div className="grid gap-3">
             {/* Position + Title */}
             <div className="flex items-center gap-2">
@@ -322,17 +314,14 @@ export default function DashboardPage() {
                 value={cPosition}
                 onChange={(e) => setCPosition(e.target.value)}
                 placeholder="Position (e.g., Backend Developer)"
-                className="w-1/2 rounded-md border px-3 py-2 text-sm 
-                  focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                className="w-1/2 rounded-md border px-3 py-2 text-sm focus:ring-black"
               />
-
               <input
                 type="text"
                 value={cTitle}
                 onChange={(e) => setCTitle(e.target.value)}
                 placeholder="Job Title"
-                className="flex-1 rounded-md border px-3 py-2 text-sm 
-                  focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                className="flex-1 rounded-md border px-3 py-2 text-sm focus:ring-black"
               />
             </div>
 
@@ -341,41 +330,30 @@ export default function DashboardPage() {
               value={cDetails}
               onChange={(e) => setCDetails(e.target.value)}
               placeholder="Enter Job Description..."
-              className="h-32 w-full rounded-md border px-3 py-2 text-sm
-                  focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+              className="h-32 w-full rounded-md border px-3 py-2 text-sm focus:ring-black"
             />
+
             <div className="text-xs text-gray-500">
               Description supports basic Markdown.
             </div>
 
             {/* Positions Available */}
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Number of Positions Available
-              </label>
-
+              <label className="text-sm font-medium text-gray-700">Positions Available</label>
               <input
                 type="number"
                 min={1}
-                className="w-24 rounded-md border px-3 py-2 text-sm text-center 
-                    focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                className="w-24 rounded-md border px-3 py-2 text-sm text-center focus:ring-black"
                 value={cPositionsAvailable}
-                onChange={(e) =>
-                  setCPositionsAvailable(
-                    e.target.value ? Number(e.target.value) : ""
-                  )
-                }
+                onChange={(e) => setCPositionsAvailable(e.target.value ? Number(e.target.value) : "")}
               />
             </div>
 
             {/* Job Type */}
             <div className="grid gap-1">
-              <label className="text-sm font-medium text-gray-700">
-                Job Type
-              </label>
+              <label className="text-sm font-medium text-gray-700">Job Type</label>
               <select
-                className="rounded-md border px-3 py-2 text-sm
-                    focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                className="rounded-md border px-3 py-2 text-sm focus:ring-black"
                 value={cJobType}
                 onChange={(e) => setCJobType(e.target.value)}
               >
@@ -390,56 +368,43 @@ export default function DashboardPage() {
             {/* Location + Salary */}
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="grid gap-1">
-                <label className="text-sm font-medium text-gray-700">
-                  Location
-                </label>
+                <label className="text-sm font-medium text-gray-700">Location</label>
                 <input
                   value={cLocation}
                   onChange={(e) => setCLocation(e.target.value)}
                   placeholder="City / Remote"
-                  className="rounded-md border px-3 py-2 text-sm
-                      focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                  className="rounded-md border px-3 py-2 text-sm focus:ring-black"
                 />
               </div>
 
               <div className="grid gap-1">
-                <label className="text-sm font-medium text-gray-700">
-                  Expected Salary (Min – Max)
-                </label>
-
+                <label className="text-sm font-medium text-gray-700">Salary (Min – Max)</label>
                 <div className="flex items-center gap-2">
                   <input
                     value={cSalaryMin}
                     onChange={(e) => setCSalaryMin(e.target.value)}
                     placeholder="18000"
-                    className="w-28 rounded-md border px-3 py-2 text-sm
-                        focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                    className="w-28 rounded-md border px-3 py-2 text-sm focus:ring-black"
                   />
-
                   <span>-</span>
-
                   <input
                     value={cSalaryMax}
                     onChange={(e) => setCSalaryMax(e.target.value)}
                     placeholder="30000"
-                    className="w-28 rounded-md border px-3 py-2 text-sm
-                        focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                    className="w-28 rounded-md border px-3 py-2 text-sm focus:ring-black"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Workplace + Expired */}
+            {/* Workplace + Expired Date */}
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="grid gap-1">
-                <label className="text-sm font-medium text-gray-700">
-                  Workplace
-                </label>
+                <label className="text-sm font-medium text-gray-700">Workplace</label>
                 <select
                   value={cWorkType}
                   onChange={(e) => setCWorkType(e.target.value)}
-                  className="rounded-md border px-3 py-2 text-sm 
-                      focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                  className="rounded-md border px-3 py-2 text-sm focus:ring-black"
                 >
                   <option value="">Select</option>
                   <option value="OnSite">On-site</option>
@@ -450,26 +415,19 @@ export default function DashboardPage() {
 
               <div className="grid gap-1">
                 <label className="text-sm font-medium text-gray-700">
-                  Expiration Date{" "}
-                  <span className="text-gray-400 font-normal">
-                    (optional)
-                  </span>
+                  Expiration Date <span className="text-gray-400">(optional)</span>
                 </label>
-
                 <input
                   type="date"
                   value={cExpiredAt}
                   onChange={(e) => setCExpiredAt(e.target.value)}
-                  className="rounded-md border px-3 py-2 text-sm 
-                      focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
+                  className="rounded-md border px-3 py-2 text-sm focus:ring-black"
                 />
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex items-center justify-end gap-2">
-
-              {/* Cancel */}
+            <div className="flex justify-end gap-2 mt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -489,7 +447,6 @@ export default function DashboardPage() {
                 Cancel
               </button>
 
-              {/* Create Job */}
               <button
                 disabled={!canCreate || creatingJob}
                 className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -501,7 +458,7 @@ export default function DashboardPage() {
           </div>
         </form>
 
-        {/* Job list */}
+        {/* Job List */}
         <div className="space-y-4">
           {loading ? (
             <p className="text-gray-500">Loading jobs...</p>
@@ -509,88 +466,55 @@ export default function DashboardPage() {
             <p className="text-gray-500">No job postings yet.</p>
           ) : (
             jobs.map((job: any, i: number) => (
-              <div
-                key={job.id || i}
-                className="rounded-2xl border bg-white p-4 shadow-sm"
-              >
-                <div className="flex w-full justify-between">
-                  <div className="pr-4">
+              <div key={job.id || i} className="rounded-2xl border bg-white p-5 shadow-sm">
+                <div className="flex justify-between">
+                  
+                  {/* LEFT */}
+                  <div className="flex-1 text-left">
                     <div className="text-lg font-semibold">
                       {job.job_title || job.position || "Untitled"}
                     </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end justify-between">
-                  <div className="text-xs text-gray-500 text-right">
-                    {job.created_at ? (
-                      <>
-                        <div>
-                          Posted:{" "}
-                          {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
-                            Math.round((new Date(job.created_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-                            "day"
-                          )}
-                        </div>
-                        {job.expired_at && (
-                          <div>
-                            Expires: {new Date(job.expired_at).toLocaleDateString()}
-                          </div>
-                        )}
-                      </>
-                    ) : null}
 
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                      {job.jobType ? (
-                        <span className="rounded-full border px-2 py-0.5">
-                          {String(job.jobType)}
-                        </span>
-                      ) : null}
-
-                      {job.work_place ? (
-                        <span className="rounded-full border px-2 py-0.5">
-                          {String(job.work_place)}
-                        </span>
-                      ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      {job.jobType && (
+                        <span className="rounded-full border px-2 py-0.5">{job.jobType}</span>
+                      )}
+                      {job.work_place && (
+                        <span className="rounded-full border px-2 py-0.5">{job.work_place}</span>
+                      )}
                     </div>
 
                     <div className="mt-2 text-sm text-gray-700">
                       Positions: {job.available_position ?? 1}
                     </div>
 
-                    {(job.minimum_expected_salary ||
-                      job.maximum_expected_salary) && (
+                    {(job.minimum_expected_salary || job.maximum_expected_salary) && (
                       <div className="text-sm text-gray-700">
-                        Expected Salary:{" "}
-                        {job.minimum_expected_salary ?? "-"} –{" "}
+                        Expected Salary: {job.minimum_expected_salary ?? "-"} –{" "}
                         {job.maximum_expected_salary ?? "-"}
                       </div>
                     )}
+
+                    <div className="mt-2 text-xs text-gray-500">
+                      {job.created_at && (
+                        <div>Posted: {formatThaiDate(job.created_at)}</div>
+                      )}
+
+                      {job.expired_at && (
+                        <div className="text-red-600 font-medium">
+                          Expires: {formatThaiDate(job.expired_at)}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col items-end justify-between">
-                    <div className="text-xs text-gray-500">
-                      {job.created_at
-                        ? new Intl.RelativeTimeFormat("en", {
-                            numeric: "auto",
-                          }).format(
-                            Math.round(
-                              (new Date(job.created_at).getTime() -
-                                Date.now()) /
-                                (1000 * 60 * 60 * 24)
-                            ),
-                            "day"
-                          )
-                        : null}
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2">
+                  {/* RIGHT BUTTONS */}
+                  <div className="flex flex-col items-end justify-between ml-4">
+                    <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={() => openEdit(i)}
                         className="rounded-full border px-3 py-1 text-sm hover:bg-gray-100"
-                        style={{
-                          borderColor: "#5D9252",
-                          color: "#2c4d2a",
-                        }}
+                        style={{ borderColor: "#5D9252", color: "#2c4d2a" }}
                       >
                         Edit
                       </button>
@@ -603,6 +527,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   </div>
+
                 </div>
               </div>
             ))
@@ -610,6 +535,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* EDIT MODAL */}
       <EditJobModal
         isOpen={editOpen}
         onClose={closeEdit}
