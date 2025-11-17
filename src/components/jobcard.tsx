@@ -43,7 +43,17 @@ export default function JobCard({ job, href }: JobCardProps) {
     minSalary !== null && maxSalary !== null ? `Expected Salary: ${minSalary.toLocaleString()} - ${maxSalary.toLocaleString()}` : null;
 
   const card = (
-    <div className="flex justify-between items-center border-2 rounded-2xl p-4 bg-white shadow-sm gap-4" style={{ borderColor: GREEN }}>
+    <div
+      className="
+        flex justify-between items-center 
+        border-2 rounded-2xl p-4 bg-white shadow-sm gap-4
+
+        cursor-pointer
+        transition-all duration-300
+        hover:shadow-xl hover:-translate-y-1
+      "
+      style={{ borderColor: GREEN }}
+    >
       <div className="flex-1 space-y-2">
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 flex items-center justify-center rounded-full bg-emerald-900 text-white font-semibold text-lg">
@@ -60,7 +70,11 @@ export default function JobCard({ job, href }: JobCardProps) {
         </div>
 
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          {jobType && <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">{jobType}</span>}
+          {jobType && (
+            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+              {jobType}
+            </span>
+          )}
           {workplace && <span className="rounded-full border border-gray-200 px-3 py-1 text-gray-600">{workplace}</span>}
         </div>
 
@@ -74,7 +88,16 @@ export default function JobCard({ job, href }: JobCardProps) {
 
   if (href) {
     return (
-      <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded-2xl">
+      <Link
+        href={href}
+        className="
+          block 
+          focus-visible:outline-none 
+          focus-visible:ring-2 
+          focus-visible:ring-emerald-600 
+          rounded-2xl
+        "
+      >
         {card}
       </Link>
     );
