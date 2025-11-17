@@ -21,7 +21,8 @@ export default function ApplyListPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
-  const [verified, setVerified] = useState<boolean | null>(null);
+  type VerificationState = "checking" | "verified" | "unverified";
+  const [verificationState, setVerificationState] = useState<VerificationState>("checking");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -38,9 +39,9 @@ export default function ApplyListPage() {
         // Fetch verification status
         try {
           const me = await getMyStudentProfile();
-          setVerified(!!me.verified);
+          setVerificationState(!!me.verified ? "verified" : "unverified");
         } catch {
-          setVerified(false);
+          setVerificationState("unverified");
         }
         const list = await listResumes();
         const mapped = (list || []).map((r: any) => ({ id: String(r.id), name: r.name || "Unnamed Resume" }));
@@ -103,7 +104,7 @@ export default function ApplyListPage() {
 
       <section className="mt-4 rounded-2xl border bg-white p-4" style={{ borderColor: GREEN }}>
         <label className="text-sm font-medium">Resume</label>
-        {verified === false ? (
+        {verificationState === "unverified" ? (
           <div className="mt-2 rounded-md bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
             You must be verified to use this function.
           </div>
@@ -114,7 +115,7 @@ export default function ApplyListPage() {
             value={selectedResumeId}
             onChange={(e) => setSelectedResumeId(e.target.value)}
             className="mt-2 h-10 w-full rounded-lg border px-3 text-sm"
-            disabled={verified === false}
+            disabled={verificationState === "unverified"}
           >
             {resumes.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
@@ -180,7 +181,13 @@ export default function ApplyListPage() {
 
       <div className="mt-6 flex justify-end">
         <button
-          disabled={submitting || items.length === 0 || !selectedResumeId || verified === false || selectedIds.size === 0}
+          disabled={
+            submitting ||
+            items.length === 0 ||
+            !selectedResumeId ||
+            verificationState === "unverified" ||
+            selectedIds.size === 0
+          }
           className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
           style={{ backgroundColor: GREEN }}
           onClick={handleApplySelected}
