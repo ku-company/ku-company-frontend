@@ -94,7 +94,7 @@ export default function ProfessorOnboardingModal({ isOpen, onClose }: Props) {
     <>
       {reviewing && (
         <LoadingOverlay
-          title="Submitting to AI…"
+          title="Verifying your profile..."
           subtitle="Please wait while we verify your professor account."
         />
       )}

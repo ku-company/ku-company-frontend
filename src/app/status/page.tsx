@@ -123,9 +123,40 @@ export default function AppliedCompanyStatusPage() {
   }, [user, isReady]);
 
   /* ---------- Actions ---------- */
+  const cancelOtherApplicationsBeforeConfirm = async (selectedId: number) => {
+    const toCancel = applications.filter(
+      (app) =>
+        app.id !== selectedId &&
+        (app.status === "Pending" || app.status === "Approved")
+    );
+
+    for (const app of toCancel) {
+      try {
+        const res = await fetch(
+          `${API_URL}/employee/cancel-application/${app.id}`,
+          buildInit({ method: "DELETE", credentials: "include" })
+        );
+        if (!res.ok) {
+          const msg = await res.text().catch(() => "Cancel failed");
+          notify.error(`Cancel failed for ${app.position}: ${msg}`);
+          return false;
+        }
+        setApplications((prev) => prev.filter((item) => item.id !== app.id));
+      } catch (err) {
+        console.error("Cancel before confirm error:", err);
+        notify.error("Failed to cancel other applications. Please try again.");
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleConfirm = async (id: number) => {
     if (!user) return;
     try {
+      const cancelled = await cancelOtherApplicationsBeforeConfirm(id);
+      if (!cancelled) return;
+
       const res = await fetch(
         `${API_URL}/employee/job-applications/${id}/confirm`,
         buildInit({ method: "POST", credentials: "include" })

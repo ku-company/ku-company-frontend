@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { BuildingOfficeIcon, MapPinIcon, ArrowTopRightOnSquareIcon, MagnifyingGlassIcon, MegaphoneIcon } from "@heroicons/react/24/outline";
 // import ApplyModal from "@/components/ApplyModal"; // replaced by full apply page
 import Markdown from "@/components/Markdown";
 import { listResumes, uploadResume } from "@/api/resume";
@@ -12,6 +12,8 @@ import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
+import { getAuthMe } from "@/api/user";
+import { repostJobPosting } from "@/api/professorrepost";
 
 type Job = {
   id: number;
@@ -101,12 +103,45 @@ export default function FindJobPage() {
   const [resumes, setResumes] = useState<Resume[]>([]); //  resume state
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [verifyRequired, setVerifyRequired] = useState(false);
+  const [isProfVerified, setIsProfVerified] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteJob, setQuoteJob] = useState<Job | null>(null);
+  const [quoteContent, setQuoteContent] = useState("");
+  const [quoteSubmitting, setQuoteSubmitting] = useState(false);
+  const [quoteNotice, setQuoteNotice] = useState<string | null>(null);
+  const [quoteIsConnection, setQuoteIsConnection] = useState(false);
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
   const isProfessor = useMemo(
     () => (user?.role || "").toLowerCase().includes("professor"),
     [user?.role]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!isProfessor) {
+          setIsProfVerified(false);
+          return;
+        }
+        const me = await getAuthMe().catch(() => null as any);
+        if (!cancelled) {
+          const verified =
+            Boolean(
+              me?.verified ||
+              me?.verify ||
+              me?.verified_status ||
+              me?.user?.verified
+            );
+          setIsProfVerified(verified);
+        }
+      } catch {
+        if (!cancelled) setIsProfVerified(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isProfessor]);
 
   const handleApplyNavigation = useCallback(
     (job: Job) => {
@@ -476,14 +511,6 @@ export default function FindJobPage() {
 
           {/* Right controls: filter chips */}
           <div className="ml-auto flex flex-wrap items-center gap-3">
-            {isProfessor && (
-              <Link
-                href="/professor-annoucement"
-                className="rounded-full bg-midgreen-500 px-5 py-2 text-sm font-semibold text-white hover:bg-midgreen-600 transition"
-              >
-                Job Announcements
-              </Link>
-            )}
             <button
               className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
               onClick={() => { setJobType("All"); fetchJobs(); }}
@@ -528,9 +555,12 @@ export default function FindJobPage() {
             jobs.map((job) => {
               const active = job.id === selectedId;
               return (
-                <button
+                <div
                   key={job.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedId(job.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setSelectedId(job.id); }}
                   className={`relative w-full rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
                     active ? "ring-2" : ""
                   }`}
@@ -539,6 +569,16 @@ export default function FindJobPage() {
                     boxShadow: active ? `0 0 0 2px ${GREEN}` : undefined,
                   }}
                 >
+                  {isProfessor && isProfVerified && (
+                    <button
+                      type="button"
+                      onClick={(e) => openQuote(job, e)}
+                      className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-md border bg-white text-emerald-700 hover:bg-emerald-50"
+                      title="Repost this job"
+                    >
+                      <MegaphoneIcon className="h-4 w-4" />
+                    </button>
+                  )}
                   <div className="absolute right-6 top-2 h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm">
                     {job.company_profile_image ? (
                       // Company profile image from backend
@@ -572,7 +612,7 @@ export default function FindJobPage() {
                   <div className="mt-2 text-[11px] text-gray-500">
                     {job.available_position} position(s) | {job.jobType}
                   </div>
-                </button>
+                </div>
               );
             })
           )}
@@ -608,6 +648,16 @@ export default function FindJobPage() {
                         <Link href={`/job/${selected.id}`} className="inline-flex items-center justify-center rounded-full border p-1 text-gray-600 hover:bg-gray-50" title="Open job details">
                           <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                         </Link>
+                      )}
+                      {isProfessor && isProfVerified && (
+                        <button
+                          type="button"
+                          onClick={(e) => openQuote(selected, e)}
+                          className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-50"
+                        >
+                          <MegaphoneIcon className="h-4 w-4" />
+                          Repost
+                        </button>
                       )}
                       {/* Small chips next to title */}
                       <span className="ml-2 inline-flex items-center rounded-full border border-gray-300 bg-white px-2 py-0.5 text-xs">
@@ -687,35 +737,78 @@ export default function FindJobPage() {
       </div>
       )}
 
-      {/* Modal removed; using full apply page at /apply/[id] */}
+      {isProfessor && isProfVerified && quoteOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4"
+          onClick={() => !quoteSubmitting && setQuoteOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl border bg-white p-4 shadow-lg"
+            style={{ borderColor: GREEN }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <MegaphoneIcon className="h-5 w-5 text-emerald-700" />
+              <div className="font-semibold">Repost job</div>
+            </div>
+            {quoteJob?.id && (
+              <div className="mt-2 text-sm">
+                <Link
+                  className="text-emerald-700 font-medium hover:underline"
+                  href={`/job/${quoteJob.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {quoteJob.job_title || quoteJob.position}
+                </Link>
+                {quoteJob.company_name ? (
+                  <span className="text-gray-600"> · {quoteJob.company_name}</span>
+                ) : null}
+              </div>
+            )}
+            <textarea
+              className="mt-3 w-full h-36 resize-none border rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              value={quoteContent}
+              onChange={(e) => setQuoteContent(e.target.value)}
+            />
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={quoteIsConnection}
+                onChange={(e) => setQuoteIsConnection(e.target.checked)}
+              />
+              I have a connection with this job post
+            </label>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
+                onClick={() => setQuoteOpen(false)}
+                disabled={quoteSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded-md px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+                style={{ backgroundColor: GREEN }}
+                onClick={postQuote}
+                disabled={quoteSubmitting || !quoteContent.trim()}
+              >
+                {quoteSubmitting ? "Reposting…" : "Repost"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {quoteNotice && (
+        <div
+          className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-md border bg-white px-4 py-2 text-sm shadow"
+          style={{ borderColor: GREEN }}
+        >
+          {quoteNotice}
+        </div>
+      )}
     </main>
   );
-}
-function setQuoteJob(job: Job) {
-  throw new Error("Function not implemented.");
-}
-
-function setQuoteContent(arg0: string) {
-  throw new Error("Function not implemented.");
-}
-
-function setQuoteOpen(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}
-
-function setQuoteNotice(arg0: null) {
-  throw new Error("Function not implemented.");
-}
-
-function setQuoteIsConnection(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}
-
-function setQuoteSubmitting(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}
-
-function repostJobPosting(id: any, arg1: { content: any; is_connection: any; }) {
-  throw new Error("Function not implemented.");
 }
 

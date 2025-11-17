@@ -300,7 +300,7 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
     <>
       {reviewing && (
         <LoadingOverlay
-          title="Submitting to AI…"
+          title="Verifying your company…"
           subtitle="Please wait while we verify your company."
         />
       )}

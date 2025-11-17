@@ -385,10 +385,22 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="flex flex-col items-end justify-between">
-                  <div className="text-xs text-gray-500">
-                    {job.created_at ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
-                      Math.round((new Date(job.created_at).getTime() - Date.now()) / (1000*60*60*24)),
-                      "day"
+                  <div className="text-xs text-gray-500 text-right">
+                    {job.created_at ? (
+                      <>
+                        <div>
+                          Posted:{" "}
+                          {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+                            Math.round((new Date(job.created_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+                            "day"
+                          )}
+                        </div>
+                        {job.expired_at && (
+                          <div>
+                            Expires: {new Date(job.expired_at).toLocaleDateString()}
+                          </div>
+                        )}
+                      </>
                     ) : null}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
