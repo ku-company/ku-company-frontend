@@ -192,7 +192,10 @@ export default function Navbar() {
           </div>
 
           <nav className="hidden md:flex items-center gap-2">
-            <NavItem href="/" label="HOME" />
+            <NavItem
+              href={(user?.role || "").toLowerCase().includes("company") ? "/company/home" : "/"}
+              label="HOME"
+            />
             <NavItem href="/find-job" label="FIND JOB" />
             {user?.role?.toLowerCase().includes("company") && (
               <>
