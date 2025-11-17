@@ -49,7 +49,12 @@ export default function LoginPage() {
         console.warn("Professor profile auto-create skipped:", e);
       }
       notify.success("Welcome back!");
-      router.push("/"); // main page will now bootstrap the session
+      const roleNorm = normalizeRole(res?.data?.roles || res?.data?.role);
+      if (roleNorm === "company") {
+        router.push("/company/home");
+      } else {
+        router.push("/"); // main page will now bootstrap the session
+      }
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {

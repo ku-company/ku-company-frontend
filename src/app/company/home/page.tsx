@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { API_BASE, buildInit } from "@/api/base";
+import { useAuth } from "@/context/AuthContext";
 
 type SummaryResponse = {
   total_job_postings?: number;
@@ -39,12 +41,21 @@ const ACTIVE_URL = `${API_BASE}/api/company/dashboard/active-postings`;
 const APPLICANTS_URL = `${API_BASE}/api/company/job-applications`;
 
 export default function CompanyDashboardPage() {
+  const router = useRouter();
+  const { user, isReady } = useAuth();
+  const isCompany = useMemo(() => (user?.role || "").toLowerCase().includes("company"), [user?.role]);
   const [summary, setSummary] = useState<SummaryResponse>({});
   const [activeJobs, setActiveJobs] = useState<JobPosting[]>([]);
   const [recentApplicants, setRecentApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isReady) return;
+    if (!isCompany) {
+      router.replace("/");
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [summaryRes, activeRes, applicantsRes] = await Promise.all([
@@ -73,7 +84,7 @@ export default function CompanyDashboardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [isReady, isCompany, router]);
 
   const analyticsBars = [
     { label: "Applied", value: summary.total_applicants ?? 0 },
@@ -88,6 +99,9 @@ export default function CompanyDashboardPage() {
     ...analyticsBars.map((bar) => bar.value ?? 0),
     1
   );
+
+  if (!isReady) return <div className="p-8 text-gray-500">Loading...</div>;
+  if (!isCompany) return <div className="p-8 text-gray-500">Only company accounts can access this page.</div>;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
