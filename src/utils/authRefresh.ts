@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchAuthMe } from "@/api/session";
+import { getAuthMe } from "@/api/user";
 
 type LoginFn = (data: {
   access_token: string;
@@ -12,20 +13,32 @@ type LoginFn = (data: {
   id?: number | string | null;
 }) => void;
 
-function persistTokensFromPayload(payload?: any) {
-  if (typeof window === "undefined" || !payload || typeof payload !== "object") return;
-  const accessToken =
+function extractAccessToken(payload?: any): string | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  return (
     payload?.access_token ??
     payload?.accessToken ??
     payload?.token ??
     payload?.tokens?.access_token ??
     payload?.data?.access_token ??
-    payload?.data?.token;
-  const refreshToken =
+    payload?.data?.token
+  );
+}
+
+function extractRefreshToken(payload?: any): string | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  return (
     payload?.refresh_token ??
     payload?.refreshToken ??
     payload?.tokens?.refresh_token ??
-    payload?.data?.refresh_token;
+    payload?.data?.refresh_token
+  );
+}
+
+function persistTokensFromPayload(payload?: any) {
+  if (typeof window === "undefined" || !payload || typeof payload !== "object") return;
+  const accessToken = extractAccessToken(payload);
+  const refreshToken = extractRefreshToken(payload);
 
   if (typeof accessToken === "string" && accessToken.length > 0) {
     localStorage.setItem("access_token", accessToken);
@@ -38,7 +51,18 @@ function persistTokensFromPayload(payload?: any) {
 export async function reloginAfterAiReview(login: LoginFn, payload?: any) {
   try {
     persistTokensFromPayload(payload);
-    const latest = await fetchAuthMe();
+    const tokenOverride = extractAccessToken(payload);
+    let latest = null;
+    try {
+      if (tokenOverride) {
+        latest = await getAuthMe(tokenOverride);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch auth using override token:", err);
+    }
+    if (!latest) {
+      latest = await fetchAuthMe();
+    }
     if (latest) {
       persistTokensFromPayload(latest);
     }

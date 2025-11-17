@@ -6,7 +6,7 @@ import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import GoogleConsentModal from "@/components/GoogleConsentModal";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/context/AuthContext";
-import { getAuthMe, updateUserRole } from "@/api/user";
+import { getAuthMe, updateUserRole, refreshAccessToken } from "@/api/user";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import type { GoogleSignupRole } from "@/api/oauth";
@@ -200,8 +200,14 @@ export default function RoleBootstrap() {
     try {
       const response = await requestAiRegistrationReview(userId);
       const payload = response?.data ?? response;
+      let refreshedTokens: any = null;
+      try {
+        refreshedTokens = await refreshAccessToken();
+      } catch (refreshErr) {
+        console.warn("Failed to refresh token after AI review:", refreshErr);
+      }
       const outcome = interpretAiReviewOutcome(payload);
-      await reloginAfterAiReview(login, payload);
+      await reloginAfterAiReview(login, refreshedTokens ?? payload);
 
       if (outcome.rejected) {
         if (typeof window !== "undefined") {
