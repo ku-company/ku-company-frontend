@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import CompanyCarousel from "@/components/CompanyCarousel";
 import CompanyHomeRedirect from "@/components/CompanyHomeRedirect";
 
+
 async function getHomeData(cookieHeader?: string) {
   const [companiesRes, jobsRes] = await Promise.all([
     fetchTopCompanies({ cookieHeader, limit: 9 }),
