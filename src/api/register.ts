@@ -23,7 +23,7 @@ export async function registerUser(payload: RegisterPayload) {
     if (typeof wire.is_consent === "undefined" && typeof wire.pdpa_consent !== "undefined") {
       wire.is_consent = !!wire.pdpa_consent;
     }
-    const res = await fetch("http://localhost:8000/api/user/sign-up", {
+    const res = await fetch("https://ku-company-backend-ekg6.onrender.com/api/user/sign-up", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

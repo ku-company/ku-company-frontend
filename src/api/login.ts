@@ -18,7 +18,7 @@ import { assertOk } from "@/utils/httpError";
 
 export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
   try {
-    const res = await fetch("http://localhost:8000/api/user/login", {
+    const res = await fetch("https://ku-company-backend-ekg6.onrender.com/api/user/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

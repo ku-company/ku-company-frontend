@@ -84,7 +84,7 @@ export default function RegisterCompanyPage() {
       try {
         const token = localStorage.getItem("access_token");
         if (token) {
-          const profileRes = await fetch("http://localhost:8000/api/company/profile", {
+          const profileRes = await fetch("https://ku-company-backend-ekg6.onrender.com/api/company/profile", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

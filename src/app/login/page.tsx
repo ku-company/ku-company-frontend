@@ -64,7 +64,7 @@ export default function LoginPage() {
 
   function handleGoogle() {
     // Normal OAuth redirect (no query string)
-    window.location.href = "http://localhost:8000/api/auth/google?role=";
+    window.location.href = "https://ku-company-backend-ekg6.onrender.com/api/auth/google?role=";
   }
 
   return (
