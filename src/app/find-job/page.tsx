@@ -463,62 +463,75 @@ export default function FindJobPage() {
         className="rounded-2xl border bg-white p-3 sm:p-4 shadow-sm"
         style={{ borderColor: GREEN }}
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
           {/* Left controls: keyword + dropdowns */}
-          <input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Keyword"
-            className="h-11 min-w-[220px] max-w-[360px] flex-shrink rounded-full border px-4 text-sm bg-gray-50 focus:outline-none"
-          />
+          <div className="flex flex-1 flex-wrap items-center gap-3">
+            <input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  fetchJobs();
+                }
+              }}
+              placeholder="Keyword"
+              className="h-11 min-w-[220px] flex-1 rounded-full border px-4 text-sm bg-gray-50 focus:outline-none"
+            />
 
-          <select
-            value={jobType}
-            aria-label="Job type"
-            onChange={(e) => setJobType(e.target.value)}
-            className="h-11 w-[160px] rounded-full border px-3 text-sm bg-gray-50"
-          >
-            {jobTypes.map((t, i) => {
-              const label =
-                typeof t === "object"
-                  ? t.label || t.name || t.title || t.value || "Unnamed"
-                  : String(t);
-              const rawValue =
-                typeof t === "object"
-                  ? t.value || t.name || t.title || label
-                  : String(t);
-              const value =
-                rawValue.toLowerCase() === "all"
-                  ? "All"
-                  : normalizeJobTypeValue(rawValue);
-              return (
-                <option key={`${i}-${value}`} value={value}>
-                  {label}
-                </option>
-              );
-            })}
-          </select>
+            <select
+              value={jobType}
+              aria-label="Job type"
+              onChange={(e) => setJobType(e.target.value)}
+              className="h-11 w-[160px] rounded-full border px-3 text-sm bg-gray-50"
+            >
+              {jobTypes.map((t, i) => {
+                const label =
+                  typeof t === "object"
+                    ? t.label || t.name || t.title || t.value || "Unnamed"
+                    : String(t);
+                const rawValue =
+                  typeof t === "object"
+                    ? t.value || t.name || t.title || label
+                    : String(t);
+                const value =
+                  rawValue.toLowerCase() === "all"
+                    ? "All"
+                    : normalizeJobTypeValue(rawValue);
+                return (
+                  <option key={`${i}-${value}`} value={value}>
+                    {label}
+                  </option>
+                );
+              })}
+            </select>
 
-          {/* Search icon button */}
-          <button
-            aria-label="Search"
-            onClick={fetchJobs}
-            className="grid h-11 w-11 place-items-center rounded-full text-white"
-            style={{ backgroundColor: GREEN }}
-          >
-            <MagnifyingGlassIcon className="h-5 w-5" />
-          </button>
+            {/* Search icon button */}
+            <button
+              aria-label="Search"
+              onClick={fetchJobs}
+              className="grid h-11 w-11 place-items-center rounded-full text-white"
+              style={{ backgroundColor: GREEN }}
+            >
+              <MagnifyingGlassIcon className="h-5 w-5" />
+            </button>
+          </div>
 
           {/* Right controls: filter chips */}
-          <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 md:justify-end">
             <button
               className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
-              onClick={() => { setJobType("All"); fetchJobs(); }}
+              onClick={() => {
+                setJobType("All");
+                fetchJobs();
+              }}
             >
               All Positions
             </button>
             <button
-              className={`rounded-full border px-5 py-2 text-sm ${showNewForYou ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+              className={`rounded-full border px-5 py-2 text-sm ${
+                showNewForYou ? "bg-gray-50" : "hover:bg-gray-50"
+              }`}
               onClick={() => setShowNewForYou((prev) => !prev)}
               aria-pressed={showNewForYou}
             >
@@ -527,9 +540,9 @@ export default function FindJobPage() {
             <button
               className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
               onClick={() => {
-                setKeyword('');
+                setKeyword("");
                 setJobType("All");
-                setSortBy('Newest');
+                setSortBy("Newest");
                 fetchJobs();
               }}
             >
