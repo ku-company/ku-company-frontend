@@ -261,7 +261,7 @@ export default function RoleBootstrap() {
       )}
       {aiReviewing && (
         <LoadingOverlay
-          title="Submitting to AI…"
+          title="Verifying your student account…"
           subtitle="Please wait while we verify your student account."
         />
       )}
