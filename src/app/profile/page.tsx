@@ -38,7 +38,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const role = normalizeRole(me.role ?? me.roles) || "Student";
+        const role = normalizeRole(me.role ?? me.roles) || "Unknown";
         // Populate client auth state so the rest of the app works
         login({
           access_token: localStorage.getItem("access_token") ?? "",

@@ -26,6 +26,7 @@ type AuthContextType = {
   isReady: boolean;
   login: (data: LoginData) => void;
   logout: () => Promise<void>;
+  setLocalRole: (role: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -147,8 +148,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function setLocalRole(role: string) {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        role: normalizeRole(role),
+      };
+    });
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isReady, login, logout }}>
+    <AuthContext.Provider value={{ user, isReady, login, logout, setLocalRole }}>
       {children}
     </AuthContext.Provider>
   );

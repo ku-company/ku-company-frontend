@@ -7,6 +7,8 @@ import { requestAiRegistrationReview } from "@/api/ai";
 import { fetchAuthMe } from "@/api/session";
 import { useAuth } from "@/context/AuthContext";
 import notify from "@/lib/toast";
+import { reloginAfterAiReview } from "@/utils/authRefresh";
+import { interpretAiReviewOutcome } from "@/utils/aiReview";
 
 type Props = {
   isOpen: boolean;
@@ -16,7 +18,7 @@ type Props = {
 export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, login } = useAuth();
 
   const [companyName, setCompanyName] = useState("");
   const [country, setCountry] = useState("");
@@ -261,8 +263,20 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
         setReviewing(true);
         const userId = await resolveUserId();
         if (!userId) throw new Error("Missing user id for AI review");
-        await requestAiRegistrationReview(userId);
-        notify.success("AI is reviewing your company profile.");
+        const response = await requestAiRegistrationReview(userId);
+        const payload = response?.data ?? response;
+        const outcome = interpretAiReviewOutcome(payload);
+        await reloginAfterAiReview(login, payload);
+
+        if (outcome.rejected) {
+          if (typeof window !== "undefined") {
+            window.alert(outcome.reason || "Your application got rejected.");
+          } else {
+            notify.error(outcome.reason || "Your application got rejected.");
+          }
+        } else {
+          notify.success("AI is reviewing your company profile.");
+        }
       } catch (aiErr: any) {
         console.error("AI review failed:", aiErr);
         notify.error(aiErr?.message || "AI review failed after onboarding.");

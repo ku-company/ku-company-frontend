@@ -6,10 +6,11 @@ import LoadingOverlay from "@/components/LoadingOverlay";
 import { requestAiRegistrationReview } from "@/api/ai";
 import { fetchAuthMe } from "@/api/session";
 import notify from "@/lib/toast";
-import { clearPendingAiReview, getPendingAiReviewRole, isAiReviewPending } from "@/utils/aiReview";
+import { clearPendingAiReview, getPendingAiReviewRole, interpretAiReviewOutcome, isAiReviewPending } from "@/utils/aiReview";
+import { reloginAfterAiReview } from "@/utils/authRefresh";
 
 export default function OAuthAiReviewGate() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
@@ -29,25 +30,18 @@ export default function OAuthAiReviewGate() {
 
         const response = await requestAiRegistrationReview(userId);
         const payload: any = response?.data ?? response;
+        await reloginAfterAiReview(login, payload);
         const role = getPendingAiReviewRole();
+        const outcome = interpretAiReviewOutcome(payload);
 
-        const verified =
-          typeof payload?.verified === "boolean"
-            ? payload.verified
-            : typeof payload?.status === "string"
-            ? payload.status.toLowerCase() === "approved"
-            : undefined;
-
-        if (verified === false) {
-          const reason =
-            payload?.ai_verification?.reason ||
-            payload?.message ||
-            payload?.status ||
+        if (outcome.rejected) {
+          const message =
+            outcome.reason ||
             "AI could not verify your account.";
           if (typeof window !== "undefined") {
-            window.alert(reason);
+            window.alert(message);
           } else {
-            notify.error(reason);
+            notify.error(message);
           }
         } else {
           notify.success(

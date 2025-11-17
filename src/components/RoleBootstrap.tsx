@@ -4,13 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import RoleSelectModal from "@/components/roleselector";
 import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
 import GoogleConsentModal from "@/components/GoogleConsentModal";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole } from "@/api/user";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import type { GoogleSignupRole } from "@/api/oauth";
-import { markPendingAiReview } from "@/utils/aiReview";
+import { interpretAiReviewOutcome, markPendingAiReview } from "@/utils/aiReview";
 import { attachStudentId } from "@/api/student";
+import { requestAiRegistrationReview } from "@/api/ai";
+import notify from "@/lib/toast";
+import { reloginAfterAiReview } from "@/utils/authRefresh";
 
 function normalizeRole(r?: string | null) {
   const raw = (r ?? "").trim().toLowerCase();
@@ -22,7 +26,7 @@ function normalizeRole(r?: string | null) {
 }
 
 export default function RoleBootstrap() {
-  const { user, isReady, login, logout } = useAuth();
+  const { user, isReady, login, logout, setLocalRole } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
   const [showCompanyOnboarding, setShowCompanyOnboarding] = useState(false);
@@ -31,6 +35,7 @@ export default function RoleBootstrap() {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [consentBusy, setConsentBusy] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  const [aiReviewing, setAiReviewing] = useState(false);
 
   const isUnknown = useMemo(() => normalizeRole(user?.role) === "Unknown", [user?.role]);
 
@@ -91,6 +96,7 @@ export default function RoleBootstrap() {
       normalized === "company" ? "Company" : normalized === "professor" ? "Professor" : "Student";
 
     setConsentError(null);
+    setLocalRole(payloadRole);
     setPendingRole(payloadRole);
     setPendingStudentId("");
     setShowConsentModal(true);
@@ -98,6 +104,7 @@ export default function RoleBootstrap() {
 
   async function completeRoleSelection(studentId?: string) {
     if (!pendingRole) return;
+    let aiReviewHandled = false;
     try {
       setConsentBusy(true);
       setPatchingRole(true);
@@ -141,7 +148,23 @@ export default function RoleBootstrap() {
         } catch {}
       }
 
-      if (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student") {
+      let resolvedUserId: number | undefined;
+      if (typeof me2.id === "number") {
+        resolvedUserId = me2.id;
+      } else if (typeof patchData.id === "number") {
+        resolvedUserId = patchData.id;
+      } else {
+        try {
+          const stored = localStorage.getItem("user_id");
+          if (stored) resolvedUserId = Number(stored);
+        } catch {}
+      }
+
+      if (finalRole === "Student") {
+        aiReviewHandled = await runImmediateAiReview("Student", resolvedUserId);
+      }
+
+      if (!aiReviewHandled && (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student")) {
         markPendingAiReview(finalRole as GoogleSignupRole);
       }
 
@@ -169,6 +192,34 @@ export default function RoleBootstrap() {
     setPendingRole(null);
     setPendingStudentId("");
     logout().catch(() => {});
+  }
+
+  async function runImmediateAiReview(role: GoogleSignupRole, userId?: number) {
+    if (role !== "Student" || !userId) return false;
+    setAiReviewing(true);
+    try {
+      const response = await requestAiRegistrationReview(userId);
+      const payload = response?.data ?? response;
+      const outcome = interpretAiReviewOutcome(payload);
+      await reloginAfterAiReview(login, payload);
+
+      if (outcome.rejected) {
+        if (typeof window !== "undefined") {
+          window.alert(outcome.reason || "Your application got rejected.");
+        } else {
+          notify.error(outcome.reason || "Your application got rejected.");
+        }
+      } else {
+        notify.success("AI is reviewing your student account.");
+      }
+      return true;
+    } catch (err: any) {
+      console.error("AI review request failed:", err);
+      notify.error(err?.message || "AI review failed. We'll retry shortly.");
+      return false;
+    } finally {
+      setAiReviewing(false);
+    }
   }
 
   return (
@@ -206,6 +257,12 @@ export default function RoleBootstrap() {
             setPendingStudentId(trimmed);
             completeRoleSelection(trimmed);
           }}
+        />
+      )}
+      {aiReviewing && (
+        <LoadingOverlay
+          title="Submitting to AI…"
+          subtitle="Please wait while we verify your student account."
         />
       )}
     </>
