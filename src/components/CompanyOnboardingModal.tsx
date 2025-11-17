@@ -284,6 +284,10 @@ export default function CompanyOnboardingModal({ isOpen, onClose }: Props) {
         setReviewing(false);
       }
 
+      try {
+        localStorage.removeItem("needs_company_onboarding");
+      } catch {}
+
       onClose();
     } catch (e: any) {
       setError(e?.message || "Failed to save company info");

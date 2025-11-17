@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import RoleSelectModal from "@/components/roleselector";
 import CompanyOnboardingModal from "@/components/CompanyOnboardingModal";
+import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
 import GoogleConsentModal from "@/components/GoogleConsentModal";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { useAuth } from "@/context/AuthContext";
 import { getAuthMe, updateUserRole, refreshAccessToken } from "@/api/user";
-import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile } from "@/api/companyprofile";
 import type { GoogleSignupRole } from "@/api/oauth";
 import { interpretAiReviewOutcome, markPendingAiReview } from "@/utils/aiReview";
@@ -30,6 +30,7 @@ export default function RoleBootstrap() {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [patchingRole, setPatchingRole] = useState(false);
   const [showCompanyOnboarding, setShowCompanyOnboarding] = useState(false);
+  const [showProfessorOnboarding, setShowProfessorOnboarding] = useState(false);
   const [pendingRole, setPendingRole] = useState<GoogleSignupRole | null>(null);
   const [pendingStudentId, setPendingStudentId] = useState("");
   const [showConsentModal, setShowConsentModal] = useState(false);
@@ -52,6 +53,7 @@ export default function RoleBootstrap() {
       setPendingRole(null);
       setPendingStudentId("");
       setShowCompanyOnboarding(false);
+      setShowProfessorOnboarding(false);
       return;
     }
     if (user && isUnknown) {
@@ -83,6 +85,17 @@ export default function RoleBootstrap() {
           // Open modal on failure to avoid losing the opportunity in race conditions
           setShowCompanyOnboarding(true);
         }
+      } catch {}
+    })();
+
+    // Show professor onboarding when flagged
+    (async () => {
+      try {
+        const roleNorm = (user?.role ?? "").toLowerCase();
+        if (!roleNorm.includes("professor")) return;
+        const needs = typeof window !== "undefined" ? localStorage.getItem("needs_professor_onboarding") : null;
+        if (needs !== "1") return;
+        setShowProfessorOnboarding(true);
       } catch {}
     })();
 
@@ -132,15 +145,6 @@ export default function RoleBootstrap() {
         roles: finalRole,
       });
 
-      if (finalRole === "Professor") {
-        try {
-          await createProfessorProfile({ department: "computer", faculty: "engineering" });
-        } catch (e) {
-          // Ignore if already exists or backend glitches
-          console.warn("Professor profile auto-create skipped:", e);
-        }
-      }
-
       if (finalRole === "Student" && trimmedStudentId) {
         await attachStudentId(trimmedStudentId);
         try {
@@ -164,6 +168,16 @@ export default function RoleBootstrap() {
         aiReviewHandled = await runImmediateAiReview("Student", resolvedUserId);
       }
 
+      if (finalRole === "Company") {
+        try { localStorage.setItem("needs_company_onboarding", "1"); } catch {}
+        aiReviewHandled = true;
+      }
+
+      if (finalRole === "Professor") {
+        try { localStorage.setItem("needs_professor_onboarding", "1"); } catch {}
+        aiReviewHandled = true;
+      }
+
       if (!aiReviewHandled && (finalRole === "Company" || finalRole === "Professor" || finalRole === "Student")) {
         markPendingAiReview(finalRole as GoogleSignupRole);
       }
@@ -174,6 +188,10 @@ export default function RoleBootstrap() {
 
       if (finalRole === "Company") {
         setShowCompanyOnboarding(true);
+      }
+
+      if (finalRole === "Professor") {
+        setShowProfessorOnboarding(true);
       }
 
       setShowConsentModal(false);
@@ -246,6 +264,17 @@ export default function RoleBootstrap() {
               if (typeof window !== "undefined") localStorage.removeItem("needs_company_onboarding");
             } catch {}
             setShowCompanyOnboarding(false);
+          }}
+        />
+      )}
+      {showProfessorOnboarding && (
+        <ProfessorOnboardingModal
+          isOpen={showProfessorOnboarding}
+          onClose={() => {
+            try {
+              if (typeof window !== "undefined") localStorage.removeItem("needs_professor_onboarding");
+            } catch {}
+            setShowProfessorOnboarding(false);
           }}
         />
       )}
