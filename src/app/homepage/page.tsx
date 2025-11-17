@@ -4,6 +4,7 @@ import { fetchTopCompanies, fetchTopJobPostings, type TopCompany } from "@/api/h
 import type { Job } from "@/types/job";
 import { cookies } from "next/headers";
 import CompanyCarousel from "@/components/CompanyCarousel";
+import CompanyHomeRedirect from "@/components/CompanyHomeRedirect";
 
 async function getHomeData(cookieHeader?: string) {
   const [companiesRes, jobsRes] = await Promise.all([
@@ -29,11 +30,14 @@ export default async function Homepage() {
   const { companies, jobs, useFallbackCompanies, useFallbackJobs } = await getHomeData(cookieHeader);
 
   return (
-    <main className="pb-16">
-      <Hero />
-      <TopCompaniesSection companies={companies} showPlaceholder={useFallbackCompanies} />
-      <RecentJobsSection jobs={jobs} showPlaceholder={useFallbackJobs} />
-    </main>
+    <>
+      <CompanyHomeRedirect />
+      <main className="pb-16">
+        <Hero />
+        <TopCompaniesSection companies={companies} showPlaceholder={useFallbackCompanies} />
+        <RecentJobsSection jobs={jobs} showPlaceholder={useFallbackJobs} />
+      </main>
+    </>
   );
 }
 
