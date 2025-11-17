@@ -518,7 +518,7 @@ export default function DashboardPage() {
                     <div className="text-lg font-semibold">
                       {job.job_title || job.position || "Untitled"}
                     </div>
-                  )}
+                  </div>
                 </div>
                 <div className="flex flex-col items-end justify-between">
                   <div className="text-xs text-gray-500 text-right">
