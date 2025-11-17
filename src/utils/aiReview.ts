@@ -47,3 +47,66 @@ export const AI_REVIEW_STORAGE = {
   FLAG_KEY,
   ROLE_KEY,
 };
+
+export type AiReviewOutcome = {
+  rejected: boolean;
+  approved: boolean;
+  reason?: string;
+};
+
+export function interpretAiReviewOutcome(payload: any): AiReviewOutcome {
+  const getStatusString = () => {
+    const candidates = [
+      payload?.status,
+      payload?.result,
+      payload?.ai_verification?.status,
+      payload?.ai_verification?.result,
+      payload?.data?.status,
+      payload?.data?.result,
+    ];
+    for (const entry of candidates) {
+      if (typeof entry === "string" && entry.trim().length) {
+        return entry.trim().toLowerCase();
+      }
+    }
+    return "";
+  };
+
+  const statusText = payload ? getStatusString() : "";
+  const boolCandidates = [
+    payload?.verified,
+    payload?.approved,
+    payload?.ai_verification?.verified,
+    payload?.ai_verification?.approved,
+  ];
+
+  let approvedState: boolean | null = null;
+  for (const candidate of boolCandidates) {
+    if (typeof candidate === "boolean") {
+      approvedState = candidate;
+      break;
+    }
+  }
+
+  if (approvedState === null && statusText) {
+    if (/(reject|denied|fail|blocked)/.test(statusText)) {
+      approvedState = false;
+    } else if (/(approve|success|pass|accept)/.test(statusText)) {
+      approvedState = true;
+    }
+  }
+
+  const reason =
+    payload?.ai_verification?.reason ||
+    payload?.reason ||
+    payload?.message ||
+    payload?.ai_verification?.detail ||
+    payload?.detail ||
+    undefined;
+
+  return {
+    rejected: approvedState === false,
+    approved: approvedState === true,
+    reason,
+  };
+}

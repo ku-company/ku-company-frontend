@@ -6,6 +6,7 @@ import EditJobModal, { EditableJob } from "@/components/EditJobModal";
 import { buildInit, API_BASE } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
 import notify from "@/lib/toast";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 const BASE_URL = API_BASE;
 const API_URL_BASE = `${BASE_URL}/api/company/job-postings`;
@@ -28,11 +29,11 @@ export default function DashboardPage() {
     [user]
   );
 
-  // Create form state
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [creatingJob, setCreatingJob] = useState(false);
 
   const [cTitle, setCTitle] = useState("");
   const [cPosition, setCPosition] = useState("");
@@ -57,9 +58,9 @@ export default function DashboardPage() {
     return undefined;
   }
 
-  /* -------------------------------
+  /* ---------------------------------
      LOAD JOBS
-  --------------------------------- */
+  ---------------------------------- */
   useEffect(() => {
     if (!isReady) return;
     if (!isCompany) {
@@ -73,10 +74,12 @@ export default function DashboardPage() {
         const headers: HeadersInit = user?.access_token
           ? { Authorization: `Bearer ${user.access_token}` }
           : {};
+
         const data = await fetchAuthedJson(API_URL_GET_ALL, {
           method: "GET",
           headers,
         });
+
         setJobs(data.data || data || []);
       } catch (err) {
         console.error("Failed to fetch jobs:", err);
@@ -88,10 +91,12 @@ export default function DashboardPage() {
     load();
   }, [isReady, isCompany, router]);
 
-  /* -------------------------------
+
+  /* ---------------------------------
      CREATE JOB
-  --------------------------------- */
+  ---------------------------------- */
   const handleAddJob = async (job: any) => {
+    setCreatingJob(true);
     try {
       const body = {
         job_title: (job.title || "").trim() || (job.position || "").trim(),
@@ -138,15 +143,19 @@ export default function DashboardPage() {
     } catch (err) {
       console.error("Failed to add job:", err);
       notify.error("Failed to add job posting.");
+    } finally {
+      setCreatingJob(false);
     }
   };
 
-  /* -------------------------------
+
+  /* ---------------------------------
      UPDATE (EDIT)
-  --------------------------------- */
+  ---------------------------------- */
   const handleSaveEdit = async (updated: EditableJob) => {
     if (editIndex === null) return;
     const job = jobs[editIndex];
+
     try {
       const body = {
         job_title:
@@ -178,6 +187,7 @@ export default function DashboardPage() {
       });
 
       const updatedJob = data.data || data;
+
       setJobs((prev) =>
         prev.map((j, i) => (i === editIndex ? updatedJob : j))
       );
@@ -194,6 +204,7 @@ export default function DashboardPage() {
     setEditIndex(index);
     setEditOpen(true);
   };
+
   const closeEdit = () => {
     setEditOpen(false);
     setEditIndex(null);
@@ -211,10 +222,8 @@ export default function DashboardPage() {
             jobs[editIndex]?.available_position ?? 1
           ),
           location: jobs[editIndex]?.location ?? "",
-          minimum_expected_salary:
-            jobs[editIndex]?.minimum_expected_salary,
-          maximum_expected_salary:
-            jobs[editIndex]?.maximum_expected_salary,
+          minimum_expected_salary: jobs[editIndex]?.minimum_expected_salary,
+          maximum_expected_salary: jobs[editIndex]?.maximum_expected_salary,
           workType: jobs[editIndex]?.work_place ?? "",
           expired_at: jobs[editIndex]?.expired_at
             ? String(jobs[editIndex].expired_at).slice(0, 10)
@@ -222,6 +231,9 @@ export default function DashboardPage() {
         }
       : null;
 
+  /* ---------------------------------
+     CREATE FORM VALIDATION
+  ---------------------------------- */
   const canCreate = Boolean(
     cTitle &&
       cPosition &&
@@ -259,16 +271,21 @@ export default function DashboardPage() {
     });
   };
 
-  // DELETE
+
+  /* ---------------------------------
+     DELETE JOB
+  ---------------------------------- */
   const handleDelete = async (id: any) => {
     try {
       const headers: HeadersInit = user?.access_token
         ? { Authorization: `Bearer ${user.access_token}` }
         : {};
+
       await fetchAuthedJson(`${API_URL_BASE}/${id}`, {
         method: "DELETE",
         headers,
       });
+
       setJobs((prev) => prev.filter((j) => j.id !== id));
     } catch (err) {
       console.error("Failed to delete job:", err);
@@ -276,12 +293,19 @@ export default function DashboardPage() {
     }
   };
 
-  /* ------------------------------------------
-     UI
-  --------------------------------------------- */
 
+  /* ---------------------------------
+     UI RENDER
+  ---------------------------------- */
   return (
     <div className="mx-auto max-w-6xl p-6">
+      {creatingJob && (
+        <LoadingOverlay
+          title="Publishing job posting…"
+          subtitle="Sit tight while we save and share your job listing."
+        />
+      )}
+
       <h1 className="mb-6 text-2xl font-bold">Job Openings</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -327,7 +351,7 @@ export default function DashboardPage() {
             {/* Positions Available */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                Number of Position Available
+                Number of Positions Available
               </label>
 
               <input
@@ -380,7 +404,7 @@ export default function DashboardPage() {
 
               <div className="grid gap-1">
                 <label className="text-sm font-medium text-gray-700">
-                  Expected Salary (Min - Max)
+                  Expected Salary (Min – Max)
                 </label>
 
                 <div className="flex items-center gap-2">
@@ -444,6 +468,8 @@ export default function DashboardPage() {
 
             {/* Buttons */}
             <div className="flex items-center justify-end gap-2">
+
+              {/* Cancel */}
               <button
                 type="button"
                 onClick={() => {
@@ -463,12 +489,13 @@ export default function DashboardPage() {
                 Cancel
               </button>
 
+              {/* Create Job */}
               <button
-                disabled={!canCreate}
+                disabled={!canCreate || creatingJob}
                 className="rounded-full px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: "#5D9252" }}
               >
-                Create Job
+                {creatingJob ? "Posting…" : "Create Job"}
               </button>
             </div>
           </div>
@@ -498,6 +525,7 @@ export default function DashboardPage() {
                           {String(job.jobType)}
                         </span>
                       ) : null}
+
                       {job.work_place ? (
                         <span className="rounded-full border px-2 py-0.5">
                           {String(job.work_place)}

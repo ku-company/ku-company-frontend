@@ -46,12 +46,13 @@ export default function BootstrapSession() {
           const latestToken = patch?.access_token || localStorage.getItem("access_token") || tokenOverride;
           const refreshed = await fetchAuthMe(latestToken);
           if (refreshed && refreshed.user_name) {
+            const refreshedRole = normalizeRole(refreshed.role ?? refreshed.roles) || "unknown";
             login({
               access_token: latestToken || "",
               refresh_token: localStorage.getItem("refresh_token") ?? "",
               user_name: refreshed.user_name,
               email: refreshed.email ?? "",
-              role: refreshed.role ?? refreshed.roles ?? "student",
+              role: refreshedRole,
             });
             console.log("🟢 Student ID synced for OAuth signup");
           }
@@ -102,15 +103,16 @@ export default function BootstrapSession() {
               localStorage.setItem("user_id", String(me.id));
             } catch {}
           }
+          const resolvedRole = normalizeRole(me.role ?? me.roles) || "unknown";
           login({
             access_token: localStorage.getItem("access_token") ?? "",
             refresh_token: localStorage.getItem("refresh_token") ?? "",
             user_name: me.user_name,
             email: me.email ?? "",
-            role: me.role ?? me.roles ?? "student",
+            role: resolvedRole,
             id: me.id,
           });
-          console.log("✅ Logged in as:", me.role ?? me.roles);
+          console.log("✅ Logged in as:", me.role ?? me.roles ?? "unknown");
 
           // Auto-create professor profile to bypass backend bug
           try {

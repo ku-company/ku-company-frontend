@@ -12,17 +12,21 @@ async function getHomeData(cookieHeader?: string) {
     fetchTopJobPostings({ cookieHeader, limit: 6 }),
   ]);
 
-  let companies = companiesRes.data.length ? companiesRes.data : FALLBACK_COMPANIES;
-  let jobs = jobsRes.data.length ? jobsRes.data : FALLBACK_JOBS;
-
-  const useFallbackCompanies = companiesRes.fallback || companiesRes.data.length === 0;
-  const useFallbackJobs = jobsRes.fallback || jobsRes.data.length === 0;
+  const companies = companiesRes.data;
+  const jobs = jobsRes.data;
+  const useFallbackCompanies = companiesRes.fallback || companies.length === 0;
+  const useFallbackJobs = jobsRes.fallback || jobs.length === 0;
 
   return { companies, jobs, useFallbackCompanies, useFallbackJobs };
 }
 
 export default async function Homepage() {
-  const cookieHeader = cookies().toString() || undefined;
+  const cookieStore = await cookies();
+  const serialized = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+  const cookieHeader = serialized.length ? serialized : undefined;
   const { companies, jobs, useFallbackCompanies, useFallbackJobs } = await getHomeData(cookieHeader);
 
   return (
@@ -40,12 +44,14 @@ function TopCompaniesSection({ companies, showPlaceholder }: { companies: TopCom
       <div className="flex items-center justify-between">
         <h2 className="text-xl sm:text-2xl font-semibold">Find your next employer</h2>
       </div>
-      {showPlaceholder && (
-        <p className="mt-6 text-sm text-gray-600">Showing featured companies while we wait for live job data.</p>
+      {showPlaceholder && companies.length === 0 && (
+        <p className="mt-6 text-sm text-gray-600">There are no companies to show yet.</p>
       )}
-      <div className="mt-6">
-        <CompanyCarousel companies={companies} />
-      </div>
+      {companies.length > 0 && (
+        <div className="mt-6">
+          <CompanyCarousel companies={companies} />
+        </div>
+      )}
     </section>
   );
 }
@@ -54,14 +60,16 @@ function RecentJobsSection({ jobs, showPlaceholder }: { jobs: Job[]; showPlaceho
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-10">
       <h2 className="text-xl sm:text-2xl font-semibold">Recent Job Openings</h2>
-      {showPlaceholder && (
-        <p className="mt-6 text-sm text-gray-600">Preview roles from featured employers. Live postings will appear once companies publish jobs.</p>
+      {showPlaceholder && jobs.length === 0 && (
+        <p className="mt-6 text-sm text-gray-600">There are no job postings yet.</p>
       )}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {jobs.map((job) => (
-          <JobCard key={job.id} job={job} href="/find-job" />
-        ))}
-      </div>
+      {jobs.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} href="/find-job" />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

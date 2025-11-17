@@ -103,6 +103,10 @@ export default function FindJobPage() {
   const [verifyRequired, setVerifyRequired] = useState(false);
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
+  const isProfessor = useMemo(
+    () => (user?.role || "").toLowerCase().includes("professor"),
+    [user?.role]
+  );
 
   const handleApplyNavigation = useCallback(
     (job: Job) => {
@@ -296,9 +300,9 @@ export default function FindJobPage() {
       }
 
       const data = await res.json();
-      let jobList = (data.job_postings || data.data || data) as Job[];
+      const jobList = (data.job_postings || data.data || data) as Job[];
       const now = Date.now();
-      let filtered = (jobList || []).filter((j) => {
+      const filtered = (jobList || []).filter((j) => {
         if (!j?.expired_at) return true;
         const exp = new Date(j.expired_at as any).getTime();
         return isFinite(exp) ? exp >= now : true;
@@ -471,7 +475,15 @@ export default function FindJobPage() {
           </button>
 
           {/* Right controls: filter chips */}
-          <div className="ml-auto flex gap-3">
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            {isProfessor && (
+              <Link
+                href="/professor-annoucement"
+                className="rounded-full bg-midgreen-500 px-5 py-2 text-sm font-semibold text-white hover:bg-midgreen-600 transition"
+              >
+                Job Announcements
+              </Link>
+            )}
             <button
               className="rounded-full border px-5 py-2 text-sm hover:bg-gray-50"
               onClick={() => { setJobType("All"); fetchJobs(); }}
@@ -679,3 +691,31 @@ export default function FindJobPage() {
     </main>
   );
 }
+function setQuoteJob(job: Job) {
+  throw new Error("Function not implemented.");
+}
+
+function setQuoteContent(arg0: string) {
+  throw new Error("Function not implemented.");
+}
+
+function setQuoteOpen(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
+
+function setQuoteNotice(arg0: null) {
+  throw new Error("Function not implemented.");
+}
+
+function setQuoteIsConnection(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
+
+function setQuoteSubmitting(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
+
+function repostJobPosting(id: any, arg1: { content: any; is_connection: any; }) {
+  throw new Error("Function not implemented.");
+}
+

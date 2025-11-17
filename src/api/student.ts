@@ -9,7 +9,7 @@ export async function attachStudentId(stdId: string) {
   const res = await fetch(
     `${API_BASE}/api/employee/stdId`,
     buildInit({
-      method: "POST",
+      method: "PATCH",
       body: JSON.stringify({ stdId: trimmed }),
     })
   );
