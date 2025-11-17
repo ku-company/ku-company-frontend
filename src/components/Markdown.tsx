@@ -9,7 +9,7 @@ type Props = {
 
 function renderInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  let rest = text;
+  const rest = text;
 
   // Simple link pattern: [label](url)
   const linkRe = /\[([^\]]+)\]\(([^\s)]+)\)/g;
@@ -22,7 +22,7 @@ function renderInline(text: string): React.ReactNode[] {
       nodes.push(<code key={`code-${i}`}>{segment}</code>);
     } else {
       // Within non-code segment apply bold, italic, links
-      let parts: (string | React.ReactNode)[] = [];
+      const parts: (string | React.ReactNode)[] = [];
       let lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = linkRe.exec(segment))) {

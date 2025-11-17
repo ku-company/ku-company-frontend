@@ -300,9 +300,9 @@ export default function FindJobPage() {
       }
 
       const data = await res.json();
-      let jobList = (data.job_postings || data.data || data) as Job[];
+      const jobList = (data.job_postings || data.data || data) as Job[];
       const now = Date.now();
-      let filtered = (jobList || []).filter((j) => {
+      const filtered = (jobList || []).filter((j) => {
         if (!j?.expired_at) return true;
         const exp = new Date(j.expired_at as any).getTime();
         return isFinite(exp) ? exp >= now : true;
