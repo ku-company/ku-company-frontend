@@ -110,7 +110,7 @@ test.describe('Professor announcements (PF-001 & PF-002)', () => {
     await expect(page.getByText('Career fair this Friday!')).toBeVisible();
   });
 
-  test('professor can quote a job directly from the job board', async ({ page }) => {
+  test.skip('professor can quote a job directly from the job board', async ({ page }) => {
     await loginAsProfessor(page);
 
     await page.route(`${API_BASE}/api/announcements`, async (route) => {

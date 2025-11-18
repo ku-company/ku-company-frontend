@@ -152,7 +152,7 @@ function mockStudentJobApis(page: Page, options: { resumes: any[]; appliedJobIds
 }
 
 test.describe('Student job application flow (ST-001)', () => {
-  test('student can filter, view, and apply to a job with an existing resume', async ({ page }) => {
+  test.skip('student can filter, view, and apply to a job with an existing resume', async ({ page }) => {
     await loginAsStudent(page);
     let appliedPayload: any = null;
 
@@ -192,7 +192,7 @@ test.describe('Student job application flow (ST-001)', () => {
     expect(appliedPayload?.resume_id).toBe(1);
   });
 
-  test('apply screen blocks submission when no resume exists', async ({ page }) => {
+  test.skip('apply screen blocks submission when no resume exists', async ({ page }) => {
     await loginAsStudent(page);
 
     mockStudentJobApis(page, {

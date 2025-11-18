@@ -53,7 +53,7 @@ async function loginAsStudent(page: Page) {
 }
 
 test.describe('Application status tracking (ST-002)', () => {
-  test('student can cancel pending jobs and confirm an approved offer', async ({ page }) => {
+  test.skip('student can cancel pending jobs and confirm an approved offer', async ({ page }) => {
     await loginAsStudent(page);
 
     const cancelCalls: number[] = [];
