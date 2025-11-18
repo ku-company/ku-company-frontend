@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
-import { logoutServerSession } from "@/api/logout";
+import { logoutAndClear } from "@/utils/logoutClient";
 
 type AuthUser = {
   id?: number | null;
@@ -134,17 +134,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    try {
-      await logoutServerSession();
-    } catch (err) {
-      console.error("Logout request failed:", err);
-    } finally {
-      localStorage.clear();
-      setUser(null);
-      if (typeof window !== "undefined") {
-        const path = window.location?.pathname || "";
-        if (!path.startsWith("/login")) window.location.href = "/login";
-      }
+    await logoutAndClear({ redirectToLogin: false });
+    setUser(null);
+    if (typeof window !== "undefined") {
+      const path = window.location?.pathname || "";
+      if (!path.startsWith("/login")) window.location.href = "/login";
     }
   }
 

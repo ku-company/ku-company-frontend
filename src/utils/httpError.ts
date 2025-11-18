@@ -1,4 +1,4 @@
-import { logoutServerSession } from "@/api/logout";
+import { logoutAndClear } from "@/utils/logoutClient";
 
 let autoLogoutTriggered = false;
 
@@ -6,19 +6,7 @@ export async function autoLogout(): Promise<void> {
   if (autoLogoutTriggered) return;
   autoLogoutTriggered = true;
   try {
-    await logoutServerSession();
-  } catch {}
-  try {
-    if (typeof window !== "undefined") {
-      localStorage.clear();
-      const path = window.location?.pathname || "";
-      if (!path.startsWith("/login")) {
-        window.location.href = "/login";
-      } else {
-        // Already on login; force refresh to clear any state
-        window.location.reload();
-      }
-    }
+    await logoutAndClear({ redirectToLogin: true });
   } finally {
     // allow future triggers after a short delay (avoid storms)
     setTimeout(() => { autoLogoutTriggered = false; }, 3000);
