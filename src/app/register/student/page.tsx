@@ -138,7 +138,7 @@ export default function RegisterPage() {
             <input
               type="text"
               name="stdId"
-              placeholder="Student ID"
+              placeholder="Student ID (e.g., 6610545xxx)"
               inputMode="numeric"
               pattern="[0-9]*"
               value={form.stdId}
