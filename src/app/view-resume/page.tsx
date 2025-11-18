@@ -1,6 +1,6 @@
-﻿﻿﻿﻿"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
-import { getAllApplications, updateApplicationStatus } from "@/api/companyapplications";
+import { getAllApplications, updateApplicationStatus, type ApplicationStatus } from "@/api/companyapplications";
 import Link from "next/link";
 
 type Application = {
@@ -10,30 +10,45 @@ type Application = {
   position: string;
   appliedDate: string;
   resumeLink: string;
-  status: "Approved" | "Rejected" | "Pending";
+  status: ApplicationStatus;
   applicant_user_id?: number;
 };
 
 export default function ResumeInApplicationPage() {
+  const STATUS_FILTERS: (ApplicationStatus | "All")[] = ["All", "Pending", "Approved", "Confirmed", "Rejected"];
+  const STATUS_OPTIONS: ApplicationStatus[] = ["Pending", "Approved", "Confirmed", "Rejected"];
+
   const [applications, setApplications] = useState<Application[]>([]);
-  const [filter, setFilter] = useState<"All Positions" | "Approved" | "Rejected" | "Pending">("All Positions");
+  const [filter, setFilter] = useState<ApplicationStatus | "All">("All");
 
   useEffect(() => {
     getAllApplications()
-      .then((data) => setApplications(data))
+      .then((data) => setApplications(Array.isArray(data) ? data : []))
       .catch((err) => console.error("Failed to fetch applications:", err));
   }, []);
 
-  const updateStatusLocal = (id: number, newStatus: Application["status"]) => {
-    setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app)));
+  const updateStatusLocal = (id: number, newStatus: ApplicationStatus) => {
+    let previousStatus: ApplicationStatus | null = null;
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.id === id) {
+          previousStatus = app.status;
+          return { ...app, status: newStatus };
+        }
+        return app;
+      }),
+    );
     updateApplicationStatus(id, newStatus).catch((error) => {
       console.error("Failed to update application status:", error);
-      setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: "Pending" } : app)));
+      const fallback = previousStatus ?? "Pending";
+      setApplications((prev) =>
+        prev.map((app) => (app.id === id ? { ...app, status: fallback as ApplicationStatus } : app)),
+      );
     });
   };
 
   const filteredApplications =
-    filter === "All Positions" ? applications : applications.filter((app) => app.status === filter);
+    filter === "All" ? applications : applications.filter((app) => app.status === filter);
 
   return (
     <main className="min-h-screen bg-gray-50 py-10 font-sans">
@@ -124,3 +139,11 @@ export default function ResumeInApplicationPage() {
     </main>
   );
 }
+
+
+
+
+
+
+
+

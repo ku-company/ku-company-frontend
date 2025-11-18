@@ -323,9 +323,16 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      {job.created_at ? (
+                      {job.posted_ago ? (
                         <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
-                          {`${Math.max(0, Math.floor((Date.now() - new Date(job.created_at).getTime()) / (1000*60*60*24)))} day(s) ago`}
+                          {job.posted_ago}
+                        </span>
+                      ) : job.created_at ? (
+                        <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
+                          {`${Math.max(
+                            0,
+                            Math.floor((Date.now() - new Date(job.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+                          )} day(s) ago`}
                         </span>
                       ) : null}
                       <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-300 self-end">Active</span>

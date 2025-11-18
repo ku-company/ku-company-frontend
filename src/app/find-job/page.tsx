@@ -35,6 +35,7 @@ type Job = {
   maximum_expected_salary?: number | null;
   expired_at?: string | Date | null;
   company_user_id?: number;
+  posted_ago?: string | null;
 };
 
 type Resume = {
@@ -407,9 +408,16 @@ export default function FindJobPage() {
   const postedDays = useMemo(() => {
     if (!selected?.created_at) return null;
     const created = new Date(selected.created_at as any).getTime();
+    if (Number.isNaN(created)) return null;
     const days = Math.max(0, Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24)));
     return days;
   }, [selected?.created_at]);
+  const postedLabel =
+    selected?.posted_ago && selected.posted_ago.trim().length
+      ? selected.posted_ago.trim()
+      : postedDays !== null
+      ? `Posted ${postedDays} day(s) ago`
+      : "";
 
   useEffect(() => {
     let cancelled = false;
@@ -736,11 +744,13 @@ export default function FindJobPage() {
                       <MapPinIcon className="h-4 w-4" />
                       {selected.location ?? selected.company_location}
                     </div>
-                    <div className="mt-1">
-                      <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
-                        {postedDays !== null ? `Posted ${postedDays} day(s) ago` : ''}
-                      </span>
-                    </div>
+                    {postedLabel && (
+                      <div className="mt-1">
+                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+                          {postedLabel}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

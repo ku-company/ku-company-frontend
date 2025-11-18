@@ -45,7 +45,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body
+      <body suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased bg-gray-50 text-gray-900`}
       >
         {/* Provide authentication context to all pages */}
@@ -68,3 +68,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+
