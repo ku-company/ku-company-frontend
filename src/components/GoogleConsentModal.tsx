@@ -94,12 +94,15 @@ export default function GoogleConsentModal({
             <input
               type="text"
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value.replace(/\D+/g, ""))}
+              onChange={(e) =>
+                setStudentId(e.target.value.replace(/\D+/g, "").slice(0, STUDENT_ID_LENGTH))
+              }
               disabled={submitting}
               inputMode="numeric"
               pattern="[0-9]*"
+              maxLength={STUDENT_ID_LENGTH}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500 disabled:opacity-60"
-              placeholder="e.g., 6601234567"
+              placeholder="e.g., 6610545xxx"
             />
             <p className="mt-1 text-xs text-gray-500">
               Required by KU to verify active enrollment when using Google signup.

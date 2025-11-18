@@ -38,7 +38,7 @@ test.describe('Student registration', () => {
 
     await page.fill('input[name="first_name"]', 'Jane');
     await page.fill('input[name="last_name"]', 'Doe');
-    await page.fill('input[name="stdId"]', '6610545532');
+    await page.fill('input[name="stdId"]', '6610545001');
     await page.fill('input[name="email"]', 'jane@ku.th');
     await page.fill('input[name="user_name"]', 'janedoe');
     await page.fill('input[name="password"]', 'password123');
@@ -48,7 +48,7 @@ test.describe('Student registration', () => {
     await page.getByRole('button', { name: 'Sign up' }).click();
 
     await expect.poll(() => loginCalled).toBeTruthy();
-    expect(postedPayload?.stdId).toBe('6610545532');
+    expect(postedPayload?.stdId).toBe('6610545001');
     expect(postedPayload?.pdpa_consent).toBe(true);
     await expect(page).toHaveURL(/\/(homepage)?$/);
   });

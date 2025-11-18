@@ -14,6 +14,7 @@ import { useApplyCart } from "@/context/ApplyCartContext";
 import { listMyApplications } from "@/api/applications";
 import { getAuthMe } from "@/api/user";
 import { repostJobPosting } from "@/api/professorrepost";
+import { toast } from "react-toastify";
 
 type Job = {
   id: number;
@@ -108,7 +109,6 @@ export default function FindJobPage() {
   const [quoteJob, setQuoteJob] = useState<Job | null>(null);
   const [quoteContent, setQuoteContent] = useState("");
   const [quoteSubmitting, setQuoteSubmitting] = useState(false);
-  const [quoteNotice, setQuoteNotice] = useState<string | null>(null);
   const [quoteIsConnection, setQuoteIsConnection] = useState(false);
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
@@ -229,7 +229,6 @@ export default function FindJobPage() {
     setQuoteJob(job);
     setQuoteContent("");
     setQuoteOpen(true);
-    setQuoteNotice(null);
     setQuoteIsConnection(false);
   }
 
@@ -242,11 +241,14 @@ export default function FindJobPage() {
       setQuoteOpen(false);
       setQuoteJob(null);
       setQuoteContent("");
-      setQuoteNotice("Reposted job successfully.");
-      setTimeout(() => setQuoteNotice(null), 3000);
+      toast.success("Reposted job successfully.");
     } catch (err: any) {
-      const msg = String(err?.message || err || "Failed to post announcement");
-      setQuoteNotice(msg);
+      let msg = String(err?.message || err || "Failed to post announcement");
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed?.message) msg = String(parsed.message);
+      } catch {}
+      toast.error(msg);
     } finally {
       setQuoteSubmitting(false);
     }
@@ -813,14 +815,6 @@ export default function FindJobPage() {
         </div>
       )}
 
-      {quoteNotice && (
-        <div
-          className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-md border bg-white px-4 py-2 text-sm shadow"
-          style={{ borderColor: GREEN }}
-        >
-          {quoteNotice}
-        </div>
-      )}
     </main>
   );
 }

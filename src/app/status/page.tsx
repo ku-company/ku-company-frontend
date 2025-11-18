@@ -13,6 +13,8 @@ type Application = {
   company_name: string;
   company_user_id?: number;
   position: string;
+  job_title: string;
+  job_id?: number;
   applied_date: string;
   status: UIStatus;     // สถานะที่แสดงในตาราง
   canConfirm: boolean;  // อนุญาตให้กด Confirm หรือไม่ (บริษัทต้อง approved/confirmed)
@@ -79,12 +81,25 @@ export default function AppliedCompanyStatusPage() {
             a?.position ??
             "—";
 
+          const jobTitle =
+            a?.job_post?.job_title ??
+            a?.job_post?.position ??
+            a?.position ??
+            "—";
+
           const companyName =
             a?.job_post?.company?.company_name ??
             a?.job_post?.company_name ??
             `Company #${a?.job_post?.company_id ?? "-"}`;
 
           const companyUserId = a?.job_post?.company?.user_id ?? a?.job_post?.company_user_id ?? null;
+          const jobPostingId =
+            a?.job_post?.id ??
+            a?.job_post?.job_posting_id ??
+            a?.job_post?.job_id ??
+            a?.job_post_id ??
+            a?.job_posting_id ??
+            null;
 
           const appliedAt = a?.applied_at ?? a?.created_at ?? null;
 
@@ -104,7 +119,9 @@ export default function AppliedCompanyStatusPage() {
             id: Number(a?.id ?? 0),
             company_name: companyName,
             company_user_id: companyUserId || undefined,
+            job_id: jobPostingId || undefined,
             position,
+            job_title: jobTitle,
             applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "—",
             status,
             canConfirm,
@@ -238,6 +255,7 @@ export default function AppliedCompanyStatusPage() {
                 <tr className="bg-[#558E46] text-white text-left">
                   <th className="p-4">Company</th>
                   <th className="p-4">Position</th>
+                  <th className="p-4">Job Title</th>
                   <th className="p-4">Applied Date</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 text-center">Action</th>
@@ -256,6 +274,20 @@ export default function AppliedCompanyStatusPage() {
                       )}
                     </td>
                     <td className="p-4">{app.position}</td>
+                    <td className="p-4">
+                      {app.job_id ? (
+                        <Link
+                          className="text-emerald-700 hover:underline"
+                          href={`/job/${app.job_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {app.job_title}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-500">{app.job_title || "—"}</span>
+                      )}
+                    </td>
                     <td className="p-4">
                       <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">{app.applied_date}</span>
                     </td>
