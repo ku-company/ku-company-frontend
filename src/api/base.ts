@@ -1,10 +1,11 @@
 import { getApiBaseUrl } from "@/lib/apiBase";
+import { getAccessToken } from "@/lib/tokens";
 
 export const API_BASE = getApiBaseUrl();
 
 // Helper to include authorization headers (if tokens exist)
 export function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const token = getAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

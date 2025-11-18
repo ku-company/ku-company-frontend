@@ -7,6 +7,7 @@ import { updateUserRole } from "@/api/user";
 import { parseTokensFromLocation, stripTokensFromUrl } from "@/api/oauth";
 import { createProfessorProfile } from "@/api/professorprofile";
 import { getCompanyProfile, createDefaultCompanyProfile } from "@/api/companyprofile";
+import { ensureTokensFromCookies } from "@/lib/tokens";
 
 export default function BootstrapSession() {
   const { user, login } = useAuth();
@@ -93,7 +94,10 @@ export default function BootstrapSession() {
           console.warn("⚠️ Failed to parse OAuth tokens from URL:", e);
         }
 
-        // 2) Fetch current user using cookie or newly stored token
+        // 2) Ensure localStorage mirrors any cookie tokens before fetching user
+        ensureTokensFromCookies();
+
+        // 3) Fetch current user using cookie or newly stored token
         const me = await fetchAuthMe();
         console.log("🟢 fetchAuthMe() returned:", me);
 

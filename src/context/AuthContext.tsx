@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode, useRef } from "react";
 import { logoutServerSession } from "@/api/logout";
+import { ensureTokensFromCookies } from "@/lib/tokens";
 
 type AuthUser = {
   id?: number | null;
@@ -45,7 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const expTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const ensured = ensureTokensFromCookies();
+    const token = ensured.access_token ?? null;
     const user_name = localStorage.getItem("user_name") ?? "";
     const email = localStorage.getItem("email") ?? "";
     const role = localStorage.getItem("role") ?? "";

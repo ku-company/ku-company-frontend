@@ -1,4 +1,5 @@
 import { API_BASE } from "./base";
+import { getAccessToken } from "@/lib/tokens";
 
 // Unwraps { message, data } or returns raw
 function unwrap<T>(p: any): T {
@@ -9,7 +10,7 @@ function unwrap<T>(p: any): T {
 
 export async function fetchAuthMe() {
   try {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     console.log(
       "🔸 fetchAuthMe() called, token =",
       token ? "found" : "missing"

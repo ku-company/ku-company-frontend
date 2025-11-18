@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND = "https://ku-company-backend-ekg6.onrender.com";
+const DEFAULT_BACKEND = "http://localhost:8000";
 const BLOCKED_HOST_REGEX = /(googleapis|googleusercontent|google\.com)/i;
 
 function sanitize(value: string) {
