@@ -15,6 +15,7 @@ import { listMyApplications } from "@/api/applications";
 import { getAuthMe } from "@/api/user";
 import { repostJobPosting } from "@/api/professorrepost";
 import { toast } from "react-toastify";
+import { getCompanyProfileById, type PublicCompanyProfile } from "@/api/companyprofile";
 
 type Job = {
   id: number;
@@ -110,6 +111,7 @@ export default function FindJobPage() {
   const [quoteContent, setQuoteContent] = useState("");
   const [quoteSubmitting, setQuoteSubmitting] = useState(false);
   const [quoteIsConnection, setQuoteIsConnection] = useState(false);
+  const [selectedCompanyProfile, setSelectedCompanyProfile] = useState<PublicCompanyProfile | null>(null);
 
   const canApply = useMemo(() => (user?.role || "").toLowerCase() === "student", [user]);
   const isProfessor = useMemo(
@@ -409,6 +411,28 @@ export default function FindJobPage() {
     return days;
   }, [selected?.created_at]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const companyId = selected?.company_id;
+    if (!companyId) {
+      setSelectedCompanyProfile(null);
+      return;
+    }
+    (async () => {
+      try {
+        const profile = await getCompanyProfileById(companyId, controller.signal);
+        if (!cancelled) setSelectedCompanyProfile(profile);
+      } catch {
+        if (!cancelled) setSelectedCompanyProfile(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [selected?.company_id]);
+
   // -------------------------------
   // Apply handler (legacy for modal, no longer used from UI)
   // -------------------------------
@@ -684,13 +708,29 @@ export default function FindJobPage() {
                     </div>
                     <div className="text-base text-gray-600 break-words flex items-center gap-1">
                       <BuildingOfficeIcon className="h-4 w-4" />
-                      {selected.company_user_id ? (
-                        <Link className="hover:underline cursor-pointer" href={`/profile/${selected.company_user_id}`} target="_blank" rel="noopener noreferrer">
-                          {selected.company_name}
-                        </Link>
-                      ) : (
-                        selected.company_name
-                      )}
+                      {(() => {
+                        const companyHref =
+                          selectedCompanyProfile?.id
+                            ? `/company/${selectedCompanyProfile.id}`
+                            : selected?.company_id
+                            ? `/company/${selected.company_id}`
+                            : selected?.company_user_id
+                            ? `/profile/${selected.company_user_id}`
+                            : null;
+                        if (companyHref) {
+                          return (
+                            <Link
+                              className="hover:underline cursor-pointer"
+                              href={companyHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {selectedCompanyProfile?.company_name ?? selected.company_name}
+                            </Link>
+                          );
+                        }
+                        return selected.company_name;
+                      })()}
                     </div>
                     <div className="text-sm text-gray-500 break-words flex items-center gap-1">
                       <MapPinIcon className="h-4 w-4" />
