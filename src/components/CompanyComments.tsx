@@ -186,7 +186,6 @@ export default function CompanyComments({ companyUserId, companyProfileId }: Pro
               const uname = (anyc?.user?.user_name ?? anyc?.user_name ?? "").toString().trim();
               const name = [first, last].filter(Boolean).join(" ") || uname || (c.user_id && nameMap[c.user_id]) || (c.user_id ? `User #${c.user_id}` : "");
               const when = c.created_at ? new Date(c.created_at).toLocaleString() : "";
-              const edited = c.updated_at && c.created_at && c.updated_at !== c.created_at;
               const isOwner = !!myUserId && (c.user_id === myUserId || (anyc?.user?.id && anyc.user.id === myUserId));
               return (
                 <div key={c.id} className="rounded-lg border p-3">
@@ -194,7 +193,7 @@ export default function CompanyComments({ companyUserId, companyProfileId }: Pro
                     <div>
                       {name && (
                         <div className="text-sm font-semibold text-gray-900">
-                          {name} {edited && <span className="text-xs font-normal text-gray-500">(Edited)</span>}
+                          {name}
                         </div>
                       )}
                       {editingId === c.id ? (
