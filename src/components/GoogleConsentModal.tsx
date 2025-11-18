@@ -94,8 +94,10 @@ export default function GoogleConsentModal({
             <input
               type="text"
               value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              onChange={(e) => setStudentId(e.target.value.replace(/\D+/g, ""))}
               disabled={submitting}
+              inputMode="numeric"
+              pattern="[0-9]*"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500 disabled:opacity-60"
               placeholder="e.g., 6601234567"
             />
