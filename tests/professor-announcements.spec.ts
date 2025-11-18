@@ -1,23 +1,56 @@
 import { test, expect, Page } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:8000';
+const PROFESSOR_USERNAME = process.env.PLAYWRIGHT_PROF_USER ?? 'professor_zero';
+const PROFESSOR_PASSWORD = process.env.PLAYWRIGHT_PROF_PASS ?? 'password123';
 
-async function simulateProfessorSession(page: Page) {
-  await page.addInitScript((payload) => {
-    localStorage.setItem('access_token', payload.access);
-    localStorage.setItem('refresh_token', payload.refresh);
-    localStorage.setItem('user_name', payload.user);
-    localStorage.setItem('email', payload.email);
-    localStorage.setItem('role', payload.role);
-    localStorage.setItem('user_id', payload.id);
-  }, {
-    access: 'prof-access',
-    refresh: 'prof-refresh',
-    user: 'professor_zero',
-    email: 'professor@ku.th',
-    role: 'professor',
-    id: '501',
+async function loginAsProfessor(page: Page) {
+  await page.route(`${API_BASE}/api/user/login`, async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body?.user_name !== PROFESSOR_USERNAME || body?.password !== PROFESSOR_PASSWORD) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Invalid credentials' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Login success',
+        data: {
+          access_token: 'prof-access',
+          refresh_token: 'prof-refresh',
+          user_name: PROFESSOR_USERNAME,
+          roles: 'Professor',
+          email: `${PROFESSOR_USERNAME}@ku.th`,
+          id: 501,
+        },
+      }),
+    });
   });
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 501,
+        user_name: PROFESSOR_USERNAME,
+        role: 'Professor',
+        verified: true,
+        email: `${PROFESSOR_USERNAME}@ku.th`,
+      }),
+    });
+  });
+
+  await page.goto('/login');
+  await page.getByPlaceholder('Username').fill(PROFESSOR_USERNAME);
+  await page.getByPlaceholder('Password').fill(PROFESSOR_PASSWORD);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page).toHaveURL(/\/(homepage)?$/);
 }
 
 const professorJobFixture = {
@@ -40,7 +73,7 @@ const professorJobFixture = {
 
 test.describe('Professor announcements (PF-001 & PF-002)', () => {
   test('professor can publish a standalone announcement', async ({ page }) => {
-    await simulateProfessorSession(page);
+    await loginAsProfessor(page);
 
     await page.route(`${API_BASE}/api/announcements`, async (route) => {
       await route.fulfill({
@@ -78,21 +111,13 @@ test.describe('Professor announcements (PF-001 & PF-002)', () => {
   });
 
   test('professor can quote a job directly from the job board', async ({ page }) => {
-    await simulateProfessorSession(page);
+    await loginAsProfessor(page);
 
     await page.route(`${API_BASE}/api/announcements`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: [] }),
-      });
-    });
-
-    await page.route('**/api/auth/me', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ verified: true, role: 'Professor' }),
       });
     });
 
@@ -124,6 +149,14 @@ test.describe('Professor announcements (PF-001 & PF-002)', () => {
         return;
       }
       await route.fallback();
+    });
+
+    await page.route('**/api/user/company-profile/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: professorJobFixture.company_id, company_name: professorJobFixture.company_name } }),
+      });
     });
 
     let repostPayload: any = null;

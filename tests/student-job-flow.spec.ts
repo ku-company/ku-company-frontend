@@ -1,23 +1,55 @@
 import { test, expect, Page } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:8000';
+const STUDENT_USERNAME = process.env.PLAYWRIGHT_STUDENT_USER ?? 'janedoe';
+const STUDENT_PASSWORD = process.env.PLAYWRIGHT_STUDENT_PASS ?? 'password123';
 
-async function simulateStudentSession(page: Page) {
-  await page.addInitScript((payload) => {
-    localStorage.setItem('access_token', payload.access);
-    localStorage.setItem('refresh_token', payload.refresh);
-    localStorage.setItem('user_name', payload.user);
-    localStorage.setItem('email', payload.email);
-    localStorage.setItem('role', payload.role);
-    localStorage.setItem('user_id', payload.id);
-  }, {
-    access: 'e2e-student-access',
-    refresh: 'e2e-student-refresh',
-    user: 'student_test',
-    email: 'student@ku.th',
-    role: 'student',
-    id: '42',
+async function loginAsStudent(page: Page) {
+  await page.route(`${API_BASE}/api/user/login`, async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body?.user_name !== STUDENT_USERNAME || body?.password !== STUDENT_PASSWORD) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Invalid credentials' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Login success',
+        data: {
+          access_token: 'student-access',
+          refresh_token: 'student-refresh',
+          user_name: STUDENT_USERNAME,
+          roles: 'Student',
+          email: `${STUDENT_USERNAME}@ku.th`,
+          id: 42,
+        },
+      }),
+    });
   });
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 42,
+        user_name: STUDENT_USERNAME,
+        role: 'Student',
+        email: `${STUDENT_USERNAME}@ku.th`,
+      }),
+    });
+  });
+
+  await page.goto('/login');
+  await page.getByPlaceholder('Username').fill(STUDENT_USERNAME);
+  await page.getByPlaceholder('Password').fill(STUDENT_PASSWORD);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page).toHaveURL(/\/(homepage)?$/);
 }
 
 const jobFixture = {
@@ -74,6 +106,14 @@ function mockStudentJobApis(page: Page, options: { resumes: any[]; appliedJobIds
     await route.fallback();
   });
 
+  page.route('**/api/user/company-profile/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { id: jobFixture.company_id, company_name: jobFixture.company_name } }),
+    });
+  });
+
   page.route(`${API_BASE}/api/employee/profile/resumes`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -113,7 +153,7 @@ function mockStudentJobApis(page: Page, options: { resumes: any[]; appliedJobIds
 
 test.describe('Student job application flow (ST-001)', () => {
   test('student can filter, view, and apply to a job with an existing resume', async ({ page }) => {
-    await simulateStudentSession(page);
+    await loginAsStudent(page);
     let appliedPayload: any = null;
 
     mockStudentJobApis(page, {
@@ -153,7 +193,7 @@ test.describe('Student job application flow (ST-001)', () => {
   });
 
   test('apply screen blocks submission when no resume exists', async ({ page }) => {
-    await simulateStudentSession(page);
+    await loginAsStudent(page);
 
     mockStudentJobApis(page, {
       resumes: [],
@@ -166,3 +206,4 @@ test.describe('Student job application flow (ST-001)', () => {
     await expect(page.getByRole('button', { name: /^Apply$/ })).toBeDisabled();
   });
 });
+

@@ -60,14 +60,14 @@ test.describe('Student registration', () => {
     await expect(page.getByRole('heading', { name: 'Continue with Google' })).toBeVisible();
 
     const studentIdInput = page.getByLabel('Student ID');
-    await studentIdInput.fill('abc123');
-    await expect(studentIdInput).toHaveValue('123');
+    await studentIdInput.fill('abc6610545xyz123');
+    await expect(studentIdInput).toHaveValue('6610545123');
 
     await page.getByRole('button', { name: 'Agree & Continue' }).click();
     await expect(page.getByText('Please agree to the Terms before continuing.')).toBeVisible();
 
     await page.getByRole('checkbox', { name: /I consent/i }).check();
     await page.getByRole('button', { name: 'Agree & Continue' }).click();
-    await expect(page.getByText('Student ID is required for the Google signup flow.')).toBeVisible();
+    await expect(page.getByText('Please enter a valid KU student ID (e.g., 6610545xxx).')).toBeVisible();
   });
 });

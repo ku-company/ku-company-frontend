@@ -1,28 +1,60 @@
 import { test, expect, Page } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:8000';
+const COMPANY_USERNAME = process.env.PLAYWRIGHT_COMPANY_USER ?? 'acme_hr';
+const COMPANY_PASSWORD = process.env.PLAYWRIGHT_COMPANY_PASS ?? 'password123';
 
-async function simulateCompanySession(page: Page) {
-  await page.addInitScript((payload) => {
-    localStorage.setItem('access_token', payload.access);
-    localStorage.setItem('refresh_token', payload.refresh);
-    localStorage.setItem('user_name', payload.user);
-    localStorage.setItem('email', payload.email);
-    localStorage.setItem('role', payload.role);
-    localStorage.setItem('user_id', payload.id);
-  }, {
-    access: 'company-access',
-    refresh: 'company-refresh',
-    user: 'acme_hr',
-    email: 'hr@acme.com',
-    role: 'company',
-    id: '300',
+async function loginAsCompany(page: Page) {
+  await page.route(`${API_BASE}/api/user/login`, async (route) => {
+    const creds = JSON.parse(route.request().postData() || '{}');
+    if (creds?.user_name !== COMPANY_USERNAME || creds?.password !== COMPANY_PASSWORD) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Invalid credentials' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Login success',
+        data: {
+          access_token: 'company-access',
+          refresh_token: 'company-refresh',
+          user_name: COMPANY_USERNAME,
+          roles: 'Company',
+          email: 'hr@acme.com',
+          id: 300,
+        },
+      }),
+    });
   });
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 300,
+        user_name: COMPANY_USERNAME,
+        role: 'Company',
+        email: 'hr@acme.com',
+      }),
+    });
+  });
+
+  await page.goto('/login');
+  await page.getByPlaceholder('Username').fill(COMPANY_USERNAME);
+  await page.getByPlaceholder('Password').fill(COMPANY_PASSWORD);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page).toHaveURL(/\/company\/home$/);
 }
 
 test.describe('Company job posting (CP-001)', () => {
   test('company can create a new job posting', async ({ page }) => {
-    await simulateCompanySession(page);
+    await loginAsCompany(page);
 
     await page.route(`${API_BASE}/api/company/job-postings/all`, async (route) => {
       await route.fulfill({
@@ -79,7 +111,7 @@ test.describe('Company job posting (CP-001)', () => {
   });
 
   test('salary validation prevents invalid ranges', async ({ page }) => {
-    await simulateCompanySession(page);
+    await loginAsCompany(page);
 
     await page.route(`${API_BASE}/api/company/job-postings/all`, async (route) => {
       await route.fulfill({

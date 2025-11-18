@@ -51,6 +51,7 @@ export default function Navbar() {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const displayRole = (user?.role || "Unknown").slice(0,1).toUpperCase() + (user?.role || "Unknown").slice(1);
   const isAdmin = (user?.role || "").toLowerCase().includes("admin");
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -60,6 +61,10 @@ export default function Navbar() {
     if (dropdownOpen) document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   // Load profile image and display name
   useEffect(() => {
@@ -184,23 +189,27 @@ export default function Navbar() {
             KU-COMPANY
           </Link>
 
-          <nav className="hidden md:flex items-center gap-2 ml-auto">
-            <NavItem
-              href={(user?.role || "").toLowerCase().includes("company") ? "/company/home" : "/"}
-              label="HOME"
-            />
-            <NavItem href="/find-job" label="FIND JOB" />
-            {user?.role?.toLowerCase().includes("company") && (
-              <>
-                <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
-                <NavItem href="/view-resume" label="VIEW RESUME" />
-              </>
-            )}
-            <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
-            {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
-              <NavItem href="/status" label="STATUS" />
-            ) : null}
-          </nav>
+          {hydrated ? (
+            <nav className="hidden md:flex items-center gap-2 ml-auto">
+              <NavItem
+                href={(user?.role || "").toLowerCase().includes("company") ? "/company/home" : "/"}
+                label="HOME"
+              />
+              <NavItem href="/find-job" label="FIND JOB" />
+              {user?.role?.toLowerCase().includes("company") && (
+                <>
+                  <NavItem href="/company/jobpostings" label="JOB POSTINGS" />
+                  <NavItem href="/view-resume" label="VIEW RESUME" />
+                </>
+              )}
+              <NavItem href="/professor-annoucement" label="ANNOUNCEMENT" />
+              {user?.role?.toLowerCase().includes("student") || user?.role?.toLowerCase().includes("alumni") ? (
+                <NavItem href="/status" label="STATUS" />
+              ) : null}
+            </nav>
+          ) : (
+            <div className="hidden md:block ml-auto h-6 w-48" aria-hidden="true" />
+          )}
 
           <div className="relative flex items-center gap-2 ml-4" ref={menuRef}>
             {isAdmin && (

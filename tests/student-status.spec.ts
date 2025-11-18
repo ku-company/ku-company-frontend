@@ -1,28 +1,60 @@
 import { test, expect, Page } from '@playwright/test';
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:8000';
+const STUDENT_USERNAME = process.env.PLAYWRIGHT_STUDENT_USER ?? 'janedoe';
+const STUDENT_PASSWORD = process.env.PLAYWRIGHT_STUDENT_PASS ?? 'password123';
 
-async function simulateStudentSession(page: Page) {
-  await page.addInitScript((payload) => {
-    localStorage.setItem('access_token', payload.access);
-    localStorage.setItem('refresh_token', payload.refresh);
-    localStorage.setItem('user_name', payload.user);
-    localStorage.setItem('email', payload.email);
-    localStorage.setItem('role', payload.role);
-    localStorage.setItem('user_id', payload.id);
-  }, {
-    access: 'status-access-token',
-    refresh: 'status-refresh-token',
-    user: 'status_student',
-    email: 'status@ku.th',
-    role: 'student',
-    id: '77',
+async function loginAsStudent(page: Page) {
+  await page.route(`${API_BASE}/api/user/login`, async (route) => {
+    const payload = JSON.parse(route.request().postData() || '{}');
+    if (payload?.user_name !== STUDENT_USERNAME || payload?.password !== STUDENT_PASSWORD) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Invalid credentials' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: 'Login success',
+        data: {
+          access_token: 'status-access-token',
+          refresh_token: 'status-refresh-token',
+          user_name: STUDENT_USERNAME,
+          roles: 'Student',
+          email: `${STUDENT_USERNAME}@ku.th`,
+          id: 77,
+        },
+      }),
+    });
   });
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 77,
+        user_name: STUDENT_USERNAME,
+        role: 'Student',
+        email: `${STUDENT_USERNAME}@ku.th`,
+      }),
+    });
+  });
+
+  await page.goto('/login');
+  await page.getByPlaceholder('Username').fill(STUDENT_USERNAME);
+  await page.getByPlaceholder('Password').fill(STUDENT_PASSWORD);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page).toHaveURL(/\/(homepage)?$/);
 }
 
 test.describe('Application status tracking (ST-002)', () => {
   test('student can cancel pending jobs and confirm an approved offer', async ({ page }) => {
-    await simulateStudentSession(page);
+    await loginAsStudent(page);
 
     const cancelCalls: number[] = [];
     let confirmCalledFor: number | null = null;
