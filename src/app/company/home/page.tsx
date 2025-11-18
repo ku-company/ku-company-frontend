@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE, buildInit } from "@/api/base";
 import { useAuth } from "@/context/AuthContext";
+import { getAllApplications } from "@/api/companyapplications";
 
 type SummaryResponse = {
   total_job_postings?: number;
@@ -30,15 +31,19 @@ type JobPosting = {
 
 type Applicant = {
   id: number;
-  name?: string;
-  position?: string;
+  name: string;
+  email: string;
+  position: string;
+  appliedDate: string;
+  status: string;
   job_post?: { position?: string; job_title?: string };
   employee?: { first_name?: string; last_name?: string };
+  resumeLink?: string;
+  applicant_user_id?: number;
 };
 
 const SUMMARY_URL = `${API_BASE}/api/company/dashboard/overall`;
 const ACTIVE_URL = `${API_BASE}/api/company/dashboard/active-postings`;
-const APPLICANTS_URL = `${API_BASE}/api/company/job-applications`;
 
 export default function CompanyDashboardPage() {
   const router = useRouter();
@@ -58,10 +63,9 @@ export default function CompanyDashboardPage() {
 
     const fetchData = async () => {
       try {
-        const [summaryRes, activeRes, applicantsRes] = await Promise.all([
+        const [summaryRes, activeRes] = await Promise.all([
           fetch(SUMMARY_URL, buildInit({ credentials: "include" })),
           fetch(ACTIVE_URL, buildInit({ credentials: "include" })),
-          fetch(APPLICANTS_URL, buildInit({ credentials: "include" })),
         ]);
 
         if (summaryRes.ok) {
@@ -72,10 +76,16 @@ export default function CompanyDashboardPage() {
           const json = await activeRes.json().catch(() => []);
           setActiveJobs(Array.isArray(json?.data) ? json.data : json || []);
         }
-        if (applicantsRes.ok) {
-          const json = await applicantsRes.json().catch(() => []);
-          const list = Array.isArray(json?.data) ? json.data : json || [];
-          setRecentApplicants(list.slice(0, 4));
+        try {
+          const apps = await getAllApplications();
+          if (apps) {
+            setRecentApplicants(apps.slice(0, 4));
+          } else {
+            setRecentApplicants([]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch applications for recent list:", err);
+          setRecentApplicants([]);
         }
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
@@ -233,21 +243,35 @@ export default function CompanyDashboardPage() {
           ) : (
             <ul className="mt-4 divide-y divide-gray-100">
               {recentApplicants.map((app) => {
-                const applicantName =
-                  app.employee
-                    ? `${app.employee.first_name ?? ""} ${app.employee.last_name ?? ""}`.trim()
-                    : app.name ?? "Applicant";
+                const applicantName = (app.name || "").trim() || "Applicant";
                 const role =
-                  app.job_post?.position || app.job_post?.job_title || app.position || "—";
+                  app.position ||
+                  app.job_post?.position ||
+                  app.job_post?.job_title ||
+                  "—";
+                const profileHref = app.applicant_user_id
+                  ? `/profile/${app.applicant_user_id}`
+                  : null;
                 return (
                   <li key={app.id} className="flex items-center justify-between py-3 text-sm text-gray-800">
                     <div>
                       <p className="font-medium">{applicantName || "Applicant"}</p>
                       <p className="text-gray-500">{role}</p>
                     </div>
-                    <button className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50">
-                      View Profile
-                    </button>
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        View Profile
+                      </Link>
+                    ) : (
+                      <span className="rounded-full border border-gray-100 px-3 py-1 text-xs text-gray-400">
+                        No profile
+                      </span>
+                    )}
                   </li>
                 );
               })}

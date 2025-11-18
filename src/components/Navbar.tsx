@@ -184,14 +184,7 @@ export default function Navbar() {
             KU-COMPANY
           </Link>
 
-          <div className="hidden md:block">
-            <input
-              placeholder="SEARCH"
-              className="h-9 w-64 rounded-full border px-4 text-sm focus:outline-none focus:ring"
-            />
-          </div>
-
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden md:flex items-center gap-2 ml-auto">
             <NavItem
               href={(user?.role || "").toLowerCase().includes("company") ? "/company/home" : "/"}
               label="HOME"
@@ -209,7 +202,7 @@ export default function Navbar() {
             ) : null}
           </nav>
 
-          <div className="relative flex items-center gap-2" ref={menuRef}>
+          <div className="relative flex items-center gap-2 ml-4" ref={menuRef}>
             {isAdmin && (
               <button
                 type="button"

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import StudentProfileView from "@/components/profile/StudentProfileView";
 import CompanyProfileView from "@/components/profile/CompanyProfileView";
 import ProfessorProfileView from "@/components/profile/ProfessorProfileView";
+import CompanyComments from "@/components/CompanyComments";
 import { fetchAuthMe, normalizeRole } from "@/api/session";
 
 export default function ProfilePage() {
@@ -69,7 +70,19 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const role = (user.role || "").toLowerCase();
-  if (role === "company") return <CompanyProfileView />;
+  if (role === "company") {
+    const companyUserId = typeof user.id === "number" ? user.id : Number(user.id);
+    return (
+      <>
+        <CompanyProfileView />
+        {companyUserId ? (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+            <CompanyComments companyUserId={companyUserId} />
+          </div>
+        ) : null}
+      </>
+    );
+  }
   if (role === "professor") return <ProfessorProfileView />;
   return <StudentProfileView />;
 }
