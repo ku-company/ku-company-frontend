@@ -33,7 +33,12 @@ export default function RegisterPage() {
   const [pendingGoogleStudentId, setPendingGoogleStudentId] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name } = e.target;
+    let { value } = e.target;
+    if (name === "stdId") {
+      value = value.replace(/\D+/g, "");
+    }
+    setForm({ ...form, [name]: value });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -134,6 +139,8 @@ export default function RegisterPage() {
               type="text"
               name="stdId"
               placeholder="Student ID"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={form.stdId}
               onChange={handleChange}
               className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"

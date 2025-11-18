@@ -75,6 +75,22 @@ export default function EditJobModal({
 
   if (!isOpen || (!initial && mode !== "create")) return null;
 
+  const salaryMinValue = expectedSalaryMin === "" ? null : Number(expectedSalaryMin);
+  const salaryMaxValue = expectedSalaryMax === "" ? null : Number(expectedSalaryMax);
+  const salaryNotPositive =
+    (salaryMinValue !== null && salaryMinValue <= 0) ||
+    (salaryMaxValue !== null && salaryMaxValue <= 0);
+  const salaryOrderInvalid =
+    salaryMinValue !== null &&
+    salaryMaxValue !== null &&
+    salaryMinValue >= salaryMaxValue;
+  const salaryErrorMessage =
+    salaryNotPositive
+      ? "Salary must be greater than zero."
+      : salaryOrderInvalid
+      ? "Minimum salary must be lower than maximum salary."
+      : "";
+
   // === Validation ===
   const canSave = Boolean(
     title &&
@@ -84,11 +100,10 @@ export default function EditJobModal({
     jobType &&
     location &&
     workType &&
-    expectedSalaryMin !== "" &&
-    expectedSalaryMax !== "" &&
-    Number(expectedSalaryMin) > 0 &&
-    Number(expectedSalaryMax) > 0 &&
-    Number(expectedSalaryMin) <= Number(expectedSalaryMax)
+    salaryMinValue !== null &&
+    salaryMaxValue !== null &&
+    !salaryNotPositive &&
+    !salaryOrderInvalid
   );
 
   // Position options from centralized enum
@@ -192,10 +207,31 @@ export default function EditJobModal({
             <div className="grid gap-1">
               <label className="text-sm font-medium text-gray-700">Expected Salary (Min - Max)</label>
               <div className="flex items-center gap-2">
-                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMin} onChange={(e) => setExpectedSalaryMin(e.target.value)} placeholder="18000" />
+                <input
+                  className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2"
+                  style={{ outlineColor: brandColor }}
+                  value={expectedSalaryMin}
+                  onChange={(e) => setExpectedSalaryMin(e.target.value.replace(/\D+/g, ""))}
+                  placeholder="18000"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-invalid={Boolean(salaryErrorMessage)}
+                />
                 <span>-</span>
-                <input className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2" style={{ outlineColor: brandColor }} value={expectedSalaryMax} onChange={(e) => setExpectedSalaryMax(e.target.value)} placeholder="30000" />
+                <input
+                  className="w-32 rounded-md border px-3 py-2 text-sm focus:ring-2"
+                  style={{ outlineColor: brandColor }}
+                  value={expectedSalaryMax}
+                  onChange={(e) => setExpectedSalaryMax(e.target.value.replace(/\D+/g, ""))}
+                  placeholder="30000"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  aria-invalid={Boolean(salaryErrorMessage)}
+                />
               </div>
+              {salaryErrorMessage && (
+                <p className="text-xs text-red-600 mt-1">{salaryErrorMessage}</p>
+              )}
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">

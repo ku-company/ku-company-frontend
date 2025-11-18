@@ -235,6 +235,22 @@ export default function DashboardPage() {
   /* ---------------------------------
      CREATE FORM VALIDATION
   ---------------------------------- */
+  const salaryMinValue = cSalaryMin === "" ? null : Number(cSalaryMin);
+  const salaryMaxValue = cSalaryMax === "" ? null : Number(cSalaryMax);
+  const salaryNotPositive =
+    (salaryMinValue !== null && salaryMinValue <= 0) ||
+    (salaryMaxValue !== null && salaryMaxValue <= 0);
+  const salaryOrderInvalid =
+    salaryMinValue !== null &&
+    salaryMaxValue !== null &&
+    salaryMinValue >= salaryMaxValue;
+  const salaryErrorMessage =
+    salaryNotPositive
+      ? "Salary must be greater than zero."
+      : salaryOrderInvalid
+      ? "Minimum salary must be lower than maximum salary."
+      : "";
+
   const canCreate = Boolean(
     cTitle &&
       cPosition &&
@@ -243,11 +259,10 @@ export default function DashboardPage() {
       cJobType &&
       cLocation &&
       cWorkType &&
-      cSalaryMin !== "" &&
-      cSalaryMax !== "" &&
-      Number(cSalaryMin) > 0 &&
-      Number(cSalaryMax) > 0 &&
-      Number(cSalaryMin) <= Number(cSalaryMax)
+      salaryMinValue !== null &&
+      salaryMaxValue !== null &&
+      !salaryNotPositive &&
+      !salaryOrderInvalid
   );
 
   const createSubmit = (e: React.FormEvent) => {
@@ -382,18 +397,27 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <input
                     value={cSalaryMin}
-                    onChange={(e) => setCSalaryMin(e.target.value)}
+                    onChange={(e) => setCSalaryMin(e.target.value.replace(/\D+/g, ""))}
                     placeholder="18000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-28 rounded-md border px-3 py-2 text-sm focus:ring-black"
+                    aria-invalid={Boolean(salaryErrorMessage)}
                   />
                   <span>-</span>
                   <input
                     value={cSalaryMax}
-                    onChange={(e) => setCSalaryMax(e.target.value)}
+                    onChange={(e) => setCSalaryMax(e.target.value.replace(/\D+/g, ""))}
                     placeholder="30000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-28 rounded-md border px-3 py-2 text-sm focus:ring-black"
+                    aria-invalid={Boolean(salaryErrorMessage)}
                   />
                 </div>
+                {salaryErrorMessage && (
+                  <p className="text-xs text-red-600 mt-1">{salaryErrorMessage}</p>
+                )}
               </div>
             </div>
 
