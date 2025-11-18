@@ -12,6 +12,8 @@ import { toast } from "react-toastify";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import GoogleConsentModal from "@/components/GoogleConsentModal";
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -33,7 +35,12 @@ export default function RegisterPage() {
   const [pendingGoogleStudentId, setPendingGoogleStudentId] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "stdId") {
+      setForm({ ...form, [name]: value.replace(/\D/g, "") });
+      return;
+    }
+    setForm({ ...form, [name]: value });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,6 +49,20 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      if (form.password.length < MIN_PASSWORD_LENGTH) {
+        setLoading(false);
+        const msg = "Password must be at least 8 characters.";
+        toast.error(msg);
+        setError(msg);
+        return;
+      }
+      if (form.password !== form.confirm_password) {
+        setLoading(false);
+        const msg = "Passwords do not match.";
+        toast.error(msg);
+        setError(msg);
+        return;
+      }
       if (!acceptedTerms) {
         setLoading(false);
         toast.error("Please agree to the Terms before signing up.");
@@ -136,6 +157,8 @@ export default function RegisterPage() {
               placeholder="Student ID"
               value={form.stdId}
               onChange={handleChange}
+              inputMode="numeric"
+              pattern="[0-9]*"
               className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
             />
 
@@ -167,6 +190,7 @@ export default function RegisterPage() {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
               <input
@@ -175,6 +199,7 @@ export default function RegisterPage() {
                 placeholder="Confirm password"
                 value={form.confirm_password}
                 onChange={handleChange}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>

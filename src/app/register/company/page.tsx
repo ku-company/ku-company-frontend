@@ -12,6 +12,8 @@ import { toast } from "react-toastify";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import GoogleConsentModal from "@/components/GoogleConsentModal";
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function RegisterCompanyPage() {
   const router = useRouter();
   const { login } = useAuth(); 
@@ -37,6 +39,14 @@ export default function RegisterCompanyPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      setLoading(false);
+      const msg = "Password must be at least 8 characters.";
+      toast.error(msg);
+      setError(msg);
+      return;
+    }
 
     if (form.password !== form.confirm_password) {
       setLoading(false);
@@ -188,6 +198,7 @@ export default function RegisterCompanyPage() {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
               <input
@@ -196,6 +207,7 @@ export default function RegisterCompanyPage() {
                 placeholder="Confirm password"
                 value={form.confirm_password}
                 onChange={handleChange}
+                minLength={MIN_PASSWORD_LENGTH}
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>

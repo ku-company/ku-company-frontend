@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [cSalaryMax, setCSalaryMax] = useState<string>("");
   const [cWorkType, setCWorkType] = useState<string>("");
   const [cExpiredAt, setCExpiredAt] = useState<string>("");
+  const digitsOnly = (value: string) => value.replace(/\D/g, "");
 
   function toBackendJobType(label?: string): string | undefined {
     if (!label) return undefined;
@@ -234,6 +235,17 @@ export default function DashboardPage() {
   /* ---------------------------------
      CREATE FORM VALIDATION
   ---------------------------------- */
+  const parsedSalaryMin =
+    cSalaryMin === "" ? NaN : Number(cSalaryMin);
+  const parsedSalaryMax =
+    cSalaryMax === "" ? NaN : Number(cSalaryMax);
+  const salaryRangeInvalid =
+    cSalaryMin !== "" &&
+    cSalaryMax !== "" &&
+    (parsedSalaryMin <= 0 ||
+      parsedSalaryMax <= 0 ||
+      parsedSalaryMin >= parsedSalaryMax);
+
   const canCreate = Boolean(
     cTitle &&
       cPosition &&
@@ -244,9 +256,9 @@ export default function DashboardPage() {
       cWorkType &&
       cSalaryMin !== "" &&
       cSalaryMax !== "" &&
-      Number(cSalaryMin) > 0 &&
-      Number(cSalaryMax) > 0 &&
-      Number(cSalaryMin) <= Number(cSalaryMax)
+      !Number.isNaN(parsedSalaryMin) &&
+      !Number.isNaN(parsedSalaryMax) &&
+      !salaryRangeInvalid
   );
 
   const createSubmit = (e: React.FormEvent) => {
@@ -404,14 +416,16 @@ export default function DashboardPage() {
 
               <div className="grid gap-1">
                 <label className="text-sm font-medium text-gray-700">
-                  Expected Salary (Min – Max)
+                  Expected Salary (Min - Max)
                 </label>
 
                 <div className="flex items-center gap-2">
                   <input
                     value={cSalaryMin}
-                    onChange={(e) => setCSalaryMin(e.target.value)}
+                    onChange={(e) => setCSalaryMin(digitsOnly(e.target.value))}
                     placeholder="18000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-28 rounded-md border px-3 py-2 text-sm
                         focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
                   />
@@ -420,12 +434,19 @@ export default function DashboardPage() {
 
                   <input
                     value={cSalaryMax}
-                    onChange={(e) => setCSalaryMax(e.target.value)}
+                    onChange={(e) => setCSalaryMax(digitsOnly(e.target.value))}
                     placeholder="30000"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-28 rounded-md border px-3 py-2 text-sm
                         focus:outline-none focus:ring-1 focus:ring-black !focus:ring-black !focus:border-black"
                   />
                 </div>
+                {salaryRangeInvalid && (
+                  <p className="text-xs text-red-600">
+                    Enter numbers only. Minimum salary must be lower than the maximum salary.
+                  </p>
+                )}
               </div>
             </div>
 
