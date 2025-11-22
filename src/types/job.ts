@@ -1,10 +1,1 @@
-export interface Job {
-  id: string;
-  position: string;
-  company: string;
-  location: string;
-  type: string;
-  logo: string | null;
-  posteddayagos: number;
-  description: string;
-}
+export type { HomeJobPosting as Job } from "@/api/home";

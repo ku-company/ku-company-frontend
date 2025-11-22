@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import RoleSelectModal from "@/components/roleselector";
 import { loginUser } from "@/api/login";
 import { useAuth } from "@/context/AuthContext";
+import { normalizeRole } from "@/api/session";
+import { createProfessorProfile } from "@/api/professorprofile";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,9 +29,32 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await loginUser(form);
+      const res = await toast.promise(
+        loginUser(form),
+        {
+          pending: "Logging in…",
+          success: "Logged in",
+          error: "Login failed",
+        }
+      );
       login(res.data);
-      router.push("/"); // main page will now bootstrap the session
+
+      // If professor, ensure profile exists (workaround for backend bug)
+      try {
+        const roleNorm = normalizeRole(res?.data?.roles);
+        if (roleNorm === "professor") {
+          await createProfessorProfile({ department: "computer", faculty: "engineering" });
+        }
+      } catch (e) {
+        console.warn("Professor profile auto-create skipped:", e);
+      }
+      notify.success("Welcome back!");
+      const roleNorm = normalizeRole(res?.data?.roles || res?.data?.role);
+      if (roleNorm === "company") {
+        router.push("/company/home");
+      } else {
+        router.push("/"); // main page will now bootstrap the session
+      }
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {

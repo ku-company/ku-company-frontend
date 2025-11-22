@@ -1,28 +1,14 @@
+import { API_BASE, buildInit } from "./base";
 
+export type ApplicationStatus = "Approved" | "Rejected" | "Pending" | "Confirmed";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:8000";
-
-
-function buildInit(init: RequestInit = {}): RequestInit {
-  const token = (typeof window !== "undefined")
-    ? localStorage.getItem("access_token")
-    : null;
-
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(init.headers || {}),
-  };
-
-  return {
-    credentials: "include", // <<< important for cookie-based auth
-    ...init,
-    headers,
-  };
+function normalizeStatus(value: string | null | undefined): ApplicationStatus {
+  const lower = (value || "").toLowerCase();
+  if (lower === "confirmed" || lower === "confirm") return "Confirmed";
+  if (lower === "approved" || lower === "approve") return "Approved";
+  if (lower === "rejected" || lower === "reject") return "Rejected";
+  return "Pending";
 }
-
 
 export async function getAllApplications() {
   const res = await fetch(`${API_BASE}/api/company/job-applications`, buildInit());
@@ -34,24 +20,26 @@ export async function getAllApplications() {
   const json = await res.json().catch(() => ({}));
   console.log("Job Applications fetched:", json);
   // Transform backend data into Application format
-  const formatted = json.data.map((app: any) => ({
-    id: app.id,
-    name: app.name,
-    email: app.email,
-    position: app.position.replace(/_/g, " "), // make it readable
-    appliedDate: new Date(app.applied_at).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-    resumeLink: app.resume_url ?? "",
-    status: app.company_send_status
-  }));
+  const formatted = (Array.isArray(json?.data) ? json.data : []).map((app: any) => {
+    // Backend includes employee user id as user_id via transformJobApplication
+    const applicantUserId = app?.user_id ?? app?.employee?.user?.id ?? null;
+    const normalizedStatus = normalizeStatus(app?.company_send_status ?? app?.status);
+    return {
+      id: app.id,
+      name: app.name,
+      email: app.email,
+      position: String(app.position || "").replace(/_/g, " "),
+      appliedDate: app.applied_at ? new Date(app.applied_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "",
+      resumeLink: app.resume_url ?? "",
+      status: normalizedStatus,
+      applicant_user_id: applicantUserId || undefined,
+    };
+  });
 
   return formatted;
 }
 
-export function updateApplicationStatus(id: number, status: "Approved" | "Rejected" | "Pending") {
+export function updateApplicationStatus(id: number, status: ApplicationStatus) {
   return fetch(
     `${API_BASE}/api/company/job-applications/${id}/status`,
     buildInit({

@@ -1,4 +1,6 @@
-export const API_BASE = "http://localhost:8000";
+import { getApiBaseUrl } from "@/lib/apiBase";
+
+export const API_BASE = getApiBaseUrl();
 
 // Helper to include authorization headers (if tokens exist)
 export function getAuthHeaders(): HeadersInit {
@@ -9,6 +11,8 @@ export function getAuthHeaders(): HeadersInit {
 // Wrapper for fetch initialization
 export function buildInit(init: RequestInit = {}): RequestInit {
   return {
+    // Always include cookies for auth-backed endpoints
+    credentials: init.credentials ?? "include",
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),

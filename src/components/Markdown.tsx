@@ -9,7 +9,7 @@ type Props = {
 
 function renderInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  let rest = text;
+  const rest = text;
 
   // Simple link pattern: [label](url)
   const linkRe = /\[([^\]]+)\]\(([^\s)]+)\)/g;
@@ -22,7 +22,7 @@ function renderInline(text: string): React.ReactNode[] {
       nodes.push(<code key={`code-${i}`}>{segment}</code>);
     } else {
       // Within non-code segment apply bold, italic, links
-      let parts: (string | React.ReactNode)[] = [];
+      const parts: (string | React.ReactNode)[] = [];
       let lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = linkRe.exec(segment))) {
@@ -139,8 +139,10 @@ export default function Markdown({ content, className }: Props) {
           case "h6": {
             const L = b.type;
             const Tag = L as any;
-            const cls = "text-gray-900 font-semibold" + (L === "h1" ? " text-2xl" : L === "h2" ? " text-xl" : L === "h3" ? " text-lg" : "");
-            return <Tag key={i} className={cls + " break-words"}>{renderInline(b.text)}</Tag>;
+            const size = L === "h1" ? " text-2xl" : L === "h2" ? " text-xl" : L === "h3" ? " text-lg" : "";
+            const spacing = L === "h1" ? " mt-4 mb-2" : L === "h2" ? " mt-3 mb-2" : " mt-2 mb-1";
+            const cls = "text-gray-900 font-semibold" + size + spacing + " break-words";
+            return <Tag key={i} className={cls}>{renderInline(b.text)}</Tag>;
           }
         }
       })}

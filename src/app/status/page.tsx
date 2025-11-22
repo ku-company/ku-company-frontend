@@ -1,18 +1,40 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { API_BASE, buildInit, unwrap } from "@/api/base";
+import { API_BASE, buildInit } from "@/api/base";
+import notify from "@/lib/toast";
+
+/* ---------- Types ---------- */
+type UIStatus = "Approved" | "Confirmed" | "Declined" | "Pending";
 
 type Application = {
   id: number;
   company_name: string;
+  company_user_id?: number;
   position: string;
+  job_title: string;
+  job_id?: number;
   applied_date: string;
-  status: "Offered" | "Confirmed" | "Declined" | "Pending";
+  status: UIStatus;     // สถานะที่แสดงในตาราง
+  canConfirm: boolean;  // อนุญาตให้กด Confirm หรือไม่ (บริษัทต้อง approved/confirmed)
 };
 
 const API_URL = `${API_BASE}/api`;
 
+/* ---------- UI helpers ---------- */
+function StatusBadge({ status }: { status: UIStatus }) {
+  const base = "px-3 py-1 rounded-md text-sm font-semibold";
+  if (status === "Approved")
+    return <span className={`${base} bg-yellow-100 text-yellow-800 border border-yellow-300`}>Approved</span>;
+  if (status === "Confirmed")
+    return <span className={`${base} bg-green-100 text-green-700 border border-green-300`}>Confirmed</span>;
+  if (status === "Pending")
+    return <span className={`${base} bg-gray-100 text-gray-700 border border-gray-300`}>Pending</span>;
+  return <span className={`${base} bg-red-100 text-red-700 border border-red-300`}>Declined</span>;
+}
+
+/* ---------- Page ---------- */
 export default function AppliedCompanyStatusPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,157 +42,187 @@ export default function AppliedCompanyStatusPage() {
 
   useEffect(() => {
     const fetchApplications = async () => {
-      if (!isReady) return; // wait until auth has loaded
+      if (!isReady) return;
       if (!user) {
-        console.warn("⚠️ No user context. Please log in first.");
         setLoading(false);
         return;
       }
-
-      console.log("🚀 Starting fetchApplications...");
-      console.log("👤 Authenticated user present; fetching applications...");
 
       try {
         const res = await fetch(
           `${API_URL}/employee/my-applications`,
           buildInit({ method: "GET", credentials: "include" })
         );
-
-        console.log("📨 Response received. Status:", res.status);
-
         if (!res.ok) {
-          const text = await res.text();
-
-          // ✅ Handle case: "No applications found"
-          if (res.status === 400 && text.includes("No applications found")) {
-            console.warn("ℹ️ No applications found for this user.");
-            setApplications([]); // safe fallback
+          const raw = await res.text().catch(() => "");
+          let message = "";
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.message || "";
+          } catch {}
+          // Gracefully handle "No applications found" without noisy console errors
+          if (res.status === 400 && /no applications found/i.test(message || raw)) {
+            setApplications([]);
             setLoading(false);
             return;
           }
-
-          console.error("❌ Request failed:", res.status, text);
+          console.warn("Request for my-applications failed:", res.status, message || raw);
           setLoading(false);
           return;
         }
 
         const json = await res.json();
-        const raw = unwrap<any[]>(json) || [];
-        const mapped: Application[] = raw.map((a: any) => {
-          const position = a?.job_post?.position ?? "";
-          const companyName = a?.job_post?.company?.company_name ?? a?.job_post?.company_name ?? "";
+        const data: any[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+
+        const mapped: Application[] = data.map((a) => {
+          const position =
+            a?.job_post?.position ??
+            a?.job_post?.job_title ??
+            a?.position ??
+            "—";
+
+          const jobTitle =
+            a?.job_post?.job_title ??
+            a?.job_post?.position ??
+            a?.position ??
+            "—";
+
+          const companyName =
+            a?.job_post?.company?.company_name ??
+            a?.job_post?.company_name ??
+            `Company #${a?.job_post?.company_id ?? "-"}`;
+
+          const companyUserId = a?.job_post?.company?.user_id ?? a?.job_post?.company_user_id ?? null;
+          const jobPostingId =
+            a?.job_post?.id ??
+            a?.job_post?.job_posting_id ??
+            a?.job_post?.job_id ??
+            a?.job_post_id ??
+            a?.job_posting_id ??
+            null;
+
           const appliedAt = a?.applied_at ?? a?.created_at ?? null;
-          const emp = (a?.employee_send_status ?? "").toString();
-          const comp = (a?.company_send_status ?? "").toString();
-          let status: Application["status"] = "Pending";
-          if (emp === "Confirmed") status = "Confirmed";
-          else if (emp === "Rejected") status = "Declined";
-          else if (comp === "Confirmed") status = "Offered";
+
+          const emp = (a?.employee_send_status ?? "").toString().toLowerCase();
+          const comp = (a?.company_send_status ?? "").toString().toLowerCase();
+
+          // สถานะสำหรับคอลัมน์ UI
+          let status: UIStatus = "Pending";
+          if (emp === "confirmed") status = "Confirmed";
+          else if (emp === "rejected") status = "Declined";
+          else if (comp === "approved" || comp === "confirmed") status = "Approved";
+
+          // อนุญาตให้กด Confirm เมื่อบริษัทเป็น approved หรือ confirmed
+          const canConfirm = comp === "approved" || comp === "confirmed";
+
           return {
             id: Number(a?.id ?? 0),
-            company_name: companyName || "—",
-            position: position || "—",
+            company_name: companyName,
+            company_user_id: companyUserId || undefined,
+            job_id: jobPostingId || undefined,
+            position,
+            job_title: jobTitle,
             applied_date: appliedAt ? new Date(appliedAt).toLocaleDateString() : "—",
             status,
+            canConfirm,
           };
         });
-        console.log("✅ Application data mapped:", mapped);
+
         setApplications(mapped);
       } catch (err) {
         console.error("🔥 Error while fetching applications:", err);
       } finally {
         setLoading(false);
-        console.log("✅ Fetch complete.");
       }
     };
 
     fetchApplications();
   }, [user, isReady]);
 
-  // ──────────────────────── Confirm handler ────────────────────────
+  /* ---------- Actions ---------- */
+  const cancelOtherApplicationsBeforeConfirm = async (selectedId: number) => {
+    const toCancel = applications.filter(
+      (app) =>
+        app.id !== selectedId &&
+        (app.status === "Pending" || app.status === "Approved")
+    );
+
+    for (const app of toCancel) {
+      try {
+        const res = await fetch(
+          `${API_URL}/employee/cancel-application/${app.id}`,
+          buildInit({ method: "DELETE", credentials: "include" })
+        );
+        if (!res.ok) {
+          const msg = await res.text().catch(() => "Cancel failed");
+          notify.error(`Cancel failed for ${app.position}: ${msg}`);
+          return false;
+        }
+        setApplications((prev) => prev.filter((item) => item.id !== app.id));
+      } catch (err) {
+        console.error("Cancel before confirm error:", err);
+        notify.error("Failed to cancel other applications. Please try again.");
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleConfirm = async (id: number) => {
     if (!user) return;
-
-    console.log("🟢 Confirming job application:", id);
     try {
-      // As a student, confirmation should hit the employee endpoint
+      const cancelled = await cancelOtherApplicationsBeforeConfirm(id);
+      if (!cancelled) return;
+
       const res = await fetch(
         `${API_URL}/employee/job-applications/${id}/confirm`,
         buildInit({ method: "POST", credentials: "include" })
       );
 
-      console.log("Confirm Response:", res.status);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Confirm failed:", text);
-        return;
+      if (res.ok) {
+        setApplications((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, status: "Confirmed", canConfirm: false } : a))
+        );
+        notify.success("Status updated: Confirmed");
+      } else {
+        const msg = await res.text();
+        console.error("Confirm failed:", msg);
+        try {
+          const j = JSON.parse(msg);
+          notify.error(j?.message || msg);
+        } catch {
+          notify.error(msg);
+        }
       }
-
-      setApplications((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: "Confirmed" } : a))
-      );
-      console.log("✅ Confirmed successfully.");
     } catch (err) {
       console.error("Confirm error:", err);
+      notify.error("Confirm failed. Please try again.");
     }
   };
 
-  // ──────────────────────── Cancel handler ────────────────────────
   const handleCancel = async (id: number) => {
     if (!user) return;
-
-    console.log("🔴 Cancelling job application:", id);
     try {
       const res = await fetch(
         `${API_URL}/employee/cancel-application/${id}`,
         buildInit({ method: "DELETE", credentials: "include" })
       );
-
-      console.log("Cancel Response:", res.status);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Cancel failed:", text);
-        return;
+      if (res.ok) {
+        setApplications((prev) => prev.filter((a) => a.id !== id));
+        notify.success("Application cancelled");
+      } else {
+        const msg = await res.text();
+        console.error("Cancel failed:", msg);
+        notify.error("Cancel failed: " + msg);
       }
-
-      // Backend deletes the application; remove it from the list
-      setApplications((prev) => prev.filter((a) => a.id !== id));
-      console.log("✅ Application cancelled and removed.");
     } catch (err) {
       console.error("Cancel error:", err);
+      notify.error("Cancel failed. Please try again.");
     }
   };
 
-  // ──────────────────────── Status badge ────────────────────────
-  const StatusBadge = ({ status }: { status: Application["status"] }) => {
-    const base = "px-3 py-1 rounded-md text-sm font-semibold";
-    if (status === "Offered")
-      return (
-        <span className={`${base} bg-yellow-100 text-yellow-800 border border-yellow-300`}>
-          Offered
-        </span>
-      );
-    if (status === "Confirmed")
-      return (
-        <span className={`${base} bg-green-100 text-green-700 border border-green-300`}>
-          Confirmed
-        </span>
-      );
-    if (status === "Pending")
-      return (
-        <span className={`${base} bg-gray-100 text-gray-700 border border-gray-300`}>
-          Pending
-        </span>
-      );
-    return (
-      <span className={`${base} bg-red-100 text-red-700 border border-red-300`}>
-        Declined
-      </span>
-    );
-  };
-
-  // ──────────────────────── Loading State ────────────────────────
-  if (loading || !isReady)
+  /* ---------- UI ---------- */
+  if (loading || !isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
         <div>
@@ -179,22 +231,20 @@ export default function AppliedCompanyStatusPage() {
         </div>
       </div>
     );
+  }
 
-  // ──────────────────────── Not Logged In ────────────────────────
-  if (!user)
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600 text-lg">
         Please log in to view your applications.
       </div>
     );
+  }
 
-  // ──────────────────────── Main UI ────────────────────────
   return (
     <main className="min-h-screen bg-gray-50 py-10 font-sans">
       <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-10 border border-gray-100">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-8">
-          Applied Company Status
-        </h1>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Applied Company Status</h1>
 
         {applications.length === 0 ? (
           <p className="text-center text-gray-500 py-10">No applications found.</p>
@@ -205,6 +255,7 @@ export default function AppliedCompanyStatusPage() {
                 <tr className="bg-[#558E46] text-white text-left">
                   <th className="p-4">Company</th>
                   <th className="p-4">Position</th>
+                  <th className="p-4">Job Title</th>
                   <th className="p-4">Applied Date</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 text-center">Action</th>
@@ -213,22 +264,46 @@ export default function AppliedCompanyStatusPage() {
               <tbody>
                 {applications.map((app) => (
                   <tr key={app.id} className="border-b hover:bg-gray-50 transition">
-                    <td className="p-4 font-medium">{app.company_name}</td>
+                    <td className="p-4 font-medium">
+                      {app.company_user_id ? (
+                        <Link className="hover:underline cursor-pointer" href={`/profile/${app.company_user_id}`} target="_blank" rel="noopener noreferrer">
+                          {app.company_name}
+                        </Link>
+                      ) : (
+                        app.company_name
+                      )}
+                    </td>
                     <td className="p-4">{app.position}</td>
                     <td className="p-4">
-                      <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">
-                        {app.applied_date}
-                      </span>
+                      {app.job_id ? (
+                        <Link
+                          className="text-emerald-700 hover:underline"
+                          href={`/job/${app.job_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {app.job_title}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-500">{app.job_title || "—"}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-gray-100 rounded-md px-3 py-1 text-sm">{app.applied_date}</span>
                     </td>
                     <td className="p-4">
                       <StatusBadge status={app.status} />
                     </td>
                     <td className="p-4 text-center">
-                      {app.status === "Offered" ? (
+                      {app.status === "Approved" ? (
                         <div className="flex justify-center gap-3">
                           <button
-                            onClick={() => handleConfirm(app.id)}
-                            className="bg-[#558E46] text-white px-3 py-1 rounded-md hover:bg-[#4a7b3d] transition"
+                            onClick={() => (app.canConfirm ? handleConfirm(app.id) : undefined)}
+                            disabled={!app.canConfirm}
+                            title={!app.canConfirm ? "Company must confirm before you can confirm." : undefined}
+                            className={`px-3 py-1 rounded-md text-white transition ${
+                              app.canConfirm ? "bg-[#558E46] hover:bg-[#4a7b3d]" : "bg-gray-300 cursor-not-allowed"
+                            }`}
                           >
                             Confirm
                           </button>

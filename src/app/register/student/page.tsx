@@ -4,14 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
+import LoadingOverlay from "@/components/LoadingOverlay";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
+    stdId: "",
     email: "",
     user_name: "",
     password: "",
@@ -20,9 +28,17 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [pendingGoogleStudentId, setPendingGoogleStudentId] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name } = e.target;
+    let { value } = e.target;
+    if (name === "stdId") {
+      value = value.replace(/\D+/g, "");
+    }
+    setForm({ ...form, [name]: value });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,18 +47,47 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      if (!acceptedTerms) {
+        setLoading(false);
+        toast.error("Please agree to the Terms before signing up.");
+        setError("You must agree to the Terms before signing up.");
+        return;
+      }
+      const trimmedStdId = (form.stdId || "").trim();
       const payload = {
         ...form,
+        stdId: trimmedStdId || undefined,
         role: "Student",
+        pdpa_consent: acceptedTerms,
       };
 
-      await registerUser(payload);
+      const flow = async () => {
+        await registerUser(payload);
+        const res = await loginUser({ user_name: form.user_name, password: form.password });
+        login(res.data);
+      };
 
-      // redirect to login after success
-      router.push("/login");
+      await toast.promise(flow(), {
+        pending: "Creating your account…",
+        success: "Welcome to KU-Company!",
+        error: {
+          render({ data }) {
+            const err = data as any;
+            const msg = (err?.message as string) || "";
+            if (msg.toLowerCase().includes("stdid") || msg.toLowerCase().includes("student id")) {
+              return "This Student ID is already taken.";
+            }
+            return msg || "Sign up failed";
+          },
+        },
+      });
+
+      notify.success("Registration complete");
+      router.push("/");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
+      // toast.promise above already shows an error toast; no duplicate here
     } finally {
       setLoading(false);
     }
@@ -50,6 +95,12 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      {loading && (
+        <LoadingOverlay
+          title="Screening your account…"
+          subtitle="Please wait while we verify your account."
+        />
+      )}
       <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">
         {/* Register Form */}
         <div className="w-full md:w-1/2">
@@ -82,6 +133,18 @@ export default function RegisterPage() {
                 className="w-1/2 rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
               />
             </div>
+
+            {/* Student ID */}
+            <input
+              type="text"
+              name="stdId"
+              placeholder="Student ID (e.g., 6610545xxx)"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={form.stdId}
+              onChange={handleChange}
+              className="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-midgreen-500"
+            />
 
             {/* Email */}
             <input
@@ -123,6 +186,29 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Terms of Service consent */}
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                I have read and agree to the
+                {" "}
+                <Link
+                  href="/terms"
+                  className="text-midgreen-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service & Privacy (PDPA/GDPR)
+                </Link>
+                .
+              </span>
+            </label>
+
             {/* Submit */}
             <button
               type="submit"
@@ -134,8 +220,8 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => {
-                // Kick off Google signup for Student
-                window.location.href = buildGoogleSignupUrl("Student");
+                setPendingGoogleStudentId(form.stdId || "");
+                setShowGoogleModal(true);
               }}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
@@ -144,8 +230,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* Error messages */}
-          {error && <p className="mt-3 text-red-500 text-center">{error}</p>}
+          {/* Errors are surfaced via toast notifications */}
 
           {/* Login link */}
           <p className="mt-4 text-sm text-gray-600 text-center">
@@ -165,6 +250,31 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      <GoogleConsentModal
+        isOpen={showGoogleModal}
+        role="Student"
+        requireStudentId
+        initialStudentId={pendingGoogleStudentId}
+        onCancel={() => setShowGoogleModal(false)}
+        onConfirm={({ studentId }) => {
+          setShowGoogleModal(false);
+          const finalStdId = (studentId || pendingGoogleStudentId || "").trim();
+          if (!finalStdId) {
+            toast.error("Student ID is required to continue with Google.");
+            return;
+          }
+          try {
+            localStorage.setItem("pending_oauth_signup_student", "1");
+            localStorage.setItem("pending_oauth_signup_student_id", finalStdId);
+          } catch {}
+          window.location.href = buildGoogleSignupUrl("Student", {
+            studentId: finalStdId,
+            consent: true,
+            extraParams: { signup: "1" },
+          });
+        }}
+      />
     </div>
   );
 }

@@ -7,7 +7,10 @@ export type CartJob = {
   description?: string;
   jobType?: string;
   position?: string;
+  job_title?: string;
   available_position?: number;
+  company_name?: string;
+  company_location?: string;
   company?: { id?: number; company_name?: string; location?: string };
 };
 

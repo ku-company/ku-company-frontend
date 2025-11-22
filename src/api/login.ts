@@ -23,6 +23,7 @@ export async function loginUser(payload: LoginPayload): Promise<LoginResponse> {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify(payload),
     })
 

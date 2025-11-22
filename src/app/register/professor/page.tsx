@@ -4,10 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerUser } from "@/api/register";
+import { loginUser } from "@/api/login";
+import { useAuth } from "@/context/AuthContext";
 import { buildGoogleSignupUrl } from "@/api/oauth";
+import ProfessorOnboardingModal from "@/components/ProfessorOnboardingModal";
+import notify from "@/lib/toast";
+import { toast } from "react-toastify";
+import LoadingOverlay from "@/components/LoadingOverlay";
+import GoogleConsentModal from "@/components/GoogleConsentModal";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -20,6 +28,9 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -31,18 +42,42 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      if (!acceptedTerms) {
+        setLoading(false);
+        toast.error("Please agree to the Terms before signing up.");
+        setError("You must agree to the Terms before signing up.");
+        return;
+      }
       const payload = {
         ...form,
         role: "Professor",
+        pdpa_consent: acceptedTerms,
       };
 
-      await registerUser(payload);
+      const flow = async () => {
+        await registerUser(payload);
+        const res = await loginUser({ user_name: form.user_name, password: form.password });
+        login(res.data);
+      };
 
-      // redirect to login after success
-      router.push("/login");
+      await toast.promise(flow(), {
+        pending: "Creating your account…",
+        success: "Welcome!",
+        error: {
+          render({ data }) {
+            const err = data as any;
+            return (err?.message as string) || "Sign up failed";
+          },
+        },
+      });
+
+      // Show onboarding to collect faculty/department and create profile (required)
+      setShowOnboarding(true);
+      notify.success("Registration complete — please complete your profile");
     } catch (err: any) {
       console.error("Registration failed:", err);
       setError(err.message || "Something went wrong");
+      // toast.promise above already shows an error toast; no duplicate here
     } finally {
       setLoading(false);
     }
@@ -50,6 +85,12 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white px-4">
+      {loading && (
+        <LoadingOverlay
+          title="Screening your account…"
+          subtitle="Please wait while we verify your account.."
+        />
+      )}
       <div className="flex w-full max-w-5xl items-center justify-between bg-white p-10">
         {/* Register Form */}
         <div className="w-full md:w-1/2">
@@ -123,6 +164,29 @@ export default function RegisterPage() {
               />
             </div>
 
+            {/* Terms of Service consent */}
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                I have read and agree to the
+                {" "}
+                <Link
+                  href="/terms"
+                  className="text-midgreen-500 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms of Service & Privacy (PDPA/GDPR)
+                </Link>
+                .
+              </span>
+            </label>
+
             {/* Submit */}
             <button
               type="submit"
@@ -133,10 +197,7 @@ export default function RegisterPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                // Kick off Google signup for Professor
-                window.location.href = buildGoogleSignupUrl("Professor");
-              }}
+              onClick={() => setShowGoogleModal(true)}
               className="w-full flex items-center justify-center gap-2 rounded-full bg-black py-3 text-white font-semibold hover:bg-gray-800 transition"
             >
               <img src="/logos/google.png" alt="Google Logo" className="w-5 h-5" />
@@ -144,8 +205,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* Error messages */}
-          {error && <p className="mt-3 text-red-500 text-center">{error}</p>}
+          {/* Errors are surfaced via toast notifications */}
 
           {/* Login link */}
           <p className="mt-4 text-sm text-gray-600 text-center">
@@ -165,6 +225,32 @@ export default function RegisterPage() {
           />
         </div>
       </div>
+
+      <GoogleConsentModal
+        isOpen={showGoogleModal}
+        role="Professor"
+        onCancel={() => setShowGoogleModal(false)}
+        onConfirm={() => {
+          setShowGoogleModal(false);
+          window.location.href = buildGoogleSignupUrl("Professor", {
+            consent: true,
+            extraParams: { signup: "1" },
+          });
+        }}
+      />
+
+      <ProfessorOnboardingModal
+        isOpen={showOnboarding}
+        requireCompletion={true}
+        onClose={() => {
+          // Do nothing if requireCompletion; modal cannot be dismissed without saving
+          // Keeping state so user must complete.
+        }}
+        onCreated={() => {
+          // After profile creation, route to home
+          router.push("/");
+        }}
+      />
     </div>
   );
 }

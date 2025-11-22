@@ -34,6 +34,16 @@ function toBool(v: unknown): boolean {
 }
 
 /** Flattens your backend shape to our StudentProfile model. */
+function normalizeImageUrl(u: unknown): string | null {
+  if (!u) return null;
+  const str = String(u).trim();
+  if (!str) return null;
+  if (/^https?:\/\//i.test(str)) return str;
+  const base = API_BASE.replace(/\/+$/, "");
+  const path = str.startsWith("/") ? str : `/${str}`;
+  return `${base}${path}`;
+}
+
 function flattenBackendProfile(json: any): StudentProfile {
   const data = json?.data ?? json ?? {};
   const u = data?.user ?? {};
@@ -57,6 +67,9 @@ function flattenBackendProfile(json: any): StudentProfile {
     try { return String(v); } catch { return null; }
   };
 
+  const avatarSource = data?.avatar_url ?? u?.profile_image ?? u?.avatar_url ?? "";
+  const avatar_url = normalizeImageUrl(avatarSource) ?? "";
+
   return {
     id: data?.id ?? u?.id,
     user_name: u?.user_name ?? "",
@@ -66,7 +79,7 @@ function flattenBackendProfile(json: any): StudentProfile {
     first_name,
     last_name,
     full_name,
-    avatar_url: u?.profile_image || "",
+    avatar_url,
 
     bio: data?.summary ?? data?.bio ?? null,
     birthday: data?.birthDate ?? data?.birthday ?? null,

@@ -1,6 +1,4 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
-  "http://localhost:8000";
+import { API_BASE } from "./base";
 
 // Unwraps { message, data } or returns raw
 function unwrap<T>(p: any): T {
@@ -38,7 +36,7 @@ export async function fetchAuthMe() {
 
     const json = await res.json().catch(() => ({}));
     console.log("🟢 fetchAuthMe JSON:", json);
-    return unwrap<{ user_name?: string; email?: string; role?: string; roles?: string }>(json);
+    return unwrap<{ id?: number; user_name?: string; email?: string; role?: string; roles?: string }>(json);
   } catch (err) {
     // Network errors, CORS issues, or fetch being unavailable
     console.warn("⚠️ fetchAuthMe error (treated as logged out):", err);

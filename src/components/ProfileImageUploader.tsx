@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getEmployeeProfileImage,
   uploadEmployeeProfileImage,
@@ -22,33 +22,52 @@ type Props = {
   disabled?: boolean; // when true, hide/disable edit affordance
 };
 
+function normalizeUrl(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 export default function ProfileImageUploader({ kind, initialUrl, className, onUpdated, size, disabled = false }: Props) {
   const [hover, setHover] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [url, setUrl] = useState<string | null>(initialUrl ?? null);
+  const resolvedInitial = useMemo(() => normalizeUrl(initialUrl ?? null), [initialUrl]);
+  const [url, setUrl] = useState<string | null>(resolvedInitial);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync with backend on mount if no initialUrl provided
+  // Always try to hydrate from the API if we don't already have a usable URL.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (initialUrl) return;
+      if (resolvedInitial) return;
       try {
-        const u = kind === "employee" ? await getEmployeeProfileImage() : await getCompanyProfileImage();
-        if (!cancelled) setUrl(u);
+        const fetched = kind === "employee" ? await getEmployeeProfileImage() : await getCompanyProfileImage();
+        if (!cancelled && fetched) {
+          setUrl(fetched);
+        }
       } catch {
-        if (!cancelled) setUrl(null);
+        if (!cancelled) {
+          setUrl((prev) => prev ?? null);
+        }
       }
     })();
-    return () => { cancelled = true; };
-  }, [kind, initialUrl]);
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, resolvedInitial]);
 
-  useEffect(() => { setUrl(initialUrl ?? null); }, [initialUrl]);
+  // Keep local state in sync when parent provides a new URL (e.g., after profile refetch)
+  useEffect(() => {
+    if (resolvedInitial) {
+      setUrl(resolvedInitial);
+    } else if (initialUrl === null) {
+      setUrl(null);
+    }
+  }, [initialUrl, resolvedInitial]);
 
   async function handleFile(file: File) {
     setBusy(true);
     try {
-      // Decide POST or PATCH based on whether an image exists now
       const doPatch = !!url;
       const newUrl = kind === "employee"
         ? doPatch
@@ -58,13 +77,14 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
           ? await patchCompanyProfileImage(file)
           : await uploadCompanyProfileImage(file);
 
-      // After upload/patch, refetch current URL to ensure we have a fresh pre-signed link (if used)
       const refetched = kind === "employee" ? await getEmployeeProfileImage() : await getCompanyProfileImage();
-      const finalUrl = refetched || newUrl;
+      const finalUrl = refetched || newUrl || null;
 
       setUrl(finalUrl);
-      onUpdated?.(finalUrl);
-      // notify navbar and other listeners
+      if (finalUrl) {
+        onUpdated?.(finalUrl);
+      }
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent(PROFILE_IMAGE_UPDATED_EVENT, { detail: { url: finalUrl, kind } }));
       }
@@ -79,7 +99,6 @@ export default function ProfileImageUploader({ kind, initialUrl, className, onUp
     const f = e.target.files?.[0];
     if (!f) return;
     handleFile(f);
-    // reset input so the same file can be picked again
     e.currentTarget.value = "";
   }
 

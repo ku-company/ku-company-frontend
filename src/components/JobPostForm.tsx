@@ -1,112 +1,9 @@
-// "use client";
-
-// import { useState } from "react";
-
-// export default function JobPostForm({ onSubmit }: { onSubmit: (data: any) => void }) {
-//   const [position, setPosition] = useState("");
-//   const [title, setTitle] = useState("");
-//   const [details, setDetails] = useState("");
-//   const [positionsAvailable, setPositionsAvailable] = useState<number | "">("");
-
-//   function handleSubmit(e: React.FormEvent) {
-//     e.preventDefault();
-
-//     if (!position || !title || !details || !positionsAvailable) return;
-
-//     onSubmit({
-//       position,
-//       title,
-//       details,
-//       positionsAvailable,
-//     });
-
-//     // Reset form
-//     setPosition("");
-//     setTitle("");
-//     setDetails("");
-//     setPositionsAvailable("");
-//   }
-
-//   const isFormValid = position && title && details && positionsAvailable;
-
-//   return (
-//     <form
-//       onSubmit={handleSubmit}
-//       className="border border-midgreen-500 rounded-md p-4 space-y-4 bg-white"
-//     >
-//       {/* Position selector + Title */}
-//       <div className="flex items-center border rounded-md overflow-hidden">
-//         <select
-//           value={position}
-//           onChange={(e) => {
-//             const selected = e.target.value;
-//             setPosition(selected);
-//             // Auto-fill the title when choosing a position
-//             if (selected) {
-//               setTitle(selected);
-//             }
-//           }}
-//           className="px-3 py-2 border-r focus:outline-none"
-//         >
-//           <option value="">Choose Position</option>
-//           <option value="Machine Learning Engineer">Machine Learning Engineer</option>
-//           <option value="Software Engineer">Software Engineer</option>
-//           <option value="Data Scientist">Data Scientist</option>
-//         </select>
-//         <input
-//           type="text"
-//           placeholder="Enter job title"
-//           className="flex-1 px-3 py-2 focus:outline-none"
-//           value={title}
-//           onChange={(e) => setTitle(e.target.value)}
-//         />
-//       </div>
-
-//       {/* Details */}
-//       <textarea
-//         placeholder="More Details here......."
-//         className="w-full rounded-md border px-3 py-2 focus:outline-none h-28"
-//         value={details}
-//         onChange={(e) => setDetails(e.target.value)}
-//       />
-
-//       {/* Number of positions + Post button */}
-//       <div className="flex items-center justify-between">
-//         <label className="text-sm font-medium text-gray-800">
-//           Number of Positions Available
-//         </label>
-//         <div className="flex items-center gap-3">
-//           <input
-//             type="number"
-//             min={1}
-//             className="w-20 rounded-md border px-3 py-1 focus:outline-none"
-//             value={positionsAvailable}
-//             onChange={(e) =>
-//               setPositionsAvailable(e.target.value ? Number(e.target.value) : "")
-//             }
-//           />
-//           <button
-//             type="submit"
-//             disabled={!isFormValid}
-//             className={`px-4 py-2 rounded-md font-semibold transition ${
-//               isFormValid
-//                 ? "bg-midgreen text-white hover:bg-green-700"
-//                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
-//             }`}
-//           >
-//             Post
-//           </button>
-//         </div>
-//       </div>
-//     </form>
-//   );
-// }
 "use client";
 
 import { useState } from "react";
+import { POSITION_OPTIONS, PositionEnum } from "@/types/positions";
 
 export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void }) {
-  // enums จาก Prisma (ต้องตรง)
   const jobTypes = [
     { label: "Full Time", value: "FullTime" },
     { label: "Part Time", value: "PartTime" },
@@ -114,96 +11,110 @@ export default function JobPostForm({ onSubmit }: { onSubmit: (job: any) => void
     { label: "Contract", value: "Contract" },
   ];
 
-  const positions = [
-    { label: "Backend Developer", value: "Backend_Developer" },
-    { label: "Frontend Developer", value: "Frontend_Developer" },
-    { label: "Fullstack Developer", value: "Fullstack_Developer" },
-  ];
+  const positions = POSITION_OPTIONS;
 
   const [jobType, setJobType] = useState("Internship");
-  const [position, setPosition] = useState("Backend_Developer");
+  const [position, setPosition] = useState(PositionEnum.BackendDeveloper);
   const [details, setDetails] = useState("");
   const [positionsAvailable, setPositionsAvailable] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     onSubmit({
-      jobType,               // ส่งตรง enum จาก Prisma
-      title: position,       // ส่งตรง enum จาก Prisma
+      jobType,
+      title: position,
       details,
       positionsAvailable,
     });
+
     setDetails("");
     setPositionsAvailable(1);
   };
 
+  // ✨ Utility class เพื่อให้ขอบเป็นสีดำเสมอ
+  const inputStyle =
+    "border border-black rounded-md px-3 py-2 w-full " +
+    "focus:outline-none focus:border-black focus:ring-1 focus:ring-black " +
+    "!focus:border-black !focus:ring-black";
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="border rounded-md p-4 shadow-sm bg-white"
+      className="border border-black rounded-lg p-6 shadow-sm bg-white space-y-6"
     >
-      <div className="flex flex-col gap-3 mb-3">
-        {/* Job Type */}
-        <div>
-          <label className="block text-sm font-semibold mb-1">Job Type</label>
-          <select
-            className="border rounded-md px-2 py-1 w-full"
-            value={jobType}
-            onChange={(e) => setJobType(e.target.value)}
-          >
-            {jobTypes.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Position */}
-        <div>
-          <label className="block text-sm font-semibold mb-1">Position</label>
-          <select
-            className="border rounded-md px-2 py-1 w-full"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-          >
-            {positions.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-semibold mb-1">Description</label>
-          <textarea
-            placeholder="More Details here..."
-            className="w-full border rounded-md p-2"
-            rows={4}
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            required
-          />
-        </div>
+      {/* Job Type */}
+      <div>
+        <label className="block text-sm font-semibold mb-1">Job Type</label>
+        <select
+          className={inputStyle}
+          value={jobType}
+          onChange={(e) => setJobType(e.target.value)}
+        >
+          {jobTypes.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="flex items-center justify-between">
+      {/* Position */}
+      <div>
+        <label className="block text-sm font-semibold mb-1">Position</label>
+        <select
+          className={inputStyle}
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
+        >
+          {positions.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-semibold mb-1">Description</label>
+        <textarea
+          placeholder="More details here..."
+          className={
+            "border border-black rounded-md p-3 w-full " +
+            "focus:outline-none focus:border-black focus:ring-1 focus:ring-black " +
+            "!focus:border-black !focus:ring-black"
+          }
+          rows={4}
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          required
+        />
+      </div>
+
+      {/* Number of Positions */}
+      <div className="flex items-center justify-between pt-2">
         <label className="text-sm font-semibold">
           Number of Positions Available
         </label>
-        <div className="flex gap-2 items-center">
+
+        <div className="flex gap-3 items-center">
           <input
             type="number"
             min={1}
-            className="border rounded-md px-2 py-1 w-20 text-center"
+            className={
+              "border border-black rounded-md px-3 py-2 w-20 text-center " +
+              "focus:outline-none focus:border-black focus:ring-1 focus:ring-black " +
+              "!focus:border-black !focus:ring-black"
+            }
             value={positionsAvailable}
             onChange={(e) => setPositionsAvailable(Number(e.target.value))}
           />
+
           <button
             type="submit"
-            className="rounded-md bg-green-600 text-white px-4 py-1 hover:bg-green-700"
+            className="rounded-md bg-green-600 text-white px-5 py-2 
+                       hover:bg-green-700 transition"
           >
             Post
           </button>
