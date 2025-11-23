@@ -1,3 +1,5 @@
+import { toPlainText } from "@/utils/safeText";
+
 export type NotificationItem = {
   id: string;
   type: "application" | "announcement" | string;
@@ -31,5 +33,8 @@ export async function fetchNotifications(signal?: AbortSignal): Promise<Notifica
       ...item,
       id: String(item.id),
       version: String(item.version),
+      title: toPlainText(item.title, "Notification"),
+      body: toPlainText(item.body, "Notification update"),
+      status: item.status ? toPlainText(item.status, item.status) : undefined,
     }));
 }

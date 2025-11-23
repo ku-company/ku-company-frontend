@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_BASE } from "@/api/base";
+import { toPlainText } from "@/utils/safeText";
 
 type NotificationPayload = {
   id: string;
@@ -28,27 +29,36 @@ function normalizeApplications(applications: any[]): NotificationPayload[] {
     .filter((app) => app && typeof app === "object")
     .map((app) => {
       const id = Number(app?.id ?? 0);
-      const position =
+      const position = toPlainText(
         app?.job_post?.position ??
-        app?.job_post?.job_title ??
-        app?.position ??
-        "Position";
-      const companyName =
+          app?.job_post?.job_title ??
+          app?.position ??
+          "Position",
+        "Position",
+      );
+      const companyName = toPlainText(
         app?.job_post?.company?.company_name ??
-        app?.job_post?.company_name ??
-        `Company #${app?.job_post?.company_id ?? app?.company_id ?? "-"}`;
-      const status = toStatus(app);
+          app?.job_post?.company_name ??
+          `Company #${app?.job_post?.company_id ?? app?.company_id ?? "-"}`,
+        "Company",
+      );
+      const status = toPlainText(toStatus(app), "Pending");
       const timestamp =
         app?.employee_responded_at ??
         app?.company_responded_at ??
         app?.applied_at ??
         new Date().toISOString();
+      const title = toPlainText(
+        `Application for ${position} · ${companyName}`,
+        "Application update",
+      );
+      const body = toPlainText(`Status updated to ${status}`, "Status updated");
 
       return {
         id: `application:${id}`,
         type: "application",
-        title: `Application for ${position} · ${companyName}`,
-        body: `Status updated to ${status}`,
+        title,
+        body,
         status,
         timestamp,
         version: `${status}`,
@@ -73,23 +83,31 @@ function normalizeAnnouncements(announcements: any[]): NotificationPayload[] {
         profUser?.last_name,
       ].filter(Boolean);
       const fallbackName = profUser?.user_name ?? "Professor";
-      const author =
+      const author = toPlainText(
         nameParts.join(" ").trim() ||
-        fallbackName ||
-        "Professor announcement";
-      const content =
+          fallbackName ||
+          "Professor announcement",
+        "Professor announcement",
+      );
+      const content = toPlainText(
         typeof ann?.content === "string" && ann.content.trim().length > 0
           ? ann.content.trim()
-          : "New announcement posted.";
+          : "New announcement posted.",
+        "New announcement posted.",
+      );
       const timestamp =
         ann?.updated_at ??
         ann?.created_at ??
         new Date().toISOString();
+      const title = toPlainText(
+        `Announcement from ${author}`,
+        "Announcement",
+      );
 
       return {
         id: `announcement:${id}`,
         type: "announcement",
-        title: `Announcement from ${author}`,
+        title,
         body: content,
         timestamp,
         version: `${timestamp}`,

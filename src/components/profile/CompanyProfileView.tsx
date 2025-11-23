@@ -7,6 +7,7 @@ import EditCompanyProfileModal from "@/components/EditCompanyProfileModal";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
 import ProfileImageUploader from "@/components/ProfileImageUploader";
+import { toPlainText } from "@/utils/safeText";
 import { MapPinIcon, PhoneIcon, GlobeAltIcon, CheckBadgeIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { getAuthMe } from "@/api/user";
 import { buildInit, API_BASE } from "@/api/base";
@@ -29,6 +30,7 @@ function InfoRow({
   label: string;
   value: string;
 }) {
+  const safeValue = toPlainText(value, "-");
   return (
     <div className="flex items-start gap-3">
       <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full bg-gray-100 text-gray-700">
@@ -36,7 +38,7 @@ function InfoRow({
       </span>
       <div className="text-sm">
         <div className="text-gray-500">{label}</div>
-        <div className="font-medium text-gray-800">{value}</div>
+        <div className="font-medium text-gray-800">{safeValue}</div>
       </div>
     </div>
   );
@@ -198,11 +200,13 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
   }
 
   if (loading) return <div className="p-8 text-gray-600">Loading company profile…</div>;
-  if (!profileData && error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!profileData && error) return <div className="p-8 text-red-500">{toPlainText(error, "Error loading company profile")}</div>;
   if (!company) return <div className="p-8 text-gray-500">No profile found. Please create one.</div>;
 
   const roleLower = (user?.role ?? "").toLowerCase();
   const allowEdit = !readOnly && roleLower === "company";
+  const safeCompanyName = toPlainText(company.company_name ?? "Company", "Company");
+  const safeIndustry = toPlainText(company.industry ?? "-", "-");
 
   // Derived summary numbers
   const totalJobCount = jobs.length;
@@ -242,9 +246,9 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
             </div>
 
             <h2 className="mt-4 text-xl font-extrabold leading-6" style={{ color: GREEN }}>
-              {company.company_name}
+              {safeCompanyName}
             </h2>
-            <p className="text-sm text-gray-600">{company.industry}</p>
+            <p className="text-sm text-gray-600">{safeIndustry}</p>
             <div className="mt-2 inline-flex items-center gap-2">
               <span className="rounded-full bg-gray-50 px-2.5 py-0.5 text-xs text-gray-700 border">Company</span>
               {verified ? (
@@ -259,7 +263,7 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-4">
             <InfoRow icon={<GlobeAltIcon className="h-4 w-4" />} label="Country" value={company.country} />
             <InfoRow icon={<MapPinIcon className="h-4 w-4" />} label="Location" value={company.location} />
             <InfoRow icon={<PhoneIcon className="h-4 w-4" />} label="Telephone" value={company.tel} />
@@ -281,7 +285,7 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
               </button>
             )}
             <div className="mt-3 prose prose-sm max-w-none text-gray-700 leading-7">
-              <ReactMarkdown>{company.description || "_No description yet._"}</ReactMarkdown>
+              <ReactMarkdown skipHtml>{company.description?.trim() ? company.description : "_No description yet._"}</ReactMarkdown>
             </div>
           </div>
         </section>
@@ -308,38 +312,44 @@ export default function CompanyProfile({ readOnly = false, profileData, verified
                 No active job posts.
               </div>
             ) : (
-              jobs.map((job, i) => (
-                <div key={job.id || i} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: GREEN }}>
-                  <div className="flex items-start justify-between">
-                    <div className="pr-6">
-                      <div className="text-lg font-semibold leading-6">{job.job_title || job.position || "Untitled"}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                        {job.jobType ? <span className="rounded-full border px-2 py-0.5 text-gray-700">{String(job.jobType)}</span> : null}
-                        {job.work_place ? <span className="rounded-full border px-2 py-0.5 text-gray-700">{String(job.work_place)}</span> : null}
+              jobs.map((job, i) => {
+                const title = toPlainText(job.job_title ?? job.position ?? "Untitled", "Untitled");
+                const jobTypeLabel = job.jobType ? toPlainText(String(job.jobType), String(job.jobType)) : null;
+                const workplaceLabel = job.work_place ? toPlainText(String(job.work_place), String(job.work_place)) : null;
+                const postedAgoLabel = job.posted_ago ? toPlainText(job.posted_ago, job.posted_ago) : null;
+                return (
+                  <div key={job.id || i} className="rounded-2xl border bg-white p-4 shadow-sm" style={{ borderColor: GREEN }}>
+                    <div className="flex items-start justify-between">
+                      <div className="pr-6">
+                        <div className="text-lg font-semibold leading-6">{title}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                          {jobTypeLabel ? <span className="rounded-full border px-2 py-0.5 text-gray-700">{jobTypeLabel}</span> : null}
+                          {workplaceLabel ? <span className="rounded-full border px-2 py-0.5 text-gray-700">{workplaceLabel}</span> : null}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-700">Positions: {job.available_position ?? 1}</div>
+                        {(job.minimum_expected_salary || job.maximum_expected_salary) && (
+                          <div className="text-sm text-gray-700">Expected Salary: {job.minimum_expected_salary ?? "-"} - {job.maximum_expected_salary ?? "-"}</div>
+                        )}
                       </div>
-                      <div className="mt-2 text-sm text-gray-700">Positions: {job.available_position ?? 1}</div>
-                      {(job.minimum_expected_salary || job.maximum_expected_salary) && (
-                        <div className="text-sm text-gray-700">Expected Salary: {job.minimum_expected_salary ?? "-"} - {job.maximum_expected_salary ?? "-"}</div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {job.posted_ago ? (
-                        <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
-                          {job.posted_ago}
-                        </span>
-                      ) : job.created_at ? (
-                        <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
-                          {`${Math.max(
-                            0,
-                            Math.floor((Date.now() - new Date(job.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-                          )} day(s) ago`}
-                        </span>
-                      ) : null}
-                      <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-300 self-end">Active</span>
+                      <div className="flex flex-col items-end gap-2">
+                        {postedAgoLabel ? (
+                          <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
+                            {postedAgoLabel}
+                          </span>
+                        ) : job.created_at ? (
+                          <span className="rounded-full border px-2 py-0.5 text-xs text-gray-600">
+                            {`${Math.max(
+                              0,
+                              Math.floor((Date.now() - new Date(job.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+                            )} day(s) ago`}
+                          </span>
+                        ) : null}
+                        <span className="rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-300 self-end">Active</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

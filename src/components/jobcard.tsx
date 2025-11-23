@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Job } from "@/types/job";
+import { toPlainText } from "@/utils/safeText";
 
 interface JobCardProps {
   job: Job;
@@ -30,12 +31,16 @@ function sanitizeLocation(value?: string | null) {
 }
 
 export default function JobCard({ job, href }: JobCardProps) {
-  const title = job.job_title || job.position || "Untitled Role";
-  const companyName = job.company_name || "Company";
-  const location = sanitizeLocation(job.company_location) ?? sanitizeLocation(job.location);
-  const jobType = humanize(job.jobType);
-  const workplace = humanize(job.work_place);
-  const postedAgo = job.posted_ago ? `Posted ${job.posted_ago}` : "";
+  const title = toPlainText(job.job_title ?? job.position ?? "Untitled Role", "Untitled Role");
+  const companyName = toPlainText(job.company_name ?? "Company", "Company");
+  const locationRaw = sanitizeLocation(job.company_location) ?? sanitizeLocation(job.location);
+  const location = locationRaw ? toPlainText(locationRaw, locationRaw) : null;
+  const jobTypeRaw = humanize(job.jobType);
+  const jobType = jobTypeRaw ? toPlainText(jobTypeRaw, jobTypeRaw) : null;
+  const workplaceRaw = humanize(job.work_place);
+  const workplace = workplaceRaw ? toPlainText(workplaceRaw, workplaceRaw) : null;
+  const postedAgoText = job.posted_ago ? toPlainText(job.posted_ago, job.posted_ago) : "";
+  const postedAgo = postedAgoText ? `Posted ${postedAgoText}` : "";
   const positions = typeof job.available_position === "number" ? job.available_position : null;
   const minSalary = typeof job.minimum_expected_salary === "number" ? job.minimum_expected_salary : null;
   const maxSalary = typeof job.maximum_expected_salary === "number" ? job.maximum_expected_salary : null;

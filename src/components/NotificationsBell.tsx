@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BellIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/context/AuthContext";
 import { fetchNotifications, type NotificationItem } from "@/api/notifications";
+import { toPlainText } from "@/utils/safeText";
 
 type NotificationsBellProps = {
   onUnreadChange?: (count: number) => void;
@@ -166,24 +167,27 @@ export default function NotificationsBell({ onUnreadChange }: NotificationsBellP
             ) : (
               items.map((item) => {
                 const changed = seenMap[item.id] !== item.version;
+                const title = toPlainText(item.title, "Notification");
+                const body = toPlainText(item.body, "Details unavailable.");
+                const statusText = item.status ? toPlainText(item.status, item.status) : null;
                 return (
                   <div key={item.id} className="px-3 py-2 text-sm flex items-start gap-2">
                     {changed && <span className="mt-1 w-2 h-2 rounded-full bg-red-600" />}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-gray-800 font-medium">{item.title}</p>
+                        <p className="text-gray-800 font-medium">{title}</p>
                         <span className="text-[11px] text-gray-400 whitespace-nowrap">
                           {formatTimestamp(item.timestamp)}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-gray-600 text-sm line-clamp-2">{item.body}</p>
+                      <p className="mt-0.5 text-gray-600 text-sm line-clamp-2">{body}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${typePillClasses(item.type)}`}>
                           {item.type === "announcement" ? "Announcement" : "Application"}
                         </span>
-                        {item.status && (
+                        {statusText && (
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ${statusChipClasses(item.status)}`}>
-                            {item.status}
+                            {statusText}
                           </span>
                         )}
                       </div>

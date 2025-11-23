@@ -9,6 +9,7 @@ import ProfileImageUploader from "@/components/ProfileImageUploader";
 import { getAuthMe } from "@/api/user";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/context/AuthContext";
+import { toPlainText } from "@/utils/safeText";
 import {
   BuildingOfficeIcon,
   BuildingLibraryIcon,
@@ -26,7 +27,7 @@ function PillHeading({ children }: { children: React.ReactNode }) {
 }
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | null }) {
-  const display = (value ?? "").trim() ? value : "-";
+  const display = toPlainText((value ?? "").trim() ? value : "-", "-");
   return (
     <div className="flex items-start gap-3">
       <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-full bg-gray-100 text-gray-700">{icon}</span>
@@ -148,11 +149,18 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
 
   if (!profileData && !isReady) return <div className="p-8 text-gray-600">Preparing your session…</div>;
   if (loading) return <div className="p-8 text-gray-600">Loading professor profile…</div>;
-  if (!profileData && error) return <div className="p-8 text-red-500">{error}</div>;
+  if (!profileData && error) return <div className="p-8 text-red-500">{toPlainText(error, "Error loading profile")}</div>;
   if (!profile) return <div className="p-8 text-gray-500">No profile found. Please create or edit your profile.</div>;
 
-  const fullName = [profile.user?.first_name ?? "", profile.user?.last_name ?? ""].map((s) => (s || "").trim()).filter(Boolean).join(" ") || user?.user_name || "";
+  const fullName = toPlainText(
+    [profile.user?.first_name ?? "", profile.user?.last_name ?? ""]
+      .map((s) => (s || "").trim())
+      .filter(Boolean)
+      .join(" ") || user?.user_name || "Professor",
+    "Professor",
+  );
   const isVerified = Boolean(profile.user?.verified);
+  const position = toPlainText(profile.position ?? "-", "-");
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
@@ -175,7 +183,7 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
           <ProfileImageUploader kind="employee" initialUrl={profile.profile_image_url || null} onUpdated={() => { /* re-fetch not required for now */ }} disabled={true} />
             </div>
             <h2 className="mt-4 text-xl font-extrabold" style={{ color: GREEN }}>{fullName || "Professor"}</h2>
-            <p className="text-sm text-gray-600">{profile.position || "-"}</p>
+            <p className="text-sm text-gray-600">{position}</p>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-sm text-gray-600">Professor</span>
               {isVerified ? (
@@ -211,7 +219,7 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-80"><path d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="currentColor"/></svg>
             </button>
             <div className="mt-3 prose prose-sm max-w-none text-gray-700">
-              <ReactMarkdown>{profile.summary || "_No summary yet._"}</ReactMarkdown>
+              <ReactMarkdown skipHtml>{profile.summary?.trim() ? profile.summary : "_No summary yet._"}</ReactMarkdown>
             </div>
           </div>
 
@@ -236,14 +244,14 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
                 <div key={d.id} className="rounded-md border p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-sm text-gray-500">{d.institution || "Institution"}</div>
-                      <div className="text-base font-semibold text-gray-800">{d.title}</div>
-                      <div className="text-xs text-gray-500">{d.graduation_date || ""}</div>
+                      <div className="text-sm text-gray-500">{toPlainText(d.institution || "Institution", "Institution")}</div>
+                      <div className="text-base font-semibold text-gray-800">{toPlainText(d.title, "Degree")}</div>
+                      <div className="text-xs text-gray-500">{toPlainText(d.graduation_date || "", "")}</div>
                     </div>
                     {/* edit via modal; no inline actions */}
                   </div>
                   {d.description && (
-                    <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{d.description}</div>
+                    <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{toPlainText(d.description, d.description)}</div>
                   )}
                 </div>
               ))}
@@ -262,13 +270,13 @@ export default function ProfessorProfileView({ readOnly = false, profileData }: 
                             <div key={d.id} className="rounded-md border p-4">
                               <div className="flex items-start justify-between gap-4">
                                 <div>
-                                  <div className="text-sm text-gray-500">{d.institution || 'Institution'}</div>
-                                  <div className="text-base font-semibold text-gray-800">{d.title}</div>
-                                  <div className="text-xs text-gray-500">{d.graduation_date || ''}</div>
+                                  <div className="text-sm text-gray-500">{toPlainText(d.institution || 'Institution', 'Institution')}</div>
+                                  <div className="text-base font-semibold text-gray-800">{toPlainText(d.title, 'Degree')}</div>
+                                  <div className="text-xs text-gray-500">{toPlainText(d.graduation_date || '', '')}</div>
                                 </div>
                               </div>
                               {d.description && (
-                                <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{d.description}</div>
+                                <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{toPlainText(d.description, d.description)}</div>
                               )}
                             </div>
                           ))}
