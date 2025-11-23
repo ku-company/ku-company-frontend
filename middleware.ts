@@ -11,6 +11,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 const SANDBOX_CSP = "sandbox allow-same-origin allow-scripts";
 const DEFAULT_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const PREFLIGHT_MAX_AGE = 600; // 10 minutes
+const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 const RAW_ALLOWED_ORIGINS = (process.env.CORS_ALLOWLIST || process.env.NEXT_PUBLIC_APP_URL || "")
   .split(",")
@@ -52,17 +53,20 @@ function applySecurityHeaders(response: NextResponse) {
   return response;
 }
 
-function getAllowedOrigin(request: NextRequest): string | null {
-  const requestOriginHeader = request.headers.get("origin");
-  const normalizedHeader = normalizeOrigin(requestOriginHeader);
-
+function resolveAllowlist(request: NextRequest) {
   const currentOrigin = request.nextUrl.origin;
   const normalizedCurrent = normalizeOrigin(currentOrigin);
-
   const allowlist = new Map(STATIC_ALLOWED_ORIGINS);
   if (normalizedCurrent) {
     allowlist.set(normalizedCurrent, currentOrigin);
   }
+  return { allowlist, normalizedCurrent, currentOrigin };
+}
+
+function getAllowedOrigin(request: NextRequest): string | null {
+  const requestOriginHeader = request.headers.get("origin");
+  const normalizedHeader = normalizeOrigin(requestOriginHeader);
+  const { allowlist, normalizedCurrent, currentOrigin } = resolveAllowlist(request);
 
   if (normalizedHeader && allowlist.has(normalizedHeader)) {
     return allowlist.get(normalizedHeader) ?? null;
@@ -118,6 +122,27 @@ function finalizeResponse(request: NextRequest, response: NextResponse, options?
   return response;
 }
 
+function isTrustedStateChangingRequest(request: NextRequest): boolean {
+  const fetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
+  if (fetchSite === "same-origin" || fetchSite === "same-site" || fetchSite === "none") {
+    return true;
+  }
+
+  const { allowlist } = resolveAllowlist(request);
+  const normalizedOrigin = normalizeOrigin(request.headers.get("origin"));
+  if (normalizedOrigin && allowlist.has(normalizedOrigin)) {
+    return true;
+  }
+
+  const referer = request.headers.get("referer");
+  const normalizedReferer = normalizeOrigin(referer);
+  if (normalizedReferer && allowlist.has(normalizedReferer)) {
+    return true;
+  }
+
+  return false;
+}
+
 function isNavigationAttempt(request: NextRequest) {
   const dest = (request.headers.get("sec-fetch-dest") ?? "").toLowerCase();
   const mode = (request.headers.get("sec-fetch-mode") ?? "").toLowerCase();
@@ -132,6 +157,17 @@ function isNavigationAttempt(request: NextRequest) {
 }
 
 export function middleware(request: NextRequest) {
+  if (
+    STATE_CHANGING_METHODS.has(request.method.toUpperCase())
+    && !isTrustedStateChangingRequest(request)
+  ) {
+    const denied = NextResponse.json(
+      { message: "Cross-site requests are not allowed for this endpoint." },
+      { status: 403 },
+    );
+    return finalizeResponse(request, denied);
+  }
+
   if (request.method === "OPTIONS") {
     const preflight = new NextResponse(null, { status: 204 });
     return finalizeResponse(request, preflight, { preflight: true });
