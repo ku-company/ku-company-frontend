@@ -1,6 +1,17 @@
 const SECURE_COOKIE_NAME = "__Secure-access_token";
 const LEGACY_COOKIE_NAME = "access_token";
 
+type SameSiteMode = "Strict" | "Lax" | "None";
+
+type CookiePolicy = {
+  sameSite: SameSiteMode;
+};
+
+const COOKIE_POLICIES: Record<string, CookiePolicy> = {
+  [SECURE_COOKIE_NAME]: { sameSite: "Lax" },
+  [LEGACY_COOKIE_NAME]: { sameSite: "Lax" }, // legacy cookie remains aligned with backend expectation
+};
+
 function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(
@@ -9,9 +20,22 @@ function getCookie(name: string): string | null {
   return match && match[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function resolveSameSite(name: string): SameSiteMode {
+  const policy = COOKIE_POLICIES[name];
+  if (!policy) {
+    console.warn(`[cookie] Missing SameSite policy for "${name}". Defaulting to Lax.`);
+    return "Lax";
+  }
+  return policy.sameSite;
+}
+
 function writeCookie(name: string, value: string, maxAge: number, secure: boolean) {
   if (typeof document === "undefined") return;
-  const attributes = [`path=/`, `max-age=${maxAge}`, `SameSite=Lax`];
+  const attributes = [
+    `path=/`,
+    `max-age=${maxAge}`,
+    `SameSite=${resolveSameSite(name)}`,
+  ];
   if (secure) attributes.push("Secure");
   document.cookie = `${name}=${encodeURIComponent(value)}; ${attributes.join("; ")}`;
 }
