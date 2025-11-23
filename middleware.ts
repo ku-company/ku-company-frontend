@@ -12,6 +12,23 @@ const SANDBOX_CSP = "sandbox allow-same-origin allow-scripts";
 const DEFAULT_ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const PREFLIGHT_MAX_AGE = 600; // 10 minutes
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const SAFE_METHODS = new Set(["GET", "HEAD"]);
+const CSRF_HEADER_NAME = "x-ku-csrf";
+const CSRF_HEADER_VALUE = "1";
+const DISALLOWED_READ_DESTINATIONS = new Set([
+  "document",
+  "iframe",
+  "frame",
+  "embed",
+  "object",
+  "image",
+  "img",
+  "audio",
+  "video",
+  "track",
+  "style",
+  "font",
+]);
 
 const RAW_ALLOWED_ORIGINS = (process.env.CORS_ALLOWLIST || process.env.NEXT_PUBLIC_APP_URL || "")
   .split(",")
@@ -122,7 +139,15 @@ function finalizeResponse(request: NextRequest, response: NextResponse, options?
   return response;
 }
 
+function hasRequiredCsrfHeader(request: NextRequest) {
+  return (request.headers.get(CSRF_HEADER_NAME) ?? "").toLowerCase() === CSRF_HEADER_VALUE;
+}
+
 function isTrustedStateChangingRequest(request: NextRequest): boolean {
+  if (!hasRequiredCsrfHeader(request)) {
+    return false;
+  }
+
   const fetchSite = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
   if (fetchSite === "same-origin" || fetchSite === "same-site" || fetchSite === "none") {
     return true;
@@ -143,6 +168,29 @@ function isTrustedStateChangingRequest(request: NextRequest): boolean {
   return false;
 }
 
+function isTrustedReadRequest(request: NextRequest): boolean {
+  const dest = (request.headers.get("sec-fetch-dest") ?? "").toLowerCase();
+  if (DISALLOWED_READ_DESTINATIONS.has(dest)) {
+    return false;
+  }
+
+  const mode = (request.headers.get("sec-fetch-mode") ?? "").toLowerCase();
+  if (mode && mode !== "cors" && mode !== "same-origin") {
+    return false;
+  }
+
+  const site = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
+  if (site === "cross-site") {
+    const { allowlist } = resolveAllowlist(request);
+    const normalizedOrigin = normalizeOrigin(request.headers.get("origin"));
+    if (!normalizedOrigin || !allowlist.has(normalizedOrigin)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function isNavigationAttempt(request: NextRequest) {
   const dest = (request.headers.get("sec-fetch-dest") ?? "").toLowerCase();
   const mode = (request.headers.get("sec-fetch-mode") ?? "").toLowerCase();
@@ -157,6 +205,14 @@ function isNavigationAttempt(request: NextRequest) {
 }
 
 export function middleware(request: NextRequest) {
+  if (SAFE_METHODS.has(request.method.toUpperCase()) && !isTrustedReadRequest(request)) {
+    const denied = NextResponse.json(
+      { message: "Untrusted read request blocked." },
+      { status: 403 },
+    );
+    return finalizeResponse(request, denied);
+  }
+
   if (
     STATE_CHANGING_METHODS.has(request.method.toUpperCase())
     && !isTrustedStateChangingRequest(request)

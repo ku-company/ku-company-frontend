@@ -10,14 +10,20 @@ export function getAuthHeaders(): HeadersInit {
 
 // Wrapper for fetch initialization
 export function buildInit(init: RequestInit = {}): RequestInit {
+  const method = (init.method || "GET").toString().toUpperCase();
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...getAuthHeaders(),
+    ...(init.headers || {}),
+  };
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    headers["X-KU-CSRF"] = "1";
+  }
+
   return {
     // Always include cookies for auth-backed endpoints
     credentials: init.credentials ?? "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...(init.headers || {}),
-    },
+    headers,
     ...init,
   };
 }
