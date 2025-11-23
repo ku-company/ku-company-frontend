@@ -1,11 +1,6 @@
 // src/api/user.ts
 import { API_BASE } from "./base";
 import { extractErrorMessage } from "@/utils/httpError";
-import {
-  readAccessTokenCookie,
-  writeAccessTokenCookie,
-  clearAccessTokenCookies,
-} from "@/utils/secureCookies";
 
 export type AuthMe = {
   id?: number;
@@ -87,16 +82,26 @@ export async function updateUserRole(role: string, options?: UpdateRoleOptions) 
   return data as AuthMe; // contains access_token, refresh_token, role, etc.
 }
 
+async function syncHttpOnlySessionCookie(token: string | null, maxAgeSeconds: number) {
+  try {
+    const payload = token
+      ? { token, maxAge: maxAgeSeconds, mode: "set" }
+      : { mode: "clear" as const };
+    await fetch("/api/session-cookie", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch (error) {
+    console.warn("[session-cookie] Failed to sync HttpOnly cookie", error);
+  }
+}
+
 export async function refreshAccessToken() {
   try {
     console.log("[refreshAccessToken] Requesting /api/user/refresh-token");
-  } catch {}
-  let previousToken: string | null = null;
-  try {
-    previousToken = readAccessTokenCookie();
-    if (previousToken) {
-      console.log("[refreshAccessToken] Current cookie token (pre-refresh):", previousToken.slice(0, 12), "…");
-    }
   } catch {}
   const res = await fetch(`${API_BASE}/api/user/refresh-token`, {
     method: "POST",
@@ -124,9 +129,8 @@ export async function refreshAccessToken() {
   if (data?.access_token && typeof data.access_token === "string") {
     try {
       localStorage.setItem("access_token", data.access_token);
-      clearAccessTokenCookies();
       const maxAge = 15 * 60; // align with backend 15 minute expiry
-      writeAccessTokenCookie(data.access_token, maxAge);
+      await syncHttpOnlySessionCookie(data.access_token, maxAge);
       console.log("[refreshAccessToken] Updated cookie token:", data.access_token.slice(0, 12), "…");
     } catch {}
   }
