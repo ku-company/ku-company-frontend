@@ -36,21 +36,70 @@ function isExpiredAuthMessage(m: string): boolean {
   );
 }
 
-export async function extractErrorMessage(res: Response): Promise<string> {
+function pickErrorFromArray(errors: any[]): string | undefined {
+  for (const entry of errors) {
+    if (typeof entry === "string" && entry.trim().length) return entry;
+    if (entry && typeof entry === "object") {
+      const maybeMessage = typeof entry.message === "string" ? entry.message : entry.msg;
+      if (maybeMessage && maybeMessage.trim().length) return maybeMessage;
+    }
+  }
+  return undefined;
+}
+
+export type ExtractedError = {
+  message: string;
+  text: string;
+  json: any;
+};
+
+type HttpErrorInit = {
+  message: string;
+  status: number;
+  statusText?: string;
+  body?: string;
+  payload?: any;
+};
+
+export class HttpError extends Error {
+  status: number;
+  statusText: string;
+  body?: string;
+  payload?: any;
+
+  constructor(init: HttpErrorInit) {
+    super(init.message);
+    this.name = "HttpError";
+    this.status = init.status;
+    this.statusText = init.statusText ?? "";
+    this.body = init.body;
+    this.payload = init.payload;
+  }
+}
+
+export async function extractError(res: Response): Promise<ExtractedError> {
   const status = res.status;
   let text = "";
   let json: any = undefined;
   try {
     text = await res.text();
-    try { json = text ? JSON.parse(text) : undefined; } catch { /* not json */ }
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = undefined;
+      }
+    }
   } catch { /* ignore */ }
 
+  const arrayError = Array.isArray(json?.errors) ? pickErrorFromArray(json.errors as any[]) : undefined;
+
   let msg =
-    (json && (json.message || json.error || json.detail || json.msg)) ||
+    (json && (json.message || json.error || json.detail || json.msg || json?.details)) ||
+    arrayError ||
     (typeof json === "string" ? json : "");
 
   if (!msg) {
-    // If plain text and not JSON-looking, use it
     const looksJson = /^\s*[\[{]/.test(text);
     if (text && !looksJson) msg = text;
   }
@@ -69,7 +118,6 @@ export async function extractErrorMessage(res: Response): Promise<string> {
       : (res.statusText || "Request failed");
   }
 
-  // Auto logout only if clearly expired/invalid auth, not generic 401s
   if (status === 401) {
     const lower = String(msg || text || "").toLowerCase();
     if (isExpiredAuthMessage(lower) && !shouldDeferAutoLogout()) {
@@ -79,13 +127,24 @@ export async function extractErrorMessage(res: Response): Promise<string> {
 
   msg = String(msg).trim().replace(/^"|"$/g, "");
   if (msg.length) msg = msg.charAt(0).toUpperCase() + msg.slice(1);
-  return msg;
+  return { message: msg, text, json };
+}
+
+export async function extractErrorMessage(res: Response): Promise<string> {
+  const { message } = await extractError(res);
+  return message;
 }
 
 export async function assertOk(res: Response): Promise<void> {
   if (!res.ok) {
-    const message = await extractErrorMessage(res);
-    throw new Error(message);
+    const { message, text, json } = await extractError(res);
+    throw new HttpError({
+      message,
+      status: res.status,
+      statusText: res.statusText,
+      body: text,
+      payload: json,
+    });
   }
 }
 

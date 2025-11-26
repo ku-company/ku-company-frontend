@@ -1,5 +1,5 @@
 import { API_BASE, buildInit, unwrap } from "./base";
-import { extractErrorMessage } from "@/utils/httpError";
+import { assertOk } from "@/utils/httpError";
 
 export type CompanyProfile = {
   company_name: string;
@@ -18,9 +18,7 @@ export type PublicCompanyProfile = CompanyProfile & {
 export async function getCompanyProfile(signal?: AbortSignal): Promise<CompanyProfile | null> {
   const res = await fetch(`${API_BASE}/api/company/profile`, buildInit({ signal }));
   if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
 }
@@ -30,9 +28,7 @@ export async function createCompanyProfile(payload: CompanyProfile): Promise<Com
     method: "POST",
     body: JSON.stringify(payload),
   }));
-  if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
 }
@@ -54,9 +50,7 @@ export async function createDefaultCompanyProfile(company_name: string) {
       }),
     );
 
-    if (!res.ok) {
-      throw new Error(await extractErrorMessage(res));
-    }
+    await assertOk(res);
 
     return await res.json();
   } catch (err) {
@@ -70,9 +64,7 @@ export async function updateCompanyProfile(payload: CompanyProfile): Promise<Com
     method: "PATCH",
     body: JSON.stringify(payload),
   }));
-  if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<CompanyProfile>(json);
 }
@@ -89,9 +81,7 @@ export async function getCompanyProfileById(
     buildInit({ signal }),
   );
   if (res.status === 404) return null;
-  if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<PublicCompanyProfile>(json);
 }

@@ -1,4 +1,5 @@
 import { API_BASE, buildInit } from "./base";
+import { assertOk } from "@/utils/httpError";
 
 export async function applyToJob(jobPostId: number, resumeId: number): Promise<any> {
   const res = await fetch(
@@ -10,10 +11,8 @@ export async function applyToJob(jobPostId: number, resumeId: number): Promise<a
     })
   );
 
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || `Failed to apply to job ${jobPostId}`);
-  }
   try {
     return JSON.parse(text);
   } catch {
@@ -31,10 +30,8 @@ export async function applyJobsBulk(resumeId: number, jobIds: number[]): Promise
     })
   );
 
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || `Failed to apply to jobs`);
-  }
   try {
     return JSON.parse(text);
   } catch {

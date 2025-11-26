@@ -1,4 +1,5 @@
 import { API_BASE, buildInit } from "./base";
+import { assertOk } from "@/utils/httpError";
 
 export type RepostPayload = {
   content?: string;
@@ -11,8 +12,8 @@ export async function listAllReposts() {
     method: "GET",
     credentials: "include",
   }));
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) throw new Error(text || `Failed to fetch reposts`);
   try { return JSON.parse(text); } catch { return []; }
 }
 
@@ -22,8 +23,8 @@ export async function getRepostById(id: number) {
     method: "GET",
     credentials: "include",
   }));
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) throw new Error(text || `Failed to fetch repost ${id}`);
   try { return JSON.parse(text); } catch { return {}; }
 }
 
@@ -34,8 +35,8 @@ export async function repostJobPosting(jobPostId: number, payload?: RepostPayloa
     body: payload ? JSON.stringify(payload) : undefined,
     credentials: "include",
   }));
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) throw new Error(text || `Failed to repost job ${jobPostId}`);
   try { return JSON.parse(text); } catch { return { ok: true }; }
 }
 
@@ -46,8 +47,8 @@ export async function editRepost(repostId: number, payload: RepostPayload) {
     body: JSON.stringify(payload),
     credentials: "include",
   }));
+  await assertOk(res);
   const text = await res.text();
-  if (!res.ok) throw new Error(text || `Failed to edit repost ${repostId}`);
   try { return JSON.parse(text); } catch { return { ok: true }; }
 }
 
@@ -57,8 +58,7 @@ export async function deleteRepost(repostId: number) {
     method: "DELETE",
     credentials: "include",
   }));
-  const text = await res.text();
-  if (!res.ok) throw new Error(text || `Failed to delete repost ${repostId}`);
+  await assertOk(res);
   return true;
 }
 

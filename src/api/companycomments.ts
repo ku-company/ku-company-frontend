@@ -1,5 +1,6 @@
 import { API_BASE, buildInit } from "./base";
 import { ensureAccessToken } from "./token";
+import { assertOk } from "@/utils/httpError";
 
 export type CompanyCommentUser = {
   id?: number;
@@ -19,13 +20,17 @@ export type CompanyComment = {
   user?: CompanyCommentUser; // backend now provides commenter details
 };
 
-export async function fetchCompanyProfileWithCommentsByUserId(userId: number | string) {
-  const res = await fetch(`${API_BASE}/api/user/profile/${userId}`, buildInit({ method: "GET", credentials: "include" }));
+async function parseData(res: Response) {
+  await assertOk(res);
   const text = await res.text();
   let json: any = {};
-  try { json = JSON.parse(text); } catch {}
-  if (!res.ok) throw new Error(json?.message || text || `HTTP ${res.status}`);
+  try { json = text ? JSON.parse(text) : {}; } catch {}
   return json?.data ?? json;
+}
+
+export async function fetchCompanyProfileWithCommentsByUserId(userId: number | string) {
+  const res = await fetch(`${API_BASE}/api/user/profile/${userId}`, buildInit({ method: "GET", credentials: "include" }));
+  return await parseData(res);
 }
 
 // NOTE: Backend currently exposes comment creation under professor routes.
@@ -41,11 +46,7 @@ export async function postCompanyComment(
     method: "POST",
     body: JSON.stringify({ comment }),
   }));
-  const text = await res.text();
-  let json: any = {};
-  try { json = JSON.parse(text); } catch {}
-  if (!res.ok) throw new Error(json?.message || text || `HTTP ${res.status}`);
-  return json?.data ?? json;
+  return await parseData(res);
 }
 
 export async function editCompanyComment(
@@ -59,11 +60,7 @@ export async function editCompanyComment(
     method: "PATCH",
     body: JSON.stringify({ comment }),
   }));
-  const text = await res.text();
-  let json: any = {};
-  try { json = JSON.parse(text); } catch {}
-  if (!res.ok) throw new Error(json?.message || text || `HTTP ${res.status}`);
-  return json?.data ?? json;
+  return await parseData(res);
 }
 
 export async function deleteCompanyComment(
@@ -73,9 +70,5 @@ export async function deleteCompanyComment(
   await ensureAccessToken();
   const base = actor === 'professor' ? 'professor' : 'employee';
   const res = await fetch(`${API_BASE}/api/${base}/comment/${commentId}/delete`, buildInit({ method: "DELETE" }));
-  const text = await res.text();
-  let json: any = {};
-  try { json = JSON.parse(text); } catch {}
-  if (!res.ok) throw new Error(json?.message || text || `HTTP ${res.status}`);
-  return json?.data ?? json;
+  return await parseData(res);
 }

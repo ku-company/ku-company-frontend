@@ -1,4 +1,5 @@
 import { API_BASE, buildInit } from "./base";
+import { assertOk } from "@/utils/httpError";
 
 export type ApplicationStatus = "Approved" | "Rejected" | "Pending" | "Confirmed";
 
@@ -13,10 +14,7 @@ function normalizeStatus(value: string | null | undefined): ApplicationStatus {
 export async function getAllApplications() {
   const res = await fetch(`${API_BASE}/api/company/job-applications`, buildInit());
   if (res.status === 404) return null;
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Failed to fetch job applications: ${res.status} ${res.statusText}`);
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   console.log("Job Applications fetched:", json);
   // Transform backend data into Application format
@@ -47,10 +45,7 @@ export function updateApplicationStatus(id: number, status: ApplicationStatus) {
       body: JSON.stringify({ status }),
     })
   ).then(async (res) => {
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `Failed to update application status: ${res.status} ${res.statusText}`);
-    }
+    await assertOk(res);
     return res.json();
   });
 }

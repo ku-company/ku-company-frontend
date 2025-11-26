@@ -1,6 +1,6 @@
 // src/api/professorprofile.ts
 import { API_BASE, buildInit, unwrap } from "./base";
-import { extractErrorMessage } from "@/utils/httpError";
+import { assertOk, HttpError } from "@/utils/httpError";
 import { ensureAccessToken } from "./token";
 
 export type ProfessorProfile = {
@@ -46,11 +46,10 @@ export async function getMyProfessorProfile(signal?: AbortSignal): Promise<Profe
   await ensureAccessToken();
   const res = await fetch(`${API_BASE}/api/professor/my-profile`, buildInit({ signal }));
   if (!res.ok) {
-    // Service returns 400 with message "Profile not found" when absent
-    const text = await res.text().catch(() => "");
+    const text = await res.clone().text().catch(() => "");
     if (res.status === 404 || /profile not found/i.test(text)) return null;
-    throw new Error(text || (await extractErrorMessage(res)));
   }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<ProfessorProfile>(json);
 }
@@ -116,17 +115,19 @@ export async function createProfessorProfile(payload?: ProfessorCreatePayload): 
     }
   } catch {}
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    try { console.warn("[createProfessorProfile] Server error:", res.status, text); } catch {}
-    // If profile already exists, fetch and return it to make callers resilient to races
-    if (res.status === 400 && /already exists/i.test(text)) {
+  try {
+    await assertOk(res);
+  } catch (err) {
+    const asHttpError = err as HttpError;
+    const bodyText = asHttpError?.body || asHttpError?.message || "";
+    try { console.warn("[createProfessorProfile] Server error:", asHttpError?.status ?? res.status, bodyText); } catch {}
+    if (asHttpError instanceof HttpError && asHttpError.status === 400 && /already exists/i.test(bodyText)) {
       try {
         const existing = await getMyProfessorProfile();
         if (existing) return existing;
       } catch {}
     }
-    throw new Error(text || (await extractErrorMessage(res)));
+    throw err;
   }
   const json = await res.json().catch(() => ({}));
   return unwrap<ProfessorProfile>(json);
@@ -141,9 +142,7 @@ export async function patchProfessorProfile(updates: ProfessorEditPayload): Prom
     method: "PATCH",
     body: JSON.stringify(updates),
   }));
-  if (!res.ok) {
-    throw new Error(await extractErrorMessage(res));
-  }
+  await assertOk(res);
   const json = await res.json().catch(() => ({}));
   return unwrap<ProfessorProfile>(json);
 }
