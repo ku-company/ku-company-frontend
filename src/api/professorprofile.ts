@@ -73,16 +73,16 @@ export async function createProfessorProfile(payload?: ProfessorCreatePayload): 
   const src: any = payload ?? {};
   const dept = typeof src.department === "string" ? src.department.trim() : String(src.department ?? "").trim();
   const fac = typeof src.faculty === "string" ? src.faculty.trim() : String(src.faculty ?? "").trim();
-  // Build the exact JSON body the server expects
+
   const bodyJson = JSON.stringify({ department: dept, faculty: fac });
 
-  // Debug log for troubleshooting payload issues (show actual JSON string)
+  
   try {
     console.log("[createProfessorProfile][DEBUG] URL:", `${API_BASE}/api/professor/my-profile`);
     console.log("[createProfessorProfile][DEBUG] Method:", "POST");
     console.log("[createProfessorProfile][DEBUG] Headers:", headers);
     console.log("[createProfessorProfile][DEBUG] Body:", bodyJson);
-    // Expose on window for inspection if console logs are not visible
+    
     if (typeof window !== "undefined") {
       (window as any).__profPostDebug = {
         url: `${API_BASE}/api/professor/my-profile`,

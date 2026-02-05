@@ -33,7 +33,6 @@ function toBool(v: unknown): boolean {
   return false;
 }
 
-/** Flattens your backend shape to our StudentProfile model. */
 function normalizeImageUrl(u: unknown): string | null {
   if (!u) return null;
   const str = String(u).trim();
@@ -84,10 +83,6 @@ function flattenBackendProfile(json: any): StudentProfile {
     bio: data?.summary ?? data?.bio ?? null,
     birthday: data?.birthDate ?? data?.birthday ?? null,
 
-    // If your backend later structures contactInfo, map as needed:
-    // For now we only keep the raw block inside bio/summary section.
-    // phone: data?.contactInfo?.phone ?? null,
-    // location: data?.contactInfo?.location ?? null,
 
     education: toText(data?.education),
     skills: toText(data?.skills),
@@ -98,10 +93,6 @@ function flattenBackendProfile(json: any): StudentProfile {
   };
 }
 
-/**
- * GET /api/employee/my-profile
- * Auth: via cookie or Bearer header
- */
 export async function getMyStudentProfile(): Promise<StudentProfile> {
   const token = localStorage.getItem("access_token") || "";
   const baseInit = buildInit({ method: "GET" });
@@ -124,21 +115,15 @@ export async function getMyStudentProfile(): Promise<StudentProfile> {
 }
 
 export type StudentProfileEditPayload = {
-  education?: string;   // comma/newline separated text
-  birthDate?: string;   // YYYY-MM-DD
+  education?: string;   
+  birthDate?: string;   
   summary?: string;
-  skills?: string;      // comma/newline separated text
-  experience?: string;
-  contactInfo?: string; // free text
-  languages?: string;   // comma/newline separated text
+  skills?: string;      
+  contactInfo?: string; 
+  languages?: string;   
 };
 
-/**
- * PATCH /api/employee/my-profile/edit
- * Body: {
- *  education, birthDate, summary, skills, experience, contactInfo, languages
- * }
- */
+
 export async function patchMyStudentProfile(
   updates: StudentProfileEditPayload
 ): Promise<StudentProfile> {
@@ -156,18 +141,18 @@ export async function patchMyStudentProfile(
 
   const raw = await res.text();
   if (!res.ok) throw new Error(await extractErrorMessage(res));
-  // Some endpoints return the updated profile without nested user; ensure we refetch
+  
   try {
-    // Try to parse in case it's already the full shape; if not, ignore
+    
     const json = JSON.parse(raw);
     const flattened = flattenBackendProfile(json);
-    // If critical user fields are missing, fall back to full refetch
+    
     if (!flattened.user_name && !flattened.full_name) {
       return await getMyStudentProfile();
     }
     return flattened;
   } catch {
-    // On any parse/shape mismatch, refetch a consistent profile shape
+    
     return await getMyStudentProfile();
   }
 }

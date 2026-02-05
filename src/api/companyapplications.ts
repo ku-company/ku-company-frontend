@@ -19,9 +19,8 @@ export async function getAllApplications() {
   }
   const json = await res.json().catch(() => ({}));
   console.log("Job Applications fetched:", json);
-  // Transform backend data into Application format
   const formatted = (Array.isArray(json?.data) ? json.data : []).map((app: any) => {
-    // Backend includes employee user id as user_id via transformJobApplication
+    
     const applicantUserId = app?.user_id ?? app?.employee?.user?.id ?? null;
     const normalizedStatus = normalizeStatus(app?.company_send_status ?? app?.status);
     return {

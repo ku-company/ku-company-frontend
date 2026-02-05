@@ -31,7 +31,6 @@ function extractFileName(url: string): string {
   }
 }
 
-/** GET list of resumes */
 export async function listResumes(): Promise<ResumeItem[]> {
   const token = localStorage.getItem("access_token") || "";
 
@@ -92,7 +91,6 @@ export async function getMainResume(): Promise<ResumeItem | null> {
   if (res.status === 404) return null;
 
   if (!res.ok) {
-    // Fallback: some servers reject empty Authorization header; try listing and finding is_main
     try {
       const list = await listResumes();
       const m = list.find((r) => r.is_main);
@@ -192,7 +190,7 @@ export async function deleteResume(id: number): Promise<void> {
   });
 
   const raw = await res.text();
-  console.log(`🗑️ [resumes] DELETE ${id} raw:`, raw);
+  console.log(`[resumes] DELETE ${id} raw:`, raw);
 
   if (!res.ok) throw new Error(raw || `Failed to delete resume`);
 }

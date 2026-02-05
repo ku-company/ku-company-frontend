@@ -50,7 +50,6 @@ export async function extractErrorMessage(res: Response): Promise<string> {
     (typeof json === "string" ? json : "");
 
   if (!msg) {
-    // If plain text and not JSON-looking, use it
     const looksJson = /^\s*[\[{]/.test(text);
     if (text && !looksJson) msg = text;
   }
@@ -69,7 +68,6 @@ export async function extractErrorMessage(res: Response): Promise<string> {
       : (res.statusText || "Request failed");
   }
 
-  // Auto logout only if clearly expired/invalid auth, not generic 401s
   if (status === 401) {
     const lower = String(msg || text || "").toLowerCase();
     if (isExpiredAuthMessage(lower) && !shouldDeferAutoLogout()) {
