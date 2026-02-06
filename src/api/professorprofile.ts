@@ -1,4 +1,3 @@
-// src/api/professorprofile.ts
 import { API_BASE, buildInit, unwrap } from "./base";
 import { extractErrorMessage } from "@/utils/httpError";
 import { ensureAccessToken } from "./token";
@@ -11,7 +10,6 @@ export type ProfessorProfile = {
   position: string | null;
   contactInfo: string | null;
   summary: string | null;
-  // Decorated by backend service
   profile_image_url?: string | null;
   user?: {
     first_name?: string | null;
@@ -30,8 +28,8 @@ export type ProfessorCreatePayload = {
 };
 
 export type ProfessorEditPayload = {
-  first_name?: string; // required by backend if user has none
-  last_name?: string;  // required by backend if user has none
+  first_name?: string; 
+  last_name?: string;  
   department?: string | null;
   faculty?: string | null;
   position?: string | null;
@@ -39,9 +37,6 @@ export type ProfessorEditPayload = {
   summary?: string | null;
 };
 
-/**
- * GET /api/professor/my-profile
- */
 export async function getMyProfessorProfile(signal?: AbortSignal): Promise<ProfessorProfile | null> {
   await ensureAccessToken();
   const res = await fetch(`${API_BASE}/api/professor/my-profile`, buildInit({ signal }));
@@ -55,10 +50,7 @@ export async function getMyProfessorProfile(signal?: AbortSignal): Promise<Profe
   return unwrap<ProfessorProfile>(json);
 }
 
-/**
- * POST /api/professor/my-profile
- * Optionally attaches an internal secret header if NEXT_PUBLIC_INTERNAL_SECRET is set.
- */
+
 export async function createProfessorProfile(payload?: ProfessorCreatePayload): Promise<ProfessorProfile> {
   await ensureAccessToken();
   console.log("[createProfessorProfile] Payload:", payload);
@@ -103,7 +95,6 @@ export async function createProfessorProfile(payload?: ProfessorCreatePayload): 
     headers,
     body: bodyJson,
   }));
-  // Log raw response for debugging
   try {
     const preview = await res.clone().text();
     console.log("[createProfessorProfile][DEBUG] Response status:", res.status);
@@ -132,9 +123,7 @@ export async function createProfessorProfile(payload?: ProfessorCreatePayload): 
   return unwrap<ProfessorProfile>(json);
 }
 
-/**
- * PATCH /api/professor/my-profile
- */
+
 export async function patchProfessorProfile(updates: ProfessorEditPayload): Promise<ProfessorProfile> {
   await ensureAccessToken();
   const res = await fetch(`${API_BASE}/api/professor/my-profile`, buildInit({
