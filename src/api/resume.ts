@@ -44,7 +44,7 @@ export async function listResumes(): Promise<ResumeItem[]> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
+  console.log("[resumes] GET raw:", raw.slice(0, 500), "🔑", maskToken(token));
 
   if (!res.ok) {
     try {
@@ -86,7 +86,7 @@ export async function getMainResume(): Promise<ResumeItem | null> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] GET main raw:", raw.slice(0, 400));
+  console.log("[resumes] GET main raw:", raw.slice(0, 400));
 
   if (res.status === 404) return null;
 
@@ -171,7 +171,7 @@ export async function deleteAllResumes(): Promise<void> {
   });
 
   const raw = await res.text();
-  console.log("🧾 [resumes] DELETE ALL raw:", raw);
+  console.log("[resumes] DELETE ALL raw:", raw);
 
   if (!res.ok) throw new Error(raw || `Failed to delete resumes`);
 }
