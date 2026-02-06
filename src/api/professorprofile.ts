@@ -41,7 +41,6 @@ export async function getMyProfessorProfile(signal?: AbortSignal): Promise<Profe
   await ensureAccessToken();
   const res = await fetch(`${API_BASE}/api/professor/my-profile`, buildInit({ signal }));
   if (!res.ok) {
-    // Service returns 400 with message "Profile not found" when absent
     const text = await res.text().catch(() => "");
     if (res.status === 404 || /profile not found/i.test(text)) return null;
     throw new Error(text || (await extractErrorMessage(res)));
@@ -110,7 +109,6 @@ export async function createProfessorProfile(payload?: ProfessorCreatePayload): 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     try { console.warn("[createProfessorProfile] Server error:", res.status, text); } catch {}
-    // If profile already exists, fetch and return it to make callers resilient to races
     if (res.status === 400 && /already exists/i.test(text)) {
       try {
         const existing = await getMyProfessorProfile();
